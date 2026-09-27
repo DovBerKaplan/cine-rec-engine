@@ -29,7 +29,7 @@ Private — must NEVER land:
 - Training/graded datasets (any size).
 - Tuning methodology: holdout scores, sweep grids/results, round
   histories, per-coefficient "how we picked 26.0" narratives.
-- Production moderation/user data, real user ids.
+- Production user data, real user ids.
 
 Check before committing:
 ```bash
