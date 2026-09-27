@@ -6,9 +6,11 @@
 
 > **Recommendations from your own database. No black-box API, no rented taste.**
 
-![demo](docs/demo.gif)
-
 **PostgreSQL in · ranked titles out · zero external calls on the hot path.**
+
+**🖥️ [Try it in your browser — no install](https://dovberkaplan.github.io/cine-rec-engine/)** — every recommendation precomputed by the real engine, each row with its *why*, plus two user personas producing entirely different lists.
+
+![demo](docs/demo.gif)
 
 ## Try it in 60 seconds — no API key
 
