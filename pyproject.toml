@@ -66,6 +66,7 @@ select = ["E", "F", "W"]
 "cine_rec_engine/user_stats.py" = ["E501"]
 "eval/eval.py" = ["E402", "E501"]
 "demo/demo.py" = ["E501"]
+"demo/make_web_demo.py" = ["E501"]  # embedded HTML/CSS template
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
