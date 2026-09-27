@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.5.1] — 2026-09-28
+
+### Fixed — enriched features were silently zero in ranking
+`_entity_profile` (the v0.2.0 hot-path optimization) read keywords,
+cast, companies, networks, style and crew ids from the recall row
+instead of the enriched data — every enriched feature scored 0 for
+every candidate, collapsing ranking onto genre+cosine+rating (and
+letting the low-votes flag decide ties; that's how a thin new title
+could outrank The Sopranos under a Breaking Bad seed). The parity
+tests passed because they exercise the public API, where cand and
+cand_data are the same dict. Fixed by mirroring feature_vector's field
+ownership exactly; demo re-ranked (Sopranos #1, Better Call Saul via
+"same network"), eval NDCG@10 0.36 → 0.49, pairwise unchanged at 0.83.
+
 ## [0.5.0] — 2026-09-28
 
 ### The closed user path (spec v0.3 §A–§D)

@@ -99,7 +99,7 @@ On the bundled 400-title demo pool with hand-curated adjacency judgments
 |---|---|---|
 | TMDB similar (behavioral graph) | 0.09 | 0.13 |
 | cosine over overviews | 0.63 | 0.04 |
-| **this engine (learned 22-feature scorer)** | **0.83** | **0.36** |
+| **this engine (learned 22-feature scorer)** | **0.83** | **0.49** |
 
 Honest caveats: the pool is small (the TMDB graph mostly points outside
 it, hence its floor), and the judgments are one curator's. Bring your own

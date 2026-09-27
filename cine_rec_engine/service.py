@@ -1254,33 +1254,38 @@ def _entity_profile(entity: dict, entity_data: Optional[dict],
     once per pair. Pure caching — semantics identical to inline calls.
     """
     data = entity_data if entity_data is not None else {}
-    # tone/audience read the ENTITY's genres (with cand_data fallback);
-    # can_genres/modality read the caller-passed cand_genres — both kept,
-    # mirroring feature_vector's exact inputs.
+    # Field ownership mirrors feature_vector exactly: the ENRICHED side
+    # (keywords/cast/companies/networks/style/crew ids) lives on cand_data;
+    # recall rows (entity) only carry genres/overview/scalars. Reading these
+    # from the entity left every enriched feature silently zero.
+    source = data if entity_data is not None else entity
     genres = entity.get("genres") or data.get("genres") or []
     param_genres = genres_override if genres_override is not None else genres
     overview = entity.get("overview_en", "") or entity.get("overview", "") or ""
     return {
         # sets
-        "dir_ids": set(entity.get("director_ids") or []),
-        "writer_ids": set(entity.get("writer_ids") or []),
-        "composer_ids": set(entity.get("composer_ids") or []),
-        "dp_ids": set(entity.get("dp_ids") or []),
+        "dir_ids": set(source.get("director_ids") or []),
+        "writer_ids": set(source.get("writer_ids") or []),
+        "composer_ids": set(source.get("composer_ids") or []),
+        "dp_ids": set(source.get("dp_ids") or []),
         "cast5": set(
-            (entity.get("cast_ids") or entity.get("cast_list") or [])[:5]
+            (source.get("cast_ids") or source.get("cast_list") or [])[:5]
         ),
-        "keywords": keyword_set(entity.get("keywords", []) or []),
-        "companies": set(entity.get("companies", []) or []),
-        "networks": set(entity.get("networks", []) or []),
+        "keywords": keyword_set(source.get("keywords", []) or []),
+        "companies": set(source.get("companies", []) or []),
+        "networks": set(source.get("networks", []) or []),
         "can_genres": canonical_genres(param_genres),
         "can_genres_raw": set(param_genres),
         "param_genres": param_genres,
-        "style": set(detect_style(entity.get("keywords", []) or [])),
+        "style": set(detect_style(source.get("keywords", []) or [])),
         # scalars / strings
         "genres": genres,
-        "modality": _modality(param_genres, entity.get("original_language")),
-        "director": entity.get("director"),
-        "coll": entity.get("collection_id"),
+        "modality": _modality(
+            param_genres,
+            source.get("original_language") or entity.get("original_language"),
+        ),
+        "director": source.get("director"),
+        "coll": source.get("collection_id"),
         "overview_bigrams": bigram_set(overview) if overview else None,
         "overview": overview,
         "year": entity.get("release_year"),
@@ -1296,7 +1301,7 @@ def _entity_profile(entity: dict, entity_data: Optional[dict],
         "adult": bool(entity.get("adult")),
         "via": entity.get("via"),
         # cand-side precomputed pair inputs
-        "cand_coll": (entity_data or {}).get("collection_id") or entity.get("collection_id"),
+        "cand_coll": source.get("collection_id"),
         "tmdb_rec_decay": (
             max(0.25, 1.0 - (int(entity.get("tmdb_rank") or 1) - 1) * 0.15)
             if entity.get("via") == "tmdb" else 0.0
