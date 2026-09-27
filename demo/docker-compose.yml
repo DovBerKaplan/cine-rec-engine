@@ -21,6 +21,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://demo:demo@db:5432/demo
+      CINE_REC_EMBEDDING: minilm
     volumes:
       - ../:/engine:ro
     # engine runs straight from the mounted source (read-only) via PYTHONPATH

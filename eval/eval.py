@@ -60,7 +60,7 @@ async def run(dsn: str) -> dict:
         # engine scores over the full pool (via the service, same path as prod)
         eng = {(r["tmdb_id"], r["media_type"]): r["score"]
                for r in await svc.find_similar(
-                   seed_id, limit=None, allow_cross_media=True,
+                   seed_id, limit=None, allow_cross_media=False,
                    media_type=seed_type)}
 
         # TMDB behavioral graph: rank-decayed, missing → 0

@@ -22,17 +22,36 @@ async def main():
 
     pool = await asyncpg.create_pool(DSN)
     async with pool.acquire() as c:
+        await c.execute("CREATE EXTENSION IF NOT EXISTS vector")
         await c.execute((ROOT / "docs" / "schema.sql").read_text())
+        await c.execute(
+            "ALTER TABLE tmdb_movies ADD COLUMN IF NOT EXISTS embedding_minilm vector(384)")
+        await c.execute(
+            "ALTER TABLE tmdb_tv ADD COLUMN IF NOT EXISTS embedding_minilm vector(384)")
     # offline loader: no fetches happen, so a placeholder key is fine
     ingest = TmdbIngest(pool, api_key="offline-demo")
-
     n = 0
     with gzip.open(ROOT / "demo" / "data" / "titles.jsonl.gz", "rt") as f:
         for line in f:
             rec = json.loads(line)
             await ingest._upsert_title(rec["payload"], rec["medium"])
             n += 1
-    print(f"seeded {n} titles into {DSN.split('@')[-1]}")
+
+    # vector writes need the pgvector codec on their connection
+    from pgvector.asyncpg import register_vector
+
+    async with pool.acquire() as c:
+        await register_vector(c)
+        with gzip.open(ROOT / "demo" / "data" / "titles.jsonl.gz", "rt") as f:
+            for line in f:
+                rec = json.loads(line)
+                vec = rec.get("embedding_minilm")
+                if vec:
+                    table = "tmdb_movies" if rec["medium"] == "movie" else "tmdb_tv"
+                    await c.execute(
+                        f"UPDATE {table} SET embedding_minilm = $1 WHERE id = $2",
+                        vec, rec["payload"]["id"])
+    print(f"seeded {n} titles (+embeddings) into {DSN.split('@')[-1]}")
     await pool.close()
 
 

@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.5.2] — 2026-09-28
+
+### Demo v2 — bot-grade recommendations in the browser
+The demo gap vs the production bot was data, not engine: the old 400-title
+pool had no embeddings (bigram-cosine fallback) and its TMDB rec edges
+pointed outside the pool (the strongest feature, dead). v2 ships:
+- a RECOMMENDATION-CLOSED catalog (830 titles, 16,600 in-pool rec edges —
+  every title's "people also watched" is inside the pool)
+- bundled MiniLM (384d, public encoder) embeddings for all 830 titles →
+  real semantic cosine + the KNN recall channel live, no API/model needed
+- demo output now matches bot character: TDK → Batman Begins / Memento /
+  Insomnia with "same saga · same director · shared cast"
+- eval runs in the same same-medium recall mode as production (the
+  cross-media genre branch popularity-cuts classics — an eval artifact
+  that understated the engine); numbers: 0.82 / 0.46 vs cosine 0.69/0.02
+
 ## [0.5.1] — 2026-09-28
 
 ### Fixed — enriched features were silently zero in ranking

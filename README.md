@@ -99,11 +99,12 @@ On the bundled 400-title demo pool with hand-curated adjacency judgments
 |---|---|---|
 | TMDB similar (behavioral graph) | 0.09 | 0.13 |
 | cosine over overviews | 0.63 | 0.04 |
-| **this engine (learned 22-feature scorer)** | **0.83** | **0.49** |
+| **this engine (learned 22-feature scorer)** | **0.82** | **0.46** |
 
-Honest caveats: the pool is small (the TMDB graph mostly points outside
-it, hence its floor), and the judgments are one curator's. Bring your own
-judgments file — the harness is in the repo.
+Honest caveats: the pool is small (830 titles, recommendation-closed,
+with bundled MiniLM embeddings — `demo/data/`), recall runs in the same
+same-medium mode the bot uses, and the judgments are one curator's.
+Bring your own judgments file — the harness is in the repo.
 
 ## Feature highlights
 
