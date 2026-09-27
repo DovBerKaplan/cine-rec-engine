@@ -134,9 +134,28 @@ async def build(dsn: str) -> dict:
         await user_stats.refresh_user_stats(pool, uid)
         await user_vector.build_user_vector(pool, uid)
         out = await rec.recommend_for_user(uid, limit=8, include_why=True)
-        w_labels = out["why"]
-        for r in out["results"][:6]:
-            r["_why_w"] = [[lbl, 0.0] for lbl in w_labels.get(str(r["tmdb_id"]), [])]
+        # real weighted WHY against the persona's top seed — the same
+        # pass the tab seeds use (issue #2: labels-with-0.0 rows)
+        top = out["seeds"][0] if out["seeds"] else None
+        if top is not None and out["results"]:
+            seed_map = await get_movie_info_batch(pool, [top[0]])
+            seed_info = dict(seed_map[top[0]]) if seed_map else {}
+            seed_info.setdefault("media_type", top[1])
+            enriched_p = await enrich_candidates_batch(
+                pool, [r["tmdb_id"] for r in out["results"][:6]])
+            for r in out["results"][:6]:
+                cand = dict(enriched_p.get(r["tmdb_id"], {}))
+                cand.setdefault("id", r["tmdb_id"])
+                for k, v in r.items():
+                    cand.setdefault(k, v)
+                vec = feature_vector(
+                    cand, cand, cand.get("genres", []), seed_info)
+                ww = explain_features(vec, ACTIVE_WEIGHTS, with_weights=True)
+                r["_why_w"] = [[lbl, round(w, 1)] for lbl, w in ww]
+        else:
+            for r in out["results"][:6]:
+                r["_why_w"] = [[lbl, 0.0]
+                               for lbl in out["why"].get(str(r["tmdb_id"]), [])]
         personas[name] = {
             "label": f"user {uid} \u2014 {blurb} (recommend_for_user)",
             "rows": [{

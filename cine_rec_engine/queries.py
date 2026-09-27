@@ -283,13 +283,45 @@ async def generate_candidates(
                       WHERE mg.media_id = m.id
                         AND g.name = ANY($2::text[])
                   )
-                ORDER BY m.popularity DESC, m.vote_average DESC
-                LIMIT $3
+                ORDER BY
+                    -- genre-overlap count first (the channel's whole point),
+                    -- then a quality blend — raw popularity alone buried
+                    -- classics under fresh high-pop titles (#1)
+                    (
+                        SELECT count(*) FROM tmdb_media_genres mg
+                        JOIN tmdb_genres g ON mg.genre_id = g.id
+                        WHERE mg.media_id = m.id
+                          AND g.name = ANY($2::text[])
+                    ) DESC,
+                    (m.vote_count * m.vote_average) DESC,
+                    m.popularity DESC
+                LIMIT $3 * 2  -- per-medium budget: the dedup below keeps
+                              -- `limit` per media_type, so one hot medium
+                              -- can no longer starve the other (#1)
                 """,
                 base_movie_id,
                 base_genres,
                 limit,
             )
+            # per-medium budget: rank within each media_type, keep `limit`
+            # per side (issue #1 — a UNION ordered globally let one medium
+            # crowd out the other's classics)
+            rows = sorted(
+                rows,
+                key=lambda r: (
+                    -sum(1 for g in (r["genres"] or []) if g in set(base_genres)),
+                    -(r["vote_count"] or 0) * (r["vote_average"] or 0),
+                    -(r["popularity"] or 0),
+                ),
+            )
+            kept: dict = {"movie": 0, "tv": 0}
+            budgeted = []
+            for r in rows:
+                mt = r["media_type"]
+                if kept.get(mt, 0) >= limit:
+                    continue
+                kept[mt] = kept.get(mt, 0) + 1
+                budgeted.append(r)
         else:
             rows = await conn.fetch(
                 """

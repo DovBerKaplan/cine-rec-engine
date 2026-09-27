@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.5.3] — 2026-09-28
+
+### Fixed
+- **#1** — cross-media genre recall: a single global `ORDER BY popularity`
+  UNION let fresh high-popularity titles bury genre-matching classics
+  (Se7en under a Pulp Fiction seed). The channel now orders by
+  genre-overlap count, then a vote×rating quality blend, then popularity,
+  and keeps a **per-medium budget** — one hot medium can no longer starve
+  the other's candidates. Verified: all originally-failing recall pairs
+  return; the only remaining "miss" is same-collection saga dedup
+  (one slot per story — by design).
+- **#2** — persona recommendations in the demo showed WHY labels with
+  weight 0.0; they now run the same weighted feature pass as the tab
+  seeds (against the persona's top-w_i seed).
+
 ## [0.5.2] — 2026-09-28
 
 ### Demo v2 — bot-grade recommendations in the browser
