@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cine-rec-engine"
+version = "0.4.0"
+description = "Content-based movie & series recommendation engine over your own PostgreSQL TMDB mirror"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "DovBerKaplan" }]
+keywords = ["recommendations", "tmdb", "movies", "postgres", "pgvector", "content-based"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Database",
+    "Topic :: Multimedia :: Video",
+    "Framework :: AsyncIO",
+]
+dependencies = [
+    "asyncpg>=0.29",
+    "aiohttp>=3.9",
+    "loguru>=0.7",
+]
+
+[project.optional-dependencies]
+redis = ["redis>=5.0"]
+pg = ["pgvector>=0.3"]        # KNN recall channel (optional)
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/DovBerKaplan/cine-rec-engine"
+Issues = "https://github.com/DovBerKaplan/cine-rec-engine/issues"
+
+[tool.setuptools.packages.find]
+include = ["cine_rec_engine*", "ingest*"]
+
+[tool.setuptools.package-data]
+cine_rec_engine = ["weights.json"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# Classic pycodestyle/pyflakes set — deterministic across ruff versions.
+select = ["E", "F", "W"]
+
+# The engine modules are kept structurally identical to the production
+# code they were extracted from (docstring placement, mid-module env
+# reads); formatting-level findings there are not auto-churned.
+[tool.ruff.lint.per-file-ignores]
+# ported engine modules keep their original formatting
+"cine_rec_engine/config.py" = ["E402", "E501"]
+"cine_rec_engine/queries.py" = ["E402", "E501"]
+"cine_rec_engine/service.py" = ["E501"]
+"benchmarks/bench_e2e.py" = ["E401", "E501", "E701", "F401"]
+"benchmarks/smoke_personalization.py" = ["E401", "E501", "E701", "F401", "F811"]
+"cine_rec_engine/user_stats.py" = ["E501"]
+"eval/eval.py" = ["E402", "E501"]
+"demo/demo.py" = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

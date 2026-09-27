@@ -1,0 +1,12 @@
+{"seed": [155, "movie"], "good": [[77,"movie"],[807,"movie"],[550,"movie"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [680, "movie"], "good": [[550,"movie"],[807,"movie"],[769,"movie"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [27205, "movie"], "good": [[157336,"movie"],[603,"movie"],[693134,"movie"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [603, "movie"], "good": [[27205,"movie"],[157336,"movie"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [550, "movie"], "good": [[680,"movie"],[77,"movie"],[807,"movie"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [807, "movie"], "good": [[550,"movie"],[146233,"movie"],[77,"movie"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [146233, "movie"], "good": [[807,"movie"],[155,"movie"],[550,"movie"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [769, "movie"], "good": [[238,"movie"],[240,"movie"],[1398,"tv"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [1396, "tv"], "good": [[60059,"tv"],[1438,"tv"],[1398,"tv"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [1398, "tv"], "good": [[1438,"tv"],[1396,"tv"],[60059,"tv"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [1438, "tv"], "good": [[1398,"tv"],[1396,"tv"],[60059,"tv"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}
+{"seed": [1399, "tv"], "good": [[60574,"tv"],[1398,"tv"],[1438,"tv"]], "bad": [[79141,"tv"],[16672,"movie"],[490,"movie"]]}

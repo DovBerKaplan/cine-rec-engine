@@ -1,0 +1,31 @@
+# One-command demo — NO TMDB API key needed.
+#   docker compose up -d && docker compose run --rm demo
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: demo
+    ports:
+      - "54329:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo"]
+      interval: 2s
+      retries: 15
+
+  demo:
+    image: python:3.11-slim
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://demo:demo@db:5432/demo
+    volumes:
+      - ../:/engine:ro
+    # engine runs straight from the mounted source (read-only) via PYTHONPATH
+    command: >
+      bash -c "pip -q install asyncpg loguru aiohttp &&
+               PYTHONPATH=/engine python /engine/demo/seed.py &&
+               PYTHONPATH=/engine python /engine/demo/demo.py &&
+               PYTHONPATH=/engine python /engine/demo/demo.py 1396"
