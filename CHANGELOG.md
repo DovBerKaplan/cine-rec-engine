@@ -7,6 +7,8 @@ versions follow [SemVer](https://semver.org/).
 ## [0.4.0] — 2026-09-27
 
 ### Added — 60-second demo, evaluation, packaging
+
+- Published to PyPI: `pip install cine-rec-engine`.
 - `demo/` — one-command demo with NO TMDB key: `docker compose up` starts
   Postgres + pgvector, seeds 400 real top-rated titles (bundled 5MB dump,
   fetched by this repo's own ingest), and prints recommendations with the
