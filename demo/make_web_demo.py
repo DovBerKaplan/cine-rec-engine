@@ -32,7 +32,11 @@ SEED_IDS = [
 async def build(dsn: str) -> dict:
     import asyncpg
 
-    from cine_rec_engine import RecommendationService, user_stats, user_vector
+    from cine_rec_engine import (
+        RecommendationService,
+        user_stats,
+        user_vector,
+    )
     from cine_rec_engine.queries import (
         enrich_candidates_batch,
         get_movie_info_batch,
@@ -42,58 +46,72 @@ async def build(dsn: str) -> dict:
     rec = RecommendationService()
     await rec.initialize(pool)
 
-    infos = await get_movie_info_batch(pool, SEED_IDS)
-    seeds = []
-    for sid in SEED_IDS:
-        info = infos.get(sid)
-        if not info:
-            continue
-        seeds.append({
-            "id": sid,
-            "title": info.get("title_en") or info.get("title"),
-            "year": info.get("release_year"),
-            "media": info.get("media_type", "movie"),
-        })
+    async with pool.acquire() as c:
+        rows_raw = await c.fetch(
+            """SELECT id, title AS name, 'movie'::text AS media,
+                      EXTRACT(YEAR FROM release_date)::int AS year
+               FROM tmdb_movies
+               UNION ALL
+               SELECT id, name, 'tv',
+                      EXTRACT(YEAR FROM first_air_date)::int
+               FROM tmdb_tv ORDER BY 2""")
+    catalog = {r["id"]: {"id": r["id"], "title": r["name"], "year": r["year"],
+                         "media": r["media"]} for r in rows_raw}
+    ids = list(catalog)
+
+    infos_all = {}
+    for i in range(0, len(ids), 60):
+        infos_all.update(await get_movie_info_batch(pool, ids[i:i + 60]))
 
     recs = {}
-    for seed in seeds:
-        results = await rec.find_similar(seed["id"], limit=8,
-                                         media_type=seed["media"])
+    for tid in ids:
+        info = infos_all.get(tid)
+        if not info:
+            continue
+        seed = dict(info)
+        seed.setdefault("media_type", catalog[tid]["media"])
+        try:
+            results = await rec.find_similar(tid, limit=8,
+                                             media_type=seed["media_type"])
+        except Exception:
+            continue
         enriched = await enrich_candidates_batch(
             pool, [r["tmdb_id"] for r in results])
-        seed_info = dict(infos[seed["id"]])
-        seed_info.setdefault("media_type", seed["media"])
         rows = []
         for r in results:
             cand = dict(enriched.get(r["tmdb_id"], {}))
             cand.setdefault("id", r["tmdb_id"])
             for k, v in r.items():
                 cand.setdefault(k, v)
-            vec = feature_vector(cand, cand, cand.get("genres", []), seed_info)
+            vec = feature_vector(cand, cand, cand.get("genres", []), seed)
             why_w = explain_features(vec, ACTIVE_WEIGHTS, with_weights=True)
             rows.append({
                 "title": r.get("title_en") or r.get("title"),
                 "year": r.get("release_year"),
                 "media": r["media_type"],
                 "score": round(r["score"], 1),
-                "why_w": [[label, round(w, 1)] for label, w in why_w],
+                "why_w": [[lbl, round(w, 1)] for lbl, w in why_w],
                 "poster": r.get("poster_path"),
             })
-        # demo quality bar: a row must have at least one distinctive
-        # reason beyond bare genre overlap — otherwise it weakens the
-        # story a small catalog tells. Top 6.
+
         def strong(row):
             w = row["why_w"]
             return len(w) > 1 or (w and w[0][0] != "genre overlap")
-        recs[str(seed["id"])] = [r for r in rows if strong(r)][:6]
 
-    async with pool.acquire() as c:
-        try:
-            await c.execute(
-                (Path(__file__).parent.parent / "docs" / "user_data.sql"
-                 ).read_text())
-        except asyncpg.DuplicateObjectError:
-            pass
+        recs[str(tid)] = [r for r in rows if strong(r)][:5]
+
+    # tabs are curated: a seed earns a tab when its list convinces
+    # (>= 3 strong rows). Every title stays searchable regardless.
+    def tab_ok(tid):
+        rows = recs.get(str(tid), [])
+        return len(rows) >= 3 and bool(catalog[tid]["title"])
+
+    seeds = [{k: catalog[t][k] for k in ("id", "title", "year", "media")}
+             for t in SEED_IDS if t in catalog and tab_ok(t)]
+    index = sorted(
+        ({"id": c["id"], "title": c["title"], "year": c["year"],
+          "media": c["media"]} for c in catalog.values()),
+        key=lambda x: (x["title"] or "").lower())
 
     now = datetime.now(timezone.utc)
     personas = {}
@@ -131,7 +149,8 @@ async def build(dsn: str) -> dict:
             } for r in out["results"][:6]],
         }
     await pool.close()
-    return {"seeds": seeds, "recs": recs, "personas": personas}
+    return {"seeds": seeds, "recs": recs, "index": index,
+            "personas": personas}
 
 
 HTML = """<!doctype html>
@@ -161,13 +180,16 @@ HTML = """<!doctype html>
  .t{font-weight:700} .y{color:var(--dim);font-size:12px}
  .s{margin-left:auto;color:var(--acc);font-size:13px;white-space:nowrap}
  .why{color:var(--dim);font-size:12.5px}.why b{color:var(--fg);font-weight:600}
+ .sugg{position:absolute;top:38px;left:0;right:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;z-index:5;max-height:250px;overflow:auto;display:none}
+ .sg{padding:8px 12px;cursor:pointer;font-size:13px}.sg:hover{background:var(--bg)}
+ .none{padding:14px;color:var(--dim);font-size:13px;line-height:1.6}
  .foot{color:var(--dim);font-size:12px;margin-top:20px;border-top:1px solid var(--line);padding-top:10px;line-height:1.7}
  code{background:var(--panel);padding:2px 6px;border-radius:4px}
 </style></head><body>
 <div class="top"><h1>&#127916; cine-rec-engine</h1>
 <a class="star" href="https://github.com/DovBerKaplan/cine-rec-engine" target="_blank">&#9733; Star on GitHub</a></div>
 <div class="sub">Click a title \u2014 see the recommendations <b>and why</b> each one scored. Precomputed by the real engine from a bundled 830-title catalog (TMDB top-rated + their rec graphs), not all of TMDB.</div>
-<div class="bar"><input id="q" placeholder="filter titles\u2026" autocomplete="off"></div>
+<div class="bar" style="position:relative"><input id="q" placeholder="search any of the 830 titles\u2026" autocomplete="off"><div id="sugg" class="sugg"></div></div>
 <div class="tabs" id="tabs"></div>
 <div class="sub" id="hint"></div>
 <div id="list"></div>
@@ -175,6 +197,7 @@ HTML = """<!doctype html>
 Run it yourself \u2014 one command, no API key:<br>
 <code>git clone https://github.com/DovBerKaplan/cine-rec-engine && cd cine-rec-engine/demo && docker compose up</code><br>
 Or in Python: <code>pip install cine-rec-engine</code> \u00b7 <a href="https://github.com/DovBerKaplan/cine-rec-engine">source &amp; docs</a><br>
+Demo catalog: 830 titles. The same engine runs in production on a larger private mirror.<br>
 Data from <a href="https://www.themoviedb.org/" target="_blank">TMDB</a> \u2014 this product uses the TMDB API but is not endorsed or certified by TMDB.
 </div>
 <script>
@@ -185,7 +208,7 @@ const PERSONAS = DATA.personas;
 let on = null;
 function poster(p){return p?`https://image.tmdb.org/t/p/w92${p}`:''}
 function show(rows, label){
-  list.innerHTML=''; hint.innerHTML = label + ' <span style="opacity:.6">\u00b7 score = \u03a3 weight\u00d7feature, higher = stronger</span>';
+  list.innerHTML=''; hint.innerHTML = label + ' <span style="opacity:.6">\u00b7 ranked within the bundled 830-title catalog \u00b7 score = \u03a3 weight\u00d7feature</span>';
   (rows||[]).forEach((r,i)=>{
     const d=document.createElement('div');d.className='row';
     const why=(r.why_w||[]).map(([l,w])=>w>0?`<b>${l}</b> +${w}`:`<b>${l}</b>`).join(' \u00b7 ')||'\u2014';
@@ -208,10 +231,36 @@ DATA.seeds.forEach(s=>{
   b.onclick=()=>select(b, PERSONAS[key].rows, PERSONAS[key].label);
   tabs.appendChild(b);
 });
+const sugg=document.getElementById('sugg');
+function hideSugg(){sugg.style.display='none';sugg.innerHTML=''}
+function pickSeed(id,label){
+  hideSugg(); q.value=label;
+  const rows=DATA.recs[String(id)]||[];
+  show(rows, `because you watched <b>${label}</b>`);
+  if(!rows.length) list.innerHTML='<div class="none">No convincing recommendations for this title within the demo catalog \u2014 try another.</div>';
+}
 q.addEventListener('input',()=>{
-  const v=q.value.toLowerCase();
-  [...tabs.children].forEach(t=>{if(t.dataset.t!==undefined)t.style.display=t.dataset.t.includes(v)?'':'none'});
+  const v=q.value.trim().toLowerCase();
+  if(v.length<2){hideSugg();return}
+  const hits=DATA.index.filter(x=>(x.title||'').toLowerCase().includes(v)).slice(0,8);
+  sugg.innerHTML='';
+  if(!hits.length){
+    sugg.innerHTML='<div class="none">Not in the 830-title demo catalog.<br>The repo\u2019s ingest builds a full mirror from TMDB\u2019s daily exports \u2014 same engine, every title.</div>';
+    sugg.style.display='block'; return;
+  }
+  hits.forEach(x=>{
+    const d=document.createElement('div');d.className='sg';
+    d.innerHTML=`${x.title} <span class="y">(${x.year||''} ${x.media==='tv'?'series':'film'})</span>`;
+    d.onclick=()=>pickSeed(x.id, x.title + (x.year?` (${x.year})`:''));
+    sugg.appendChild(d);
+  });
+  sugg.style.display='block';
 });
+q.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&sugg.firstChild)sugg.firstChild.click();
+  if(e.key==='Escape')hideSugg();
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.bar'))hideSugg()});
 // open with a list already loaded
 tabs.children[0].click();
 </script></body></html>
