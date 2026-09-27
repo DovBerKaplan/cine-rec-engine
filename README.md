@@ -159,15 +159,17 @@ daily `refresh` off `/changes`; `en-US` only, adult-filtered, one API call
 per title, upserts by key). The catalog schema splits movies and TV into
 two fact tables with independent id spaces — exactly like TMDB — with
 compatibility views serving the engine unchanged. `docs/data.md` has the
-full contract. User data is whatever you already record: the schema's
-`user_watches` table is a default, and `cine_rec_engine/watched.py` is one SQL
-string away from your real events table.
+full contract. For user data, feed `user_watch_events` from your player
+(`docs/personalization.md`) — or point `cine_rec_engine/watched.py` at
+whatever events table you already have, one SQL string away.
 
 ## Repo layout
 
 ```
 cine_rec_engine/    the engine (recall · scoring · ranking · weights)
 ingest/             built-in TMDB mirror loader (bootstrap + daily refresh)
+demo/               one-command demo: 400 bundled titles, no API key
+eval/               pairwise/NDCG harness + the demo judgments
 models/             embedding sidecar — YOUR encoders plug in here
 docs/schema.sql     canonical split schema (movies | tv) + engine views
 docs/user_data.sql  user layer: events, feedback, stats, vectors

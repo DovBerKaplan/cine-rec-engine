@@ -3,16 +3,14 @@
 What's shipping next, in rough order. Dates are intentions, not promises —
 the engine is production-hardened, the packaging is young.
 
-## v0.2 — history-based personalization (next)
+## v0.2 — history-based personalization — ✅ SHIPPED (0.3.0/0.4.0)
 
-The engine already accepts a user's seeds; v0.2 turns it into a real
-`recommend_for_user(user_id)`:
+`recommend_for_user(user_id)` is live: raw watch events → per-title
+weights (completion, series depth ladder, recency half-life, engagement)
+→ a normalized user vector → an ANN recall channel through the same LTR
+scorer, with dislikes hard-filtered. See `docs/personalization.md`.
 
-- **Taste profile from events** — `user_watches` + `title_ratings` folded
-  into seed weights automatically: loved ≠ watched; a 10/10 outweighs a
-  click. Negative signals (DNF'd series, low ratings) push clusters away.
-- **Recency decay** — what a user watched last month says more than last
-  year; exponential half-life per event.
+Still open from the original v0.2 sketch:
 - **Exploration budget** — X% of every list reserved for adjacent-genre
   discovery, so profiles never ossify into one cluster.
 
@@ -25,11 +23,11 @@ The engine already accepts a user's seeds; v0.2 turns it into a real
   "something like Inception but sadder" → embedding-space anchor →
   standard recall/rank.
 
-## v0.4 — learning loop
+## v0.5 — learning loop
 
 - **Weight fitting harness** — the pairwise-logistic trainer as a
   documented CLI: bring your own graded pairs, fit your own
-  `weights.json`. (Our datasets stay private; the *method* opens up.)
+  `weights.json`.
 - **Online feedback signals** — recommendation→click outcomes feed the
   next fit as additional pairs.
 
