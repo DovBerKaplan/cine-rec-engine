@@ -76,6 +76,87 @@ from .tmdb_recs import ensure_seeds_synced
 from .model_spaces import REC_MODELS, normalize_model
 
 
+
+# --- user-recommendation plan (pure, spec: cold start rule) ---------------
+
+COLD_START_MIN_TITLES = 3
+
+
+def recommendation_plan(weighted_seeds, watchlist_seeds, min_titles=COLD_START_MIN_TITLES):
+    """Decide HOW to recommend for a user (pure; spec §A4/§C4).
+
+    Returns (mode, seeds):
+    - "personalized": ≥ min_titles weighted titles — full persona path.
+    - "watchlist":    no weighted history but explicit intent — seed by
+                      watchlist (documented as weaker taste evidence).
+    - "cold_start":   nothing usable — the CALLER must say so explicitly
+                      (reason=cold_start), never silently serve a list.
+    """
+    if len(weighted_seeds) >= min_titles:
+        return "personalized", weighted_seeds
+    if weighted_seeds:
+        # some history but not enough to claim a persona: blend what
+        # exists with the watchlist, and say we're below the bar
+        return "personalized", weighted_seeds + [
+            w for w in watchlist_seeds
+            if w[0] not in {s[0] for s in weighted_seeds}
+        ]
+    if watchlist_seeds:
+        return "watchlist", watchlist_seeds
+    return "cold_start", []
+
+
+FEATURE_LABELS = {
+    "cosine_sim": "plot similarity",
+    "keyword_sim": "shared keywords",
+    "cast_sim": "shared cast",
+    "director_match": "same director",
+    "director_channel": "director recall",
+    "writer_match": "same writer",
+    "composer_match": "same composer",
+    "dp_match": "same cinematographer",
+    "tmdb_rec_decay": "TMDB behavior graph",
+    "shared_collection": "same saga",
+    "shared_network": "same network",
+    "style_match": "same style tags",
+    "company_sim": "same studio",
+    "genre_priority_sum": "genre overlap",
+    "tone_compatibility": "same tone",
+    "narrative_match": "same narrative structure",
+    "emotional_arc_match": "same emotional arc",
+    "pacing_match": "same pacing",
+    "audience_compatibility": "same audience",
+}
+# near-constant features: they fire on ~everything, so they explain a
+# score but not a CHOICE — hidden from the why by default
+_BORING_FEATURES = frozenset({
+    "audience_compatibility", "tone_compatibility", "rating_bonus",
+    "votes_gt15k", "low_votes_high_rating", "year_le5", "year_le10",
+    "heuristic_score",
+})
+
+
+def explain_features(vec, weights, top=3):
+    """Human-readable WHY for one (seed, candidate) score (pure).
+
+    Maps the feature vector to its top contributing features, skipping
+    near-constant ones by default (they score everything equally).
+    """
+    contrib = sorted(
+        ((weights.get(name, 0.0) * val, name)
+         for name, val in zip(FEATURE_NAMES, vec)),
+        reverse=True,
+    )
+    # Only distinctive features. An empty answer is honest — "nothing
+    # set this apart" — never a fallback to features that fire on all
+    # candidates anyway.
+    return [
+        FEATURE_LABELS.get(name, name)
+        for score, name in contrib
+        if score > 0 and name not in _BORING_FEATURES
+    ][:top]
+
+
 class RecommendationService:
     """Generates movie/series recommendations from local PostgreSQL data.
 
@@ -263,47 +344,104 @@ class RecommendationService:
         limit: int = 30,
         randomness: float = 0.0,
         vector_space: Optional[str] = None,
-    ) -> List[dict]:
-        """§F end-to-end: personal recommendations for one user.
+        include_why: bool = False,
+    ) -> dict:
+        """§F end-to-end: user_id in, personalized list out.
 
-        Seeds = the user's top-w_i titles (§D weights over §B.3 stats);
-        an extra ANN channel recalls titles nearest the user vector (§E)
-        and feeds them through the same LTR scorer + hard filters
-        (watched/rated/disliked via user_id) + saga advancement.
-        No vector / no weighted history → seed-only SQL recall (§G.3).
+        Returns a dict — the caller never assembles the pipeline:
+          results:      ranked titles (score, media_type, ...)
+          reason:       "personalized" | "watchlist" | "cold_start"
+                        (cold_start ⇒ results is EMPTY by design —
+                        never a silent blockbuster list)
+          seeds:        the top-10 (tmdb_id, media_type, w_i) used
+          vector_used:  whether the user-vector ANN channel ran
+          why:          per-result top contributing features
+                        (include_why=True; costs one extra pass)
+
+        Saga rule (documented): a seed never returns its own saga —
+        watched Rocky I blocks I AND recommends II via advancement.
         """
+        from .queries import enrich_candidates_batch
         from .user_vector import load_user_vector, top_weighted_seeds
 
-        seeds = await top_weighted_seeds(self.pool, user_id, limit=20)
-        if not seeds:
-            # watchlist-only users: intents without screen time
-            rows = await self.pool.fetch(
-                """SELECT f.tmdb_id, f.media_type FROM user_feedback f
-                   WHERE f.user_id = $1 AND f.kind = 'watchlist'
-                   ORDER BY f.created_at DESC LIMIT 10""",
-                user_id,
-            )
-            seeds = [(r["tmdb_id"], r["media_type"], 1.0) for r in rows]
-        if not seeds:
-            return []
+        weighted = await top_weighted_seeds(self.pool, user_id, limit=20)
+        watchlist_rows = await self.pool.fetch(
+            """SELECT f.tmdb_id, f.media_type FROM user_feedback f
+               WHERE f.user_id = $1 AND f.kind = 'watchlist'
+               ORDER BY f.created_at DESC LIMIT 10""",
+            user_id,
+        )
+        watchlist = [(r["tmdb_id"], r["media_type"], 1.0) for r in watchlist_rows]
+        mode, seeds = recommendation_plan(weighted, watchlist)
+
+        if mode == "cold_start":
+            logger.debug(f"recommend user={user_id}: cold_start (no signal)")
+            return {
+                "results": [], "reason": "cold_start",
+                "seeds": [], "vector_used": False, "why": {},
+            }
 
         extra: Optional[List[dict]] = None
+        vector_used = False
         try:
             uvec = await load_user_vector(self.pool, user_id, vector_space)
             if uvec:
                 extra = await generate_user_vector_candidates(
                     self.pool, uvec, limit=60
                 )
+                vector_used = bool(extra)
         except Exception as e:
             logger.debug(f"user-vector recall skipped for {user_id}: {e}")
 
-        return await self.find_similar(
+        results = await self.find_similar(
             [tmdb_id for tmdb_id, _mt, _w in seeds],
             limit=limit,
             randomness=randomness,
             user_id=user_id,
             extra_candidates=extra,
         )
+
+        why: dict = {}
+        if include_why and results:
+            enriched = await enrich_candidates_batch(
+                self.pool, [r["tmdb_id"] for r in results]
+            )
+            top_seed = await self._seed_info_for(seeds[0])
+            if top_seed:
+                for r in results:
+                    cand = dict(enriched.get(r["tmdb_id"], {}))
+                    cand.setdefault("id", r["tmdb_id"])
+                    for k, v in r.items():
+                        cand.setdefault(k, v)
+                    vec = feature_vector(
+                        cand, cand, cand.get("genres", []), top_seed)
+                    why[str(r["tmdb_id"])] = explain_features(vec, ACTIVE_WEIGHTS)
+
+        logger.debug(
+            f"recommend user={user_id}: mode={mode} seeds="
+            f"{[(i, round(w, 2)) for i, _m, w in seeds[:10]]} "
+            f"excluded=watched|rated|disliked vector={vector_used} "
+            f"results={len(results)}"
+        )
+        return {
+            "results": results,
+            "reason": mode,
+            "seeds": [(i, m, round(w, 3)) for i, m, w in seeds[:10]],
+            "vector_used": vector_used,
+            "why": why,
+        }
+
+    async def _seed_info_for(self, seed: tuple) -> Optional[dict]:
+        """Full info dict for one (id, media_type) seed (why rendering)."""
+        try:
+            info = await get_movie_info_batch(self.pool, [seed[0]])
+            if info:
+                row = dict(info[seed[0]])
+                row.setdefault("media_type", seed[1])
+                return row
+        except Exception as e:
+            logger.debug(f"seed info fetch failed for {seed}: {e}")
+        return None
 
     async def find_similar(
         self,

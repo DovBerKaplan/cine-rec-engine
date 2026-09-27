@@ -78,7 +78,10 @@ async def main():
     await user_stats.refresh_user_stats(pool, 1)
     await user_vector.build_user_vector(pool, 1)
     rec = RecommendationService(); await rec.initialize(pool)
-    print(await rec.recommend_for_user(1, limit=10))
+    out = await rec.recommend_for_user(1, limit=10, include_why=True)
+    print(out["reason"], out["seeds"])          # personalized / watchlist / cold_start
+    for r in out["results"]:
+        print(r["title_en"], "why:", out["why"].get(str(r["tmdb_id"])))
 
 asyncio.run(main())
 ```
@@ -89,3 +92,46 @@ Nightly (cron, after the catalog refresh):
 from cine_rec_engine.user_stats import nightly_recompute
 await nightly_recompute(pool)          # weights + stats + stale vectors
 ```
+## The event contract (§A — what MUST be written)
+
+| Field | Required | Notes |
+|---|---|---|
+| `user_id`, `tmdb_id`, `media_type`, `watched_at` | ✅ | ValueError without them |
+| `watched_sec`, `duration_sec` | recommended | ratio → completion score; missing duration ⇒ ratio unknown ⇒ title can complete only via `completed=true` |
+| `season`, `episode` | tv only | episode counting + rewatch detection |
+| `completed` | recommended | the ≥50% threshold fallback |
+| `pause_count`, `last_position_sec` | optional | pause penalty / resume |
+
+Degradation rules (all by design, all tested):
+- No episodes recorded → series score by watch time floors only.
+- No embedding column → no user vector; SQL recall + seeds still work
+  (`vector_used: false` in the response).
+- Fewer than 3 weighted titles → watchlist blending, not a persona;
+  nothing at all → `reason=cold_start` with EMPTY results (never a
+  silent blockbuster list).
+- Dislike → w=0 AND hard-filtered from every list.
+- Saga: a watched title never returns, and its saga ADVANCES (watched
+  part 1 ⇒ part 2 is the recommendation, part 1 is not).
+
+## Feeding users from outside (§D — one source, done)
+
+**Letterboxd CSV** (ratings export):
+
+```bash
+python examples/import_letterboxd.py ratings.csv --user 1 --dsn $DSN
+# rating ≥ 3.5 → favorite seed · ≤ 2.0 → dislike (hard-filter) ·
+# 2.5–3.0 → no signal (watched-but-unremarkable) · unmatched titles
+# are REPORTED, never fuzzy-guessed
+```
+
+Jellyfin/Tautulli and manual sources feed the same `record_event`
+contract — one connector at a time, per the spec.
+
+## Nightly (§C)
+
+```cron
+# 03:00 — recency moves w_i; stats rebuild; stale vectors (>24h)
+0 3 * * * deploy python -c "import asyncio,asyncpg;from cine_rec_engine.user_stats import nightly_recompute;   asyncio.run(nightly_recompute(asyncio.run(asyncpg.create_pool('$DSN'))))"
+```
+Hot path stays hot: during playback only `record_event` runs — no
+vector builds, no LTR, nothing else.

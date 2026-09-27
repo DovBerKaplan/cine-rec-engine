@@ -4,6 +4,37 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.5.0] — 2026-09-28
+
+### The closed user path (spec v0.3 §A–§D)
+- `recommend_for_user(user_id)` now returns the full story — no pipeline
+  assembly by the caller: `results`, `reason`
+  (personalized/watchlist/**cold_start** — cold start is an EMPTY list by
+  design, never silent blockbusters), top-10 seeds with w_i,
+  `vector_used`, and per-result **why** (`include_why=True`).
+- Cold-start product rule: < 3 weighted titles ⇒ watchlist blending, not
+  a persona claim (`recommendation_plan`, pure + unit-tested).
+- Debug log per request: top seeds with weights, exclusions, vector
+  channel — a bad list is now explainable from the log.
+- `explain_features` — the why as a reusable, tested API (distinctive
+  features only; near-constant ones never explain a choice).
+- `examples/for_user.py` — the copy-paste user path over the demo
+  catalog; asserts watched titles never leak. Verified live: two demo
+  personas produce entirely different lists (Nolan-fan → The Prestige
+  "same director"; crime-TV → Sopranos/Dexter), each row with why.
+- **Letterboxd CSV import** (the one external source, §D):
+  `cine_rec_engine/letterboxd.py` + `examples/import_letterboxd.py`.
+  Rating ≥3.5 → favorite seed, ≤2 → dislike (hard-filter), misses are
+  reported, never fuzzy-guessed. BOM-tolerant parser unit-tested.
+- `docs/personalization.md`: the event-contract table (required fields,
+  degradation rules — missing duration, no episodes, no embeddings),
+  the saga rule spelled out, nightly cron, Letterboxd flow.
+
+### Fixed (caught by the new tests)
+- `explain` fallback could reintroduce near-constant features; empty why
+  is now honest "nothing distinctive".
+- Letterboxd BOM handling was double-escaped.
+
 ## [0.4.0] — 2026-09-27
 
 ### Added — 60-second demo, evaluation, packaging
