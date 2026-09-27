@@ -1,5 +1,7 @@
 # Cine Rec Engine
 
+> Extracted from a production self-hosted system — the same scorer serves real users daily. [Where this came from →](ORIGIN.md)
+
 [![CI](https://github.com/DovBerKaplan/cine-rec-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/DovBerKaplan/cine-rec-engine/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
