@@ -150,11 +150,11 @@ HTML = """<!doctype html>
  .hint{color:var(--dim);font-size:12.5px;margin-bottom:10px}
 </style></head><body>
 <h1>&#127916; cine-rec-engine</h1>
-<div class="sub">content-based recommendations from your own Postgres — every row explains itself. This page is <b>precomputed by the real engine</b>; no backend.</div>
+<div class="sub">content-based recommendations from your own Postgres — every row explains itself. This page is <b>precomputed by the real engine</b>; no backend.<br>Picked from the <b>830-title bundled demo catalog</b> (TMDB top-rated + their rec graphs), not all titles ever — scale the catalog, the engine stays the same.</div>
 <div class="tabs" id="tabs"></div>
 <div class="hint" id="hint">pick a title &#8594;</div>
 <div id="list"></div>
-<div class="foot">engine: 22-feature learned scorer &middot; data: TMDB (en-US), attribution &middot; <a href="https://github.com/DovBerKaplan/cine-rec-engine">github</a> &middot; one-command local demo in the repo</div>
+<div class="foot">engine: 22-feature learned scorer &middot; picked from the bundled 830-title demo catalog &middot; data: TMDB (en-US), attribution &middot; <a href="https://github.com/DovBerKaplan/cine-rec-engine">github</a> &middot; one-command local demo in the repo</div>
 <script>
 const DATA = __DATA__;
 const tabs = document.getElementById('tabs'), list = document.getElementById('list'), hint = document.getElementById('hint');

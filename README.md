@@ -8,7 +8,7 @@
 
 **PostgreSQL in · ranked titles out · zero external calls on the hot path.**
 
-**🖥️ [Try it in your browser — no install](https://dovberkaplan.github.io/cine-rec-engine/)** — every recommendation precomputed by the real engine, each row with its *why*, plus two user personas producing entirely different lists.
+**🖥️ [Try it in your browser — no install](https://dovberkaplan.github.io/cine-rec-engine/)** — every recommendation precomputed by the real engine, each row with its *why*, plus two user personas producing entirely different lists. Recommendations are picked from the bundled **830-title demo catalog**, not from all of TMDB — point the engine at your own mirror (ingest included) for the full catalog.
 
 ![demo](docs/demo.gif)
 
@@ -19,8 +19,9 @@ git clone https://github.com/DovBerKaplan/cine-rec-engine && cd cine-rec-engine/
 docker compose up          # Postgres + 400 real titles + recommendations
 ```
 
-That runs the full stack against a bundled catalog (TMDB data, en-US,
-attribution below) and prints, for The Dark Knight and Breaking Bad:
+That runs the full stack against a bundled 830-title demo catalog
+(TMDB top-rated + their recommendation graphs, en-US, attribution
+below) and prints, for The Dark Knight and Breaking Bad:
 
 ```
 Because you watched  The Dark Knight  (2008)
