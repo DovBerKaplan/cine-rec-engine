@@ -149,3 +149,22 @@ class TestLetterboxdParser:
         text = "Date,Name,Year,Letterboxd URI,Rating\n2026-01-01,Se7en,1995,u,4.5\n"
         rows = parse_letterboxd_csv(text)
         assert rows == [LetterboxdRow("Se7en", 1995, 4.5)]
+
+
+class TestExplainWithWeights:
+    W = {"composer_match": 5.5, "genre_priority_sum": 0.5}
+
+    def test_returns_label_contribution_tuples(self):
+        from cine_rec_engine.service import FEATURE_NAMES, explain_features
+
+        vec = [0.0] * len(FEATURE_NAMES)
+        vec[FEATURE_NAMES.index("composer_match")] = 1.0
+        out = explain_features(vec, self.W, with_weights=True)
+        assert out == [("same composer", 5.5)]
+
+    def test_default_unchanged(self):
+        from cine_rec_engine.service import FEATURE_NAMES, explain_features
+
+        vec = [0.0] * len(FEATURE_NAMES)
+        vec[FEATURE_NAMES.index("composer_match")] = 1.0
+        assert explain_features(vec, self.W) == ["same composer"]

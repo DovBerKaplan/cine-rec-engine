@@ -136,11 +136,13 @@ _BORING_FEATURES = frozenset({
 })
 
 
-def explain_features(vec, weights, top=3):
+def explain_features(vec, weights, top=3, with_weights=False):
     """Human-readable WHY for one (seed, candidate) score (pure).
 
     Maps the feature vector to its top contributing features, skipping
     near-constant ones by default (they score everything equally).
+    with_weights=True returns (label, contribution) tuples — the demo
+    shows the weight×feature number next to each reason.
     """
     contrib = sorted(
         ((weights.get(name, 0.0) * val, name)
@@ -150,11 +152,14 @@ def explain_features(vec, weights, top=3):
     # Only distinctive features. An empty answer is honest — "nothing
     # set this apart" — never a fallback to features that fire on all
     # candidates anyway.
-    return [
-        FEATURE_LABELS.get(name, name)
+    picked = [
+        (FEATURE_LABELS.get(name, name), score)
         for score, name in contrib
         if score > 0 and name not in _BORING_FEATURES
     ][:top]
+    if with_weights:
+        return picked
+    return [label for label, _score in picked]
 
 
 class RecommendationService:
