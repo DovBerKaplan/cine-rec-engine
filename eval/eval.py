@@ -11,6 +11,7 @@ Runs against the demo catalog (any DB with the split schema). Methods:
 from __future__ import annotations
 
 import argparse
+import os
 import asyncio
 import json
 import math
@@ -119,7 +120,8 @@ async def run(dsn: str) -> dict:
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--dsn", default="postgresql://demo:demo@localhost:54329/demo")
+    p.add_argument("--dsn", default=os.getenv("DATABASE_URL",
+                                        "postgresql://demo:demo@localhost:54329/demo"))
     args = p.parse_args()
 
     stats = asyncio.run(run(args.dsn))
