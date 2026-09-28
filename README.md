@@ -18,7 +18,7 @@
 
 ```bash
 git clone https://github.com/DovBerKaplan/cine-rec-engine && cd cine-rec-engine/demo
-docker compose up          # Postgres + 400 real titles + recommendations
+docker compose up          # Postgres + 830 real titles + recommendations
 ```
 
 That runs the full stack against a bundled 830-title demo catalog
@@ -95,14 +95,22 @@ deliberately not shipped).
 
 ## Measured against baselines
 
-On the bundled 400-title demo pool with hand-curated adjacency judgments
-(`eval/judgments.jsonl`, `eval/eval.py`):
+On the bundled 830-title demo catalog with hand-curated adjacency judgments
+(`eval/judgments.jsonl`, `eval/eval.py`; **10 judgments — a smoke-scale
+regression gate, not a power claim**):
 
 | method | pairwise acc. | NDCG@10 |
 |---|---|---|
-| TMDB similar (behavioral graph) | 0.09 | 0.13 |
-| cosine over overviews | 0.63 | 0.04 |
-| **this engine (learned 22-feature scorer)** | **0.82** | **0.46** |
+| TMDB similar (behavioral graph) | 0.11 | 0.10 |
+| MiniLM cosine over overviews | **0.89** | 0.05 |
+| **this engine (learned 22-feature scorer)** | 0.82 | **0.46** |
+
+Full honesty: raw vector cosine wins pairwise (is A closer than B to the
+seed? — a single-signal task it's built for), while the engine wins at
+**ranking** (NDCG@10, ~9× the cosine) because it fuses behavioral,
+auteur, saga and tone signals instead of plot-text alone. That's the
+trade the engine exists for — shown here with the real vector baseline,
+not a strawman.
 
 Honest caveats: the pool is small (830 titles, recommendation-closed,
 with bundled MiniLM embeddings — `demo/data/`), recall runs in the same
@@ -174,7 +182,7 @@ whatever events table you already have, one SQL string away.
 ```
 cine_rec_engine/    the engine (recall · scoring · ranking · weights)
 ingest/             built-in TMDB mirror loader (bootstrap + daily refresh)
-demo/               one-command demo: 400 bundled titles, no API key
+demo/               one-command demo: 830 bundled titles, no API key
 eval/               pairwise/NDCG harness + the demo judgments
 models/             embedding sidecar — YOUR encoders plug in here
 docs/schema.sql     canonical split schema (movies | tv) + engine views
@@ -203,7 +211,7 @@ reproduces the hot-loop number without any database.
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) — history-based personalization is next.
+See [ROADMAP.md](ROADMAP.md) — personalization shipped in 0.3; next: exploration budget, trainer CLI, serving.
 
 ## License
 

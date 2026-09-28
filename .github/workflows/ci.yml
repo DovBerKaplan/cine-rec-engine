@@ -19,9 +19,65 @@ jobs:
       - name: Install
         run: pip install -e ".[dev]"
       - name: Lint
-        run: ruff check cine_rec_engine tests examples
+        run: ruff check cine_rec_engine ingest tests benchmarks eval demo examples
       - name: Test
         run: pytest -q
+
+  demo-eval:
+    # REGRESSION GATE, not a SOTA claim: seeds the bundled catalog into a
+    # real Postgres+pgvector and runs the eval harness. Catches exactly
+    # the class of bugs the offline suite can't see (SQL + enrichment,
+    # e.g. the 0.5.1 zeroed-features and 0.5.3 recall bugs).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: demo
+          POSTGRES_DB: demo
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U demo"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://demo:demo@localhost:5432/demo
+      CINE_REC_EMBEDDING: minilm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev,pg]"
+      - name: Seed demo catalog
+        run: python demo/seed.py
+      - name: User-data schema
+        run: psql "$DATABASE_URL" -f docs/user_data.sql
+        # psql ships on ubuntu runners; asyncpg can't run multi-statement DDL
+      - name: Smoke — engine end-to-end on the demo catalog
+        run: |
+          python - <<'PY'
+          import asyncio, os, sys
+          sys.path.insert(0, ".")
+          async def m():
+              import asyncpg
+              from cine_rec_engine import RecommendationService
+              pool = await asyncpg.create_pool(os.environ["DATABASE_URL"])
+              svc = RecommendationService(); await svc.initialize(pool)
+              res = await svc.find_similar(155, limit=5)
+              assert len(res) >= 3, "recall regression"
+              titles = [r.get("title_en") for r in res[:2]]
+              print("TDK top:", titles)
+              await pool.close()
+          asyncio.run(m())
+          PY
+      - name: Eval regression gate (pairwise must not regress)
+        run: |
+          python eval/eval.py | tee eval_out.txt
+          PAIR=$(grep "| engine" eval_out.txt | awk -F'|' '{print $3}' | tr -d ' ')
+          echo "engine pairwise: $PAIR"
+          python -c "exit(0 if float('$PAIR') >= 0.70 else 1)"
 
   build:
     runs-on: ubuntu-latest

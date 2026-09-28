@@ -399,7 +399,9 @@ class RecommendationService:
             logger.debug(f"user-vector recall skipped for {user_id}: {e}")
 
         results = await self.find_similar(
-            [tmdb_id for tmdb_id, _mt, _w in seeds],
+            [(tmdb_id, mt) for tmdb_id, mt, _w in seeds],  # composite key!
+            # (bare ids would mix movie 155 with tv 155 — the engine's
+            # own invariant; see AGENTS.md)
             limit=limit,
             randomness=randomness,
             user_id=user_id,
@@ -474,7 +476,7 @@ class RecommendationService:
 
         Args:
             tmdb_id: TMDB ID (int), list of TMDB IDs, or list of (tmdb_id, media_type)
-                tuples. If int, treated as [int]. Up to 1000 seeds supported.
+                tuples. If int, treated as [int]. Up to 20 seeds (MAX_SEEDS).
             limit: Max results to return (None = no limit, return all).
             randomness: Noise factor for controlled shuffling (0.0 = deterministic).
                 0.0 = exact score order (best match first)
@@ -483,7 +485,10 @@ class RecommendationService:
             allow_cross_media: If True, candidates from both movies and series
                 are included regardless of the seed's media_type. Default False
                 preserves the same-type-only behavior.
-            seed_weights: Optional dict mapping tmdb_id -> weight for each seed.
+            seed_weights: tmdb_id -> INFLUENCE (higher = MORE influence;
+                internally inverted to 1/w). Passing personalization w_i
+                values directly is correct; passing inverse weights is the
+                classic mistake.
                 Controls the relative influence of each seed on scoring via
                 Final_Score(c) = Σ(Score(c, sᵢ) · 1/wᵢ) / Σ(1/wᵢ).
                 Weight 1 = full influence (default), weight 2 = half influence,
@@ -569,10 +574,19 @@ class RecommendationService:
         else:
             mt_fingerprint = "any"
 
+        # Every parameter that changes the result MUST be in the key —
+        # limit/randomness/seed_weights/embedding column/extra candidates
+        # were missing, so a hit could serve stale/wrong lists.
         cache_key = (
-            f"{self.CACHE_PREFIX}{','.join(str(i) for i in sorted(tmdb_ids))}"
+            f"{self.CACHE_PREFIX}{','.join(str(i) for i in sorted(map(str, tmdb_ids)))}"
             f":cm={int(allow_cross_media)}:mt={mt_fingerprint}"
             f":m={model_key or 'def'}"
+            f":li={limit if limit is not None else -1}"
+            f":rnd={round(randomness, 4)}"
+            f":sw={sorted((k, round(v, 4)) for k, v in (seed_weights or {}).items())}"
+            f":emb={EMBEDDING_COLUMN}"
+            f":xc={len(extra_candidates) if extra_candidates else 0}"
+            f":v=2"  # cache format version — bump on any result-shape change
         )
         cache = await _get_cache()
         if cache:

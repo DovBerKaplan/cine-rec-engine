@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cine-rec-engine"
-version = "0.5.3"
+version = "0.6.0"
 description = "Content-based movie & series recommendation engine over your own PostgreSQL TMDB mirror"
 readme = "README.md"
 license = { text = "MIT" }
@@ -15,7 +15,9 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Database",
     "Topic :: Multimedia :: Video",
     "Framework :: AsyncIO",

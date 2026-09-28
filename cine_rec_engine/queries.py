@@ -34,7 +34,7 @@ _QUERY_WITH_KEYWORDS = """
             SELECT g.name
             FROM tmdb_media_genres mg
             JOIN tmdb_genres g ON g.id = mg.genre_id
-            WHERE mg.media_id = m.id
+            WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
         ) as genres,
         (
             SELECT p.name
@@ -87,19 +87,19 @@ _QUERY_WITH_KEYWORDS = """
             SELECT k.name
             FROM tmdb_media_keywords mk
             JOIN tmdb_keywords k ON k.id = mk.keyword_id
-            WHERE mk.media_id = m.id
+            WHERE (mk.media_id, mk.media_type) = (m.id, m.media_type)
         ) as keywords,
         ARRAY(
             SELECT pc.name
             FROM tmdb_media_companies mc
             JOIN tmdb_production_companies pc ON mc.company_id = pc.id
-            WHERE mc.media_id = m.id
+            WHERE (mc.media_id, mc.media_type) = (m.id, m.media_type)
         ) as companies,
         ARRAY(
             SELECT n.name
             FROM tmdb_media_networks mn
             JOIN tmdb_networks n ON n.id = mn.network_id
-            WHERE mn.media_id = m.id
+            WHERE (mn.media_id, mn.media_type) = (m.id, m.media_type)
         ) as networks
     FROM tmdb_media m
     WHERE m.id = ANY($1::bigint[])
@@ -111,7 +111,7 @@ _QUERY_NO_KEYWORDS = _QUERY_WITH_KEYWORDS.replace(
             SELECT k.name
             FROM tmdb_media_keywords mk
             JOIN tmdb_keywords k ON k.id = mk.keyword_id
-            WHERE mk.media_id = m.id
+            WHERE (mk.media_id, mk.media_type) = (m.id, m.media_type)
         ) as keywords,""",
     "        ARRAY[]::text[] as keywords,",
 )
@@ -272,7 +272,7 @@ async def generate_candidates(
                         SELECT g.name
                         FROM tmdb_genres g
                         JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                        WHERE mg.media_id = m.id
+                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                     ) as genres
                 FROM tmdb_media m
                 WHERE m.id != $1
@@ -280,7 +280,7 @@ async def generate_candidates(
                   AND EXISTS (
                       SELECT 1 FROM tmdb_media_genres mg
                       JOIN tmdb_genres g ON mg.genre_id = g.id
-                      WHERE mg.media_id = m.id
+                      WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                         AND g.name = ANY($2::text[])
                   )
                 ORDER BY
@@ -290,7 +290,7 @@ async def generate_candidates(
                     (
                         SELECT count(*) FROM tmdb_media_genres mg
                         JOIN tmdb_genres g ON mg.genre_id = g.id
-                        WHERE mg.media_id = m.id
+                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                           AND g.name = ANY($2::text[])
                     ) DESC,
                     (m.vote_count * m.vote_average) DESC,
@@ -342,7 +342,7 @@ async def generate_candidates(
                         SELECT g.name
                         FROM tmdb_genres g
                         JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                        WHERE mg.media_id = m.id
+                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                     ) as genres
                 FROM tmdb_media m
                 WHERE m.media_type = $1
@@ -351,7 +351,7 @@ async def generate_candidates(
                   AND EXISTS (
                       SELECT 1 FROM tmdb_media_genres mg
                       JOIN tmdb_genres g ON mg.genre_id = g.id
-                      WHERE mg.media_id = m.id
+                      WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                         AND g.name = ANY($3::text[])
                   )
                 ORDER BY m.popularity DESC, m.vote_average DESC
@@ -379,14 +379,14 @@ async def generate_candidates(
                        ARRAY(
                            SELECT g.name FROM tmdb_genres g
                            JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                           WHERE mg.media_id = m.id
+                           WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                        ) as genres
                 FROM tmdb_media m
                 WHERE m.id != $1 AND m.vote_average >= 7.0 AND m.vote_count >= $4
                   AND EXISTS (
                       SELECT 1 FROM tmdb_media_genres mg
                       JOIN tmdb_genres g ON mg.genre_id = g.id
-                      WHERE mg.media_id = m.id AND g.name = ANY($2::text[])
+                      WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND g.name = ANY($2::text[])
                   )
                 ORDER BY m.vote_average DESC, m.vote_count DESC
                 LIMIT $3
@@ -407,7 +407,7 @@ async def generate_candidates(
                        ARRAY(
                            SELECT g.name FROM tmdb_genres g
                            JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                           WHERE mg.media_id = m.id AND mg.media_type = m.media_type
+                           WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
                        ) as genres
                 FROM tmdb_media m
                 WHERE m.media_type = $1 AND m.id != $2
@@ -415,7 +415,7 @@ async def generate_candidates(
                   AND EXISTS (
                       SELECT 1 FROM tmdb_media_genres mg
                       JOIN tmdb_genres g ON mg.genre_id = g.id
-                      WHERE mg.media_id = m.id AND mg.media_type = m.media_type
+                      WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
                         AND g.name = ANY($3::text[])
                   )
                 ORDER BY m.vote_average DESC, m.vote_count DESC
@@ -747,7 +747,7 @@ async def generate_knn_candidates(
                     ARRAY(
                         SELECT g.name FROM tmdb_genres g
                         JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                        WHERE mg.media_id = m.id
+                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                     ) as genres,
                     GREATEST(0.0, 1 - (m.{emb} <=> (SELECT {emb} FROM seed)))
                         AS knn_similarity
@@ -906,7 +906,7 @@ async def generate_knn_finetuned_candidates(
                     ARRAY(
                         SELECT g.name FROM tmdb_genres g
                         JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                        WHERE mg.media_id = m.id AND mg.media_type = m.media_type
+                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
                     ) as genres,
                     GREATEST(0.0, 1 - (m.{emb} <=> (SELECT {emb} FROM seed)))
                         AS knn_similarity
@@ -988,7 +988,7 @@ async def generate_tmdb_rec_candidates(
                         SELECT g.name
                         FROM tmdb_genres g
                         JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                        WHERE mg.media_id = m.id
+                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                     ) as genres
                 FROM tmdb_recommendations r
                 JOIN tmdb_media m
@@ -1052,7 +1052,7 @@ async def generate_director_candidates(
                     ARRAY(
                         SELECT g.name FROM tmdb_genres g
                         JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                        WHERE mg.media_id = m.id AND mg.media_type = m.media_type
+                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
                     ) as genres
                 FROM tmdb_crew c
                 JOIN tmdb_media m

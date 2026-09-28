@@ -20,7 +20,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cine_rec_engine import RecommendationService  # noqa: E402
-from cine_rec_engine.scoring import sentence_similarity_legacy  # noqa: E402
 
 
 def ndcg_at_k(ranked_relevant: list[bool], k: int = 10) -> float:
@@ -33,6 +32,23 @@ async def run(dsn: str) -> dict:
     import asyncpg
 
     pool = await asyncpg.create_pool(dsn)
+    from pgvector.asyncpg import register_vector
+
+    async with pool.acquire() as _c:
+        await register_vector(_c)  # codec per-connection; use one conn for fetch
+        rows_raw = await _c.fetch(
+            """SELECT id, 'movie'::text AS media_type, title, overview,
+                      embedding_minilm AS emb FROM tmdb_movies
+               UNION ALL SELECT id, 'tv', name, overview, embedding_minilm FROM tmdb_tv"""
+        )
+    overview = {(r["id"], r["media_type"]): (r["title"] or r["name"], r["overview"] or "") for r in rows_raw}
+    def _vec(v):
+        if v is None:
+            return None
+        return v.to_list() if hasattr(v, "to_list") else list(v)
+
+    embedding = {(r["id"], r["media_type"]): _vec(r["emb"]) for r in rows_raw}
+    all_ids = list(overview.keys())
     judgments = [
         json.loads(line)
         for line in (Path(__file__).parent / "judgments.jsonl").read_text().splitlines()
@@ -41,16 +57,11 @@ async def run(dsn: str) -> dict:
     svc = RecommendationService()
     await svc.initialize(pool)
 
-    # overviews for the cosine baseline
-    rows = await pool.fetch(
-        """SELECT id, 'movie'::text AS media_type, title, overview FROM tmdb_movies
-           UNION ALL SELECT id, 'tv', name, overview FROM tmdb_tv"""
-    )
-    overview = {(r["id"], r["media_type"]): (r["title"] or r["name"], r["overview"] or "") for r in rows}
-    all_ids = list(overview.keys())
+    # REAL cosine baseline: MiniLM-384 ships with the demo catalog (the
+    # slot was character-bigram Jaccard mislabeled "cosine" before)
 
     stats = {m: {"pair_ok": 0, "pair_n": 0, "ndcg": []}
-             for m in ("tmdb_sim", "cosine", "engine")}
+             for m in ("tmdb_sim", "minilm_cosine", "engine")}
 
     for j in judgments:
         seed_id, seed_type = j["seed"]
@@ -73,16 +84,22 @@ async def run(dsn: str) -> dict:
             tmdb[(r["rec_media_id"], r["rec_media_type"])] = max(
                 0.25, 1.0 - (r["rank"] - 1) * 0.15)
 
-        seed_over = overview.get((seed_id, seed_type), ("", ""))[1]
+
+        seed_emb = embedding.get((seed_id, seed_type))
+
+        def dot(a, b):
+            return sum(x * y for x, y in zip(a, b))
 
         def cos(cand):
-            ov = overview.get(cand, ("", ""))[1]
-            return sentence_similarity_legacy(seed_over, ov) if seed_over and ov else 0.0
+            e1, e2 = seed_emb, embedding.get(cand)
+            if not e1 or not e2:
+                return 0.0
+            return dot(e1, e2)  # MiniLM vectors are L2-normalized
 
         scores = {
             "engine": eng,
             "tmdb_sim": tmdb,
-            "cosine": {c: cos(c) for c in all_ids},
+            "minilm_cosine": {c: cos(c) for c in all_ids},
         }
 
         for method, table in scores.items():
@@ -108,7 +125,7 @@ def main() -> None:
     stats = asyncio.run(run(args.dsn))
     print("| method | pairwise acc. | NDCG@10 |")
     print("|---|---|---|")
-    for m in ("tmdb_sim", "cosine", "engine"):
+    for m in ("tmdb_sim", "minilm_cosine", "engine"):
         s = stats[m]
         acc = s["pair_ok"] / s["pair_n"] if s["pair_n"] else 0.0
         nd = sum(s["ndcg"]) / len(s["ndcg"]) if s["ndcg"] else 0.0

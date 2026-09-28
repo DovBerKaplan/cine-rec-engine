@@ -4,6 +4,42 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.6.0] — 2026-09-28
+
+### Fixed — the public contract (external review round)
+- **Composite keys everywhere** (review finding: "TMDB id is not unique
+  across media"): `recommend_for_user` now passes `(id, media_type)`
+  tuples instead of bare ids; every bridge subquery in the hot
+  seed/candidate queries (`genres`, `keywords`, `companies`, `networks`)
+  is keyed `(media_id, media_type)` — previously a movie/tv id collision
+  could blend genres across media.
+- **Cache key completeness**: `limit`, `randomness`, `seed_weights`,
+  embedding column, and extra-candidate count are now part of the
+  `find_similar` cache key (+ a `v=` format version) — a hit can no
+  longer serve a stale list computed under different parameters.
+- **Docs match code**: "up to 1000 seeds" → the real `MAX_SEEDS=20`;
+  `seed_weights` documented as influence (higher = more), with the
+  classic inversion mistake called out.
+- README/SECURITY/classifiers aligned to the current version (0.5.x
+  support; Python 3.10–3.12 like CI); one catalog number everywhere
+  (830).
+
+### Eval honesty
+- The "cosine" baseline was character-bigram Jaccard mislabeled. It is
+  now **real MiniLM‑384 cosine** on the same vectors the demo ships.
+  Result: cosine wins pairwise (0.89 vs 0.82), the engine wins ranking
+  (NDCG@10 0.46 vs 0.05) — README states both, with the tradeoff.
+- The judgments set is explicitly labeled smoke-scale (10 judgments), a
+  regression gate — not a power claim.
+
+### CI
+- New `demo-eval` job: real Postgres+pgvector service, seeds the bundled
+  catalog, end-to-end engine smoke, then the eval harness as a
+  regression gate (pairwise ≥ 0.70). Catches the SQL/enrichment bug
+  class (0.5.1 zeroed features, 0.5.3 recall) the offline suite can't.
+- `ruff` now covers ingest/, eval/, demo/, benchmarks/ in CI (matches
+  the Makefile).
+
 ## [0.5.3] — 2026-09-28
 
 ### Fixed
