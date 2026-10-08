@@ -7,6 +7,8 @@ Letterboxd importer's pure parts.
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 
 from cine_rec_engine.letterboxd import (
     LetterboxdRow,
@@ -99,6 +101,376 @@ class TestDislikeHardFilter:
         assert (475557, "movie") in merged   # dislike hard-filtered
         assert (155, "movie") in merged      # watched kept
         assert (999, "tv") in merged         # explicit exclude kept
+
+
+class TestRecommendForUserUserContext:
+    async def test_find_similar_receives_exclude_so_user_filters_run(self, monkeypatch):
+        """The per-user pass inside find_similar only runs when exclude is
+        not None — recommend_for_user must always arm it, or watched and
+        disliked titles outside the seed set leak into the list."""
+        from cine_rec_engine import service as svc
+        from cine_rec_engine import user_vector as uv
+
+        async def fake_seeds(pool, user_id, limit=20):
+            return [(155, "movie", 1.0), (27205, "movie", 0.8),
+                    (1396, "tv", 0.5)]
+
+        async def no_vector(pool, user_id, space=None, column=None,
+                            max_age_hours=None):
+            return None
+
+        class FakePool:
+            async def fetch(self, *args, **kwargs):
+                return []  # empty watchlist
+
+        captured = {}
+
+        async def fake_find_similar(self, tmdb_id, **kwargs):
+            captured.update(kwargs)
+            return []
+
+        monkeypatch.setattr(uv, "top_weighted_seeds", fake_seeds)
+        monkeypatch.setattr(uv, "ensure_user_vector", no_vector)
+        monkeypatch.setattr(svc.RecommendationService, "find_similar",
+                            fake_find_similar)
+
+        rec = svc.RecommendationService.__new__(svc.RecommendationService)
+        rec.pool = FakePool()
+        out = await rec.recommend_for_user(42, limit=8)
+
+        assert out["reason"] == "personalized"
+        assert out["vector_used"] is False
+        assert captured["user_id"] == 42
+        assert captured["exclude"] is not None  # None disarms the user pass
+
+    async def test_vector_channel_runs_when_a_vector_exists(self, monkeypatch):
+        from cine_rec_engine import service as svc
+        from cine_rec_engine import user_vector as uv
+
+        async def fake_seeds(pool, user_id, limit=20):
+            return [(155, "movie", 1.0), (27205, "movie", 0.8),
+                    (1396, "tv", 0.5)]
+
+        async def has_vector(pool, user_id, space=None, column=None,
+                             max_age_hours=None):
+            return [0.1, 0.2, 0.3]
+
+        class FakePool:
+            async def fetch(self, *args, **kwargs):
+                return []
+
+        async def fake_find_similar(self, tmdb_id, **kwargs):
+            # the lazy channel: invoke the factory the way the real
+            # find_similar would on a cache miss
+            if kwargs.get("extra_factory"):
+                assert await kwargs["extra_factory"]() == [{"via": "user_vector"}]
+            return []
+
+        async def fake_ann(pool, uvec, limit=60, emb_column=None):
+            return [{"via": "user_vector"}]
+
+        monkeypatch.setattr(uv, "top_weighted_seeds", fake_seeds)
+        monkeypatch.setattr(uv, "ensure_user_vector", has_vector)
+        # module-level import in service.py — patch the service's reference
+        monkeypatch.setattr(svc, "generate_user_vector_candidates", fake_ann)
+        monkeypatch.setattr(svc.RecommendationService, "find_similar",
+                            fake_find_similar)
+
+        rec = svc.RecommendationService.__new__(svc.RecommendationService)
+        rec.pool = FakePool()
+        out = await rec.recommend_for_user(42, limit=8)
+
+        assert out["vector_used"] is True
+
+    async def test_solo_model_space_threads_one_column_end_to_end(self, monkeypatch):
+        """vector_space='e5e' must build/ensure, ANN-recall, and score in
+        the e5e column — a vector from one space searched against another
+        is a dimension mismatch."""
+        from cine_rec_engine import service as svc
+        from cine_rec_engine import user_vector as uv
+
+        async def fake_seeds(pool, user_id, limit=20):
+            return [(155, "movie", 1.0)]
+
+        ensured = {}
+        ann = {}
+
+        async def fake_ensure(pool, user_id, space=None, column=None,
+                              max_age_hours=None):
+            ensured["space"] = space
+            return [0.1]
+
+        async def fake_ann(pool, uvec, limit=60, emb_column=None):
+            ann["emb_column"] = emb_column
+            return [{"via": "user_vector"}]
+
+        captured = {}
+
+        async def fake_find_similar(self, tmdb_id, **kwargs):
+            captured.update(kwargs)
+            if kwargs.get("extra_factory"):
+                await kwargs["extra_factory"]()  # runs the ANN capture
+            return []
+
+        class FakePool:
+            async def fetch(self, *args, **kwargs):
+                return []
+
+        monkeypatch.setattr(uv, "top_weighted_seeds", fake_seeds)
+        monkeypatch.setattr(uv, "ensure_user_vector", fake_ensure)
+        monkeypatch.setattr(svc, "generate_user_vector_candidates", fake_ann)
+        monkeypatch.setattr(svc.RecommendationService, "find_similar",
+                            fake_find_similar)
+
+        rec = svc.RecommendationService.__new__(svc.RecommendationService)
+        rec.pool = FakePool()
+        await rec.recommend_for_user(42, vector_space="e5e")
+
+        assert ensured["space"] == "e5e"
+        assert ann["emb_column"] == "embedding_e5e"
+        assert captured["rec_model"] == "e5e"
+
+
+class _FakeConn:
+    def __init__(self, row=None, fail=False):
+        self._row = row
+        self._fail = fail
+
+    async def register_vector(self):
+        if self._fail:
+            raise RuntimeError("no vector infrastructure")
+
+    async def fetchrow(self, *args, **kwargs):
+        if self._fail:
+            raise RuntimeError("probe blew up")
+        return self._row
+
+
+class _FakeAcquire:
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakeVectorPool:
+    def __init__(self, conn):
+        self._conn = conn
+        self.conn = conn
+
+    def acquire(self):
+        return _FakeAcquire(self._conn)
+
+
+class TestEnsureUserVector:
+    @staticmethod
+    def _noop_register(monkeypatch):
+        # ensure_user_vector imports register_vector lazily per call, so
+        # patching the pgvector module attribute reaches it. The real one
+        # introspects a live asyncpg connection — fatal to a fake conn.
+        import pgvector.asyncpg as pga
+
+        async def register_vector(conn):
+            return None
+
+        monkeypatch.setattr(pga, "register_vector", register_vector)
+
+    def _pool(self, row=None, fail=False):
+        return _FakeVectorPool(_FakeConn(row=row, fail=fail))
+
+    async def test_fresh_vector_returned_without_rebuild(self, monkeypatch):
+        from cine_rec_engine import user_vector as uv
+
+        self._noop_register(monkeypatch)
+
+        async def forbidden(*args, **kwargs):
+            raise AssertionError("rebuild must not run for a fresh vector")
+
+        monkeypatch.setattr(uv, "build_user_vector", forbidden)
+        vec = await uv.ensure_user_vector(
+            self._pool(row={"embedding": [0.1, 0.2]}), 7)
+        assert vec == [0.1, 0.2]
+
+    async def test_fresh_vector_as_pgvector_object_is_coerced(self, monkeypatch):
+        """The asyncpg codec hands back pgvector.Vector, which is NOT
+        iterable — `list(v)` raises TypeError. That error inside the probe
+        used to read as 'vector layer broken', silently disabling the ANN
+        channel and busting the cache key on every second request."""
+        from pgvector import Vector
+
+        from cine_rec_engine import user_vector as uv
+
+        self._noop_register(monkeypatch)
+
+        async def forbidden(*args, **kwargs):
+            raise AssertionError("rebuild must not run for a fresh vector")
+
+        monkeypatch.setattr(uv, "build_user_vector", forbidden)
+        vec = await uv.ensure_user_vector(
+            self._pool(row={"embedding": Vector([0.1, 0.2])}), 7)
+        # Vector stores float32 — approx, not exact equality
+        assert vec == pytest.approx([0.1, 0.2])
+
+    async def test_load_user_vector_coerces_pgvector_object(self, monkeypatch):
+        """Same coercion on the plain load path — it raises uncaught on a
+        Vector value, killing the whole channel for the caller."""
+        from pgvector import Vector
+
+        from cine_rec_engine import user_vector as uv
+
+        import pgvector.asyncpg as pga
+
+        async def register_vector(conn):
+            return None
+
+        monkeypatch.setattr(pga, "register_vector", register_vector)
+        vec = await uv.load_user_vector(
+            _FakeVectorPool(_FakeConn(row={"embedding": Vector([0.3, 0.4])})), 7)
+        assert vec == pytest.approx([0.3, 0.4])
+
+    async def test_missing_vector_triggers_rebuild(self, monkeypatch):
+        from cine_rec_engine import user_vector as uv
+
+        self._noop_register(monkeypatch)
+        calls = []
+
+        async def fake_build(pool, user_id, space, column):
+            calls.append((user_id, space, column))
+            return [0.9]
+
+        monkeypatch.setattr(uv, "build_user_vector", fake_build)
+        vec = await uv.ensure_user_vector(self._pool(row=None), 7)
+        assert vec == [0.9]
+        assert calls == [(7, None, None)]  # default space, default column
+
+    async def test_solo_space_rebuilds_from_its_own_column(self, monkeypatch):
+        from cine_rec_engine import user_vector as uv
+
+        self._noop_register(monkeypatch)
+        calls = []
+
+        async def fake_build(pool, user_id, space, column):
+            calls.append((space, column))
+            return [0.5]
+
+        monkeypatch.setattr(uv, "build_user_vector", fake_build)
+        await uv.ensure_user_vector(self._pool(row=None), 7, space="e5e")
+        assert calls == [("e5e", "embedding_e5e")]  # never the default column
+
+    async def test_probe_failure_degrades_to_none(self, monkeypatch):
+        from cine_rec_engine import user_vector as uv
+
+        self._noop_register(monkeypatch)
+
+        async def forbidden(*args, **kwargs):
+            raise AssertionError("no rebuild after a failed probe")
+
+        monkeypatch.setattr(uv, "build_user_vector", forbidden)
+        assert await uv.ensure_user_vector(self._pool(fail=True), 7) is None
+
+    async def test_rebuild_failure_degrades_to_none(self, monkeypatch):
+        from cine_rec_engine import user_vector as uv
+
+        self._noop_register(monkeypatch)
+
+        async def exploding(*args, **kwargs):
+            raise RuntimeError("write failed")
+
+        monkeypatch.setattr(uv, "build_user_vector", exploding)
+        assert await uv.ensure_user_vector(self._pool(row=None), 7) is None
+
+
+class TestUserTilt:
+    """Controlled personalization: boost-only, capped, seed stays primary."""
+
+    def _row(self, tid, score, media_type="movie"):
+        return {"tmdb_id": tid, "media_type": media_type, "score": score,
+                "title": f"t{tid}"}
+
+    def test_near_tie_flips_toward_user_affinity(self):
+        from cine_rec_engine.service import _tilt_scores
+
+        results = [self._row(1, 10.0), self._row(2, 9.6)]
+        out = _tilt_scores(results, {(2, "movie"): 0.8}, alpha=0.15)
+        assert [r["tmdb_id"] for r in out] == [2, 1]  # 9.6·1.12 > 10.0
+        assert out[0]["user_affinity"] == 0.8
+
+    def test_clear_gap_never_flips_seed_relevance_primary(self):
+        from cine_rec_engine.service import _tilt_scores
+
+        results = [self._row(1, 10.0), self._row(2, 5.0)]
+        out = _tilt_scores(results, {(2, "movie"): 1.0}, alpha=0.15)
+        assert [r["tmdb_id"] for r in out] == [1, 2]  # 5.75 < 10, no flip
+
+    def test_negative_affinity_never_buries(self):
+        from cine_rec_engine.service import _tilt_scores
+
+        results = [self._row(1, 8.0)]
+        out = _tilt_scores(results, {(1, "movie"): -0.9}, alpha=0.15)
+        assert out[0]["score"] == 8.0  # clamped to zero boost
+        assert out[0]["user_affinity"] == 0.0
+
+    def test_no_affinity_passes_through_and_cache_not_mutated(self):
+        from cine_rec_engine.service import _tilt_scores
+
+        results = [self._row(1, 7.0), self._row(2, 7.5)]
+        out = _tilt_scores(results, {}, alpha=0.15)
+        assert [r["tmdb_id"] for r in out] == [2, 1]
+        assert "user_affinity" not in out[0]
+        assert out[0] is results[1]  # same dict — payload never re-packed
+
+    def test_cosine_handles_unnormalized_vectors(self):
+        from cine_rec_engine.service import _cosine
+
+        assert _cosine([2.0, 0.0], [5.0, 0.0]) == 1.0
+        assert _cosine([1.0, 0.0], [0.0, 3.0]) == 0.0
+        assert _cosine([0.0, 0.0], [1.0, 1.0]) == 0.0  # zero vector safe
+
+    async def test_apply_user_tilt_end_to_end(self, monkeypatch):
+        from cine_rec_engine import queries as queries_mod
+        from cine_rec_engine import service as svc
+        from cine_rec_engine import user_vector as uv
+
+        async def has_vector(pool, user_id, space=None, column=None,
+                             max_age_hours=None):
+            return [1.0, 0.0]
+
+        async def fake_embeddings(pool, pairs, emb_column=None):
+            assert emb_column is None  # default space
+            return {(111, "movie"): [1.0, 0.0],   # aligned with the user
+                    (222, "movie"): [0.0, 1.0]}   # orthogonal
+
+        monkeypatch.setattr(uv, "ensure_user_vector", has_vector)
+        monkeypatch.setattr(queries_mod, "fetch_embeddings_batch",
+                            fake_embeddings)
+
+        rec = svc.RecommendationService.__new__(svc.RecommendationService)
+        rec.pool = object()
+        results = [self._row(222, 9.5), self._row(111, 9.0)]
+        out = await rec._apply_user_tilt(results, 7, None)
+
+        assert [r["tmdb_id"] for r in out] == [111, 222]  # 9.0·1.15 > 9.5
+        assert out[0]["user_affinity"] == 1.0
+        assert out[1]["user_affinity"] == 0.0
+        assert results[0]["score"] == 9.5  # input list untouched
+
+    async def test_apply_user_tilt_degrades_without_vector(self, monkeypatch):
+        from cine_rec_engine import service as svc
+        from cine_rec_engine import user_vector as uv
+
+        async def no_vector(pool, user_id, space=None, column=None,
+                            max_age_hours=None):
+            return None
+
+        monkeypatch.setattr(uv, "ensure_user_vector", no_vector)
+        rec = svc.RecommendationService.__new__(svc.RecommendationService)
+        rec.pool = object()
+        results = [self._row(1, 5.0)]
+        assert await rec._apply_user_tilt(results, 7, None) is results
 
 
 class TestTasteOrdering:

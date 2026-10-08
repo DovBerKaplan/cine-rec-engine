@@ -219,3 +219,35 @@ def _parse_cosine_blend(raw: str) -> dict:
 
 
 COSINE_BLEND: dict = _parse_cosine_blend(os.getenv("CINE_REC_COSINE_BLEND", os.getenv("REC_COSINE_BLEND", "")))
+
+
+# On-request user-vector freshness: a stored vector older than this is
+# rebuilt inline (ensure_user_vector) before the ANN channel runs, so
+# recommend_for_user works with no cron at all — the rebuild costs at
+# most one probe query plus one rebuild per window per user. Operators
+# running nightly_recompute can raise this to keep the request path
+# read-only.
+USER_VECTOR_MAX_AGE_HOURS = float(
+    os.getenv("CINE_REC_USER_VECTOR_MAX_AGE_HOURS", "24") or 24
+)
+
+
+# Item-to-item user tilt: with a user context present, candidates whose
+# scores sit within a hair of each other break ties toward the user's
+# taste — a boost-only, multiplicative affinity term capped at this
+# fraction of the ORIGINAL score (affinity = cosine to the user vector,
+# clamped at 0). The seed's relevance stays primary: a 2× better
+# candidate can never be overtaken, and low affinity never buries.
+USER_TILT_ALPHA = float(os.getenv("CINE_REC_USER_TILT_ALPHA", "0.15") or 0.15)
+
+
+# Exploration budget (RFC §2): the share of every personalized list
+# reserved for adjacent-cluster discovery. Eligibility is deterministic
+# (genre-disjoint from the user's top clusters AND affinity ≥ the main
+# list's median) — this targets serendipity, never random noise. 0
+# disables; per-request `explore=` overrides (capped at 0.5).
+EXPLORE_SHARE = float(os.getenv("CINE_REC_EXPLORE_SHARE", "0.12") or 0.12)
+
+# One skip = a bounded nudge, never a bury: the skipped title's w_item
+# is multiplied by this factor (RFC §4). 0.9 ≈ ten skips to halve.
+SKIP_DECAY = float(os.getenv("CINE_REC_SKIP_DECAY", "0.9") or 0.9)

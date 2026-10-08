@@ -11,7 +11,7 @@ All functions are synchronous with no I/O dependencies.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .config import KEYWORDS_STYLE, MIN_VOTE_COUNT, VOTE_FLOOR_TV
 
@@ -276,8 +276,10 @@ def optimize_candidate_selection(
     Candidates carrying a `via` tag — `"knn"` (pgvector semantic neighbors,
     kept in semantic-distance order) or `"tmdb"` (behavioral recommendations
     synced from TMDB, kept in TMDB rank order) — are exempt from the genre
-    gate: their proximity signal is their qualification. They still pass
-    the rating floor.
+    gate AND the vote floor: their proximity signal (TMDB's own behavioral
+    engine ranked them; the ANN index returned them) is their qualification,
+    and the graph head often carries mid-vote titles the local floor would
+    silently drop. They still pass the rating floor.
     Returns up to target_count * 2 candidates (~70% curated intake).
     """
     if not candidates:
@@ -287,17 +289,19 @@ def optimize_candidate_selection(
     genre_pool: List[dict] = []
     base_genre_set = set(base_genres)
     for cand in candidates:
-        # Rating + vote-count floor (applies to every recall path). TV vote
-        # counts run an order of magnitude below movies on TMDB, so series
-        # candidates get their own floor — a flat 500 starves tv seeds.
+        # Rating floor (applies to every recall path).
         if (cand.get("vote_average") or 0) < 5.5:
-            continue
-        vote_floor = VOTE_FLOOR_TV if cand.get("media_type") == "tv" else MIN_VOTE_COUNT
-        if (cand.get("vote_count") or 0) < vote_floor:
             continue
 
         if cand.get("via"):
             curated_pool.append(cand)  # keep the channel's own ordering
+            continue
+
+        # Vote-count floor for the genre channel. TV vote counts run an
+        # order of magnitude below movies on TMDB, so series candidates
+        # get their own floor — a flat 500 starves tv seeds.
+        vote_floor = VOTE_FLOOR_TV if cand.get("media_type") == "tv" else MIN_VOTE_COUNT
+        if (cand.get("vote_count") or 0) < vote_floor:
             continue
 
         cand_genres = cand.get("genres", [])
@@ -327,6 +331,24 @@ def optimize_candidate_selection(
     return combined[: target_count * 2]  # Double target for safety
 
 
+def _fact_emb_union(cols_sql: str) -> str:
+    """id + embedding columns from the fact tables, both media.
+
+    The output ALWAYS starts with `id` — pass only the embedding columns;
+    prefixing 'id, ' yourself duplicates the output column and makes
+    every outer reference to it ambiguous (AmbiguousColumnError).
+
+    The embedding columns live on tmdb_movies/tmdb_tv — the tmdb_media
+    compatibility view does not expose columns added after its CREATE,
+    so reading them through the view silently fails on any schema
+    upgraded in place.
+    """
+    return (
+        f"(SELECT id, {cols_sql} FROM tmdb_movies "
+        f"UNION ALL SELECT id, {cols_sql} FROM tmdb_tv)"
+    )
+
+
 async def semantic_overview_similarity(
     pool,
     seed_id: int,
@@ -338,10 +360,10 @@ async def semantic_overview_similarity(
     """Cosine similarity between the seed's overview embedding and each
     candidate's embedding, via pgvector.
 
-    Uses `<=>` (cosine distance) on the precomputed `embedding` column of
-    `tmdb_media`. Returns a dict mapping `candidate_id -> similarity` in
-    the range [0.0, 1.0]. Entries for candidates without an embedding are
-    omitted.
+    Uses `<=>` (cosine distance) on the precomputed embedding columns of
+    the fact tables. Returns a dict mapping `candidate_id -> similarity`
+    in the range [0.0, 1.0]. Entries for candidates without an embedding
+    are omitted.
 
     Args:
         pool: asyncpg connection pool (the same one shared with
@@ -404,7 +426,8 @@ async def semantic_overview_similarity(
         # for that column — unless an on-demand override fills it below.
         try:
             seed_row = await conn.fetchrow(
-                f"SELECT {seed_cols} FROM tmdb_media WHERE id = $1",
+                f"SELECT {seed_cols} FROM {_fact_emb_union(seed_cols)} m"
+                f" WHERE id = $1 LIMIT 1",
                 seed_id,
             )
         except asyncpg.UndefinedColumnError:
@@ -439,10 +462,10 @@ async def semantic_overview_similarity(
         try:
             rows = await conn.fetch(
                 f"""
-                SELECT id, {select_sims}
-                FROM tmdb_media
-                WHERE id = ANY(${len(active_cols) + 1}::bigint[])
-                  AND {" OR ".join(f"{c} IS NOT NULL" for c in active_cols)}
+                SELECT m.id, {select_sims}
+                FROM {_fact_emb_union(", ".join(active_cols))} m
+                WHERE m.id = ANY(${len(active_cols) + 1}::bigint[])
+                  AND {" OR ".join(f"m.{c} IS NOT NULL" for c in active_cols)}
                 """,
                 *params,
             )
@@ -457,3 +480,121 @@ async def semantic_overview_similarity(
         w_sum = sum(active_w)
         out[row["id"]] = sum(w * s for w, s in zip(active_w, sims)) / max(w_sum, 1e-9)
     return out
+
+
+async def semantic_overview_similarity_batch(
+    pool,
+    seed_ids: List[int],
+    candidate_ids: List[int],
+    columns: Optional[List[str]] = None,
+    weights: Optional[List[float]] = None,
+    seed_vectors: Optional[Dict[int, Dict[str, list]]] = None,
+) -> Dict[int, Dict[int, float]]:
+    """semantic_overview_similarity for ALL seeds in one round trip per
+    blend column instead of one per seed — multi-seed requests (the
+    personalized row) fire 15–20 of those otherwise.
+
+    Same blend math and the same skip rule as the single-seed version: a
+    candidate needs every column that is active for the seed (a NULL
+    similarity drops the pair). Returns {seed_id: {candidate_id: sim}};
+    seeds with no usable vector are omitted.
+    """
+    if not candidate_ids or not seed_ids:
+        return {}
+
+    import asyncpg
+
+    try:
+        from pgvector.asyncpg import register_vector
+    except ImportError:
+        return {}  # optional dependency — cosine channel off without it
+
+    async with pool.acquire() as conn:
+        try:
+            await register_vector(conn)
+        except Exception:
+            return {}
+
+        from .config import COSINE_BLEND, EMBEDDING_COLUMN
+
+        if columns and weights:
+            active_spec = list(zip(columns, weights))
+        elif COSINE_BLEND:
+            active_spec = list(COSINE_BLEND.items())
+        else:
+            active_spec = [(EMBEDDING_COLUMN, 1.0)]
+        cols = [c for c, _ in active_spec]
+        col_weights = dict(active_spec)
+
+        # All seed vectors in one query (last row wins on a colliding
+        # movie/tv id — same tie behavior as the single-seed path).
+        try:
+            seed_rows = await conn.fetch(
+                f"SELECT id, {', '.join(cols)} FROM {_fact_emb_union(', '.join(cols))} m"
+                f" WHERE id = ANY($1::bigint[])",
+                list(seed_ids),
+            )
+        except (asyncpg.UndefinedColumnError, asyncpg.UndefinedObjectError):
+            return {}
+
+        seed_vecs: Dict[int, Dict[str, object]] = {}
+        for row in seed_rows:
+            seed_vecs[row["id"]] = {c: row[c] for c in cols}
+        if seed_vectors:
+            for sid, overrides in seed_vectors.items():
+                if overrides:
+                    merged = dict(seed_vecs.get(sid, {c: None for c in cols}))
+                    merged.update({c: v for c, v in overrides.items() if v})
+                    seed_vecs[sid] = merged
+
+        usable = {
+            sid: vecs for sid, vecs in seed_vecs.items()
+            if any(vecs.get(c) is not None for c in cols)
+        }
+        if not usable:
+            return {}
+
+        # One cross-join query per column with at least one usable seed:
+        # seeds × candidates cosine pairs computed server-side.
+        sims_by_col: Dict[str, Dict[Tuple[int, int], float]] = {}
+        for col in cols:
+            if not any(vecs.get(col) is not None for vecs in usable.values()):
+                continue
+            try:
+                rows = await conn.fetch(
+                    f"""
+                    SELECT s.id AS seed_id, c.id AS cand_id,
+                           GREATEST(0.0, 1 - (c.{col} <=> s.{col})) AS sim
+                    FROM {_fact_emb_union(col)} s
+                    CROSS JOIN {_fact_emb_union(col)} c
+                    WHERE s.id = ANY($1::bigint[]) AND c.id = ANY($2::bigint[])
+                      AND s.{col} IS NOT NULL AND c.{col} IS NOT NULL
+                    """,
+                    list(usable.keys()), list(candidate_ids),
+                )
+            except (asyncpg.UndefinedColumnError, asyncpg.UndefinedObjectError):
+                return {}
+            sims_by_col[col] = {
+                (r["seed_id"], r["cand_id"]): float(r["sim"]) for r in rows
+            }
+
+        out: Dict[int, Dict[int, float]] = {}
+        for sid, vecs in usable.items():
+            active_cols = [c for c in cols if vecs.get(c) is not None]
+            w_sum = sum(col_weights[c] for c in active_cols)
+            col_maps = [sims_by_col.get(c, {}) for c in active_cols]
+            per_cand: Dict[int, float] = {}
+            cand_ids_seen = {
+                cid for m in col_maps for (_s, cid) in m if _s == sid
+            }
+            for cid in cand_ids_seen:
+                pair_sims = [m.get((sid, cid)) for m in col_maps]
+                if any(s is None for s in pair_sims):
+                    continue  # candidate lacks one of the seed's columns
+                per_cand[cid] = sum(
+                    col_weights[c] * s
+                    for c, s in zip(active_cols, pair_sims)
+                ) / max(w_sum, 1e-9)
+            if per_cand:
+                out[sid] = per_cand
+        return out

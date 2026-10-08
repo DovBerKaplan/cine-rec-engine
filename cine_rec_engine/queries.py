@@ -681,6 +681,95 @@ def _knn_available(emb_column: Optional[str]) -> bool:
     return (emb_column or "default") not in _KNN_DISABLED
 
 
+# Per-medium facts for direct KNN recall. The embedding columns live on
+# the split fact tables (schema.sql §2) — the tmdb_media compatibility
+# view does NOT expose them (a view's column list is fixed at CREATE
+# time, so later ALTER TABLE ... ADD COLUMN never shows up there) — so
+# the KNN channels query the tables themselves, like the user-vector
+# recall below.
+_KNN_MEDIUM = {
+    "movie": dict(
+        table="tmdb_movies", title="title", date="release_date",
+        coll="collection_id", gmap="tmdb_movie_genres_map", gid="movie_id",
+    ),
+    "tv": dict(
+        table="tmdb_tv", title="name", date="first_air_date",
+        coll="NULL::bigint", gmap="tmdb_tv_genres_map", gid="tv_id",
+    ),
+}
+
+
+def _knn_arm_sql(mt: str, emb: str, seed_mt: str, vote_floor: int) -> str:
+    """One medium's arm of a KNN recall: top-`limit` rows by cosine.
+
+    The arm keeps its own ORDER BY + LIMIT (and the seed vector comes
+    from a same-statement subquery, not a bind parameter — passing it as
+    a parameter produced wrong distances) so the planner can serve it
+    from the medium's ANN index instead of sorting the whole table. The
+    id exclusion only applies in the seed's OWN medium: movie 155 stays a
+    candidate for tv-seed 155 (different title — ids collide across
+    media by design).
+    """
+    s = _KNN_MEDIUM[mt]
+    seed = _KNN_MEDIUM[seed_mt]
+    excl = "\n          AND c.id != $1" if mt == seed_mt else ""
+    return f"""
+        WITH seed AS (SELECT {emb} AS v FROM {seed['table']} WHERE id = $1)
+        SELECT c.id, c.{s['title']} AS title, c.{s['title']} AS title_en,
+               '{mt}'::text AS media_type,
+               c.overview, c.overview AS overview_en,
+               c.vote_average::float, c.vote_count::int,
+               c.popularity::float, c.poster_path, {s['coll']} AS collection_id,
+               EXTRACT(YEAR FROM c.{s['date']})::int AS release_year,
+               ARRAY(
+                   SELECT g.name FROM tmdb_genres g
+                   JOIN {s['gmap']} gm ON gm.genre_id = g.id
+                   WHERE gm.{s['gid']} = c.id
+               ) AS genres,
+               GREATEST(0.0, 1 - (c.{emb} <=> (SELECT v FROM seed)))
+                   AS knn_similarity
+        FROM {s['table']} c
+        WHERE c.{emb} IS NOT NULL{excl}
+          AND c.vote_average >= 5.5
+          AND c.vote_count >= {int(vote_floor)}
+        ORDER BY c.{emb} <=> (SELECT v FROM seed)
+        LIMIT $2
+    """
+
+
+async def _fetch_knn_rows(pool, seed_id, seed_media_type, limit, emb,
+                          media_types, vote_floor):
+    """Run one KNN recall (single arm, or two arms merged in SQL).
+
+    Returns None when the vector codec can't attach (no pgvector
+    infrastructure) — the caller degrades without latching; asyncpg
+    schema errors propagate so the caller can latch the channel off.
+    """
+    try:
+        from pgvector.asyncpg import register_vector
+    except ImportError:
+        return None  # optional dependency — vector channels off without it
+    arms = [
+        _knn_arm_sql(mt, emb, seed_media_type, vote_floor)
+        for mt in ("movie", "tv") if mt in media_types
+    ]
+    if not arms:
+        return []
+    sql = (
+        arms[0] if len(arms) == 1
+        else f"({arms[0]})\nUNION ALL\n({arms[1]})\nORDER BY knn_similarity DESC\nLIMIT $2"
+    )
+    async with pool.acquire() as conn:
+        try:
+            await register_vector(conn)
+        except Exception:
+            return None
+        # ef_search must be raised per session for pgvector's hnsw
+        # indexes to return deep-enough candidate lists.
+        await conn.execute("SET hnsw.ef_search = 400")
+        return await conn.fetch(sql, seed_id, limit)
+
+
 async def generate_knn_candidates(
     pool: asyncpg.Pool,
     seed_id: int,
@@ -688,14 +777,15 @@ async def generate_knn_candidates(
     limit: int = 40,
     allow_cross_media: bool = False,
     emb_column: Optional[str] = None,
+    vote_floor: Optional[int] = None,
 ) -> List[dict]:
     """Fetch candidates whose overview embedding is nearest to the seed's.
 
     Uses the pgvector cosine-distance operator (`<=>`) on the precomputed
-    `embedding` column — the ivfflat index from scripts/setup_pgvector.sql
-    serves this query. Unlike `generate_candidates`, recall is NOT gated on
-    genre overlap or popularity ordering: titles that are close in spirit
-    but live in other genres surface here.
+    embedding column of the fact tables (an hnsw/ivfflat index on that
+    column serves the query). Unlike `generate_candidates`, recall is NOT
+    gated on genre overlap or popularity ordering: titles that are close
+    in spirit but live in other genres surface here.
 
     Rows carry `via="knn"` and their `knn_similarity` (0..1) so downstream
     stages can exempt them from the genre gate and reuse the similarity.
@@ -703,6 +793,11 @@ async def generate_knn_candidates(
     Args:
         emb_column: per-request embedding column override (/set_model).
             None = the process-global EMBEDDING_COLUMN.
+        vote_floor: override the per-medium vote floor. find_similar
+            passes the fine-tuned channel's floor here so ONE query
+            serves both KNN channels (they share the same space and
+            only differ in floor; the looser floor's top-k covers both
+            old result sets).
 
     Returns:
         Up to `limit` candidates (same row shape as `generate_candidates`
@@ -714,64 +809,24 @@ async def generate_knn_candidates(
     if not _knn_available(emb_column):
         return []
 
+    from .config import EMBEDDING_COLUMN
+
+    _emb = emb_column or EMBEDDING_COLUMN
+    media = {"movie", "tv"} if allow_cross_media else {seed_media_type}
     try:
-        try:
-            from pgvector.asyncpg import register_vector
-        except ImportError:
-            return []  # optional dependency — KNN channel off without it
-        async with pool.acquire() as conn:
-            try:
-                await register_vector(conn)
-            except Exception:
-                return []
-
-            # Subquery for the seed vector — passing it as an asyncpg
-            # parameter produced wrong cosine distances (codec mismatch).
-            from .config import EMBEDDING_COLUMN
-
-            _emb = emb_column or EMBEDDING_COLUMN
-            await conn.execute("SET hnsw.ef_search = 400")
-            rows = await conn.fetch(
-                """
-                WITH seed AS (
-                    SELECT {emb} FROM tmdb_media
-                    WHERE (id, media_type) = ($1, $2)
-                )
-                SELECT
-                    m.id, m.title, m.title_en, m.media_type,
-                    m.overview, m.overview_en,
-                    m.vote_average::float, m.vote_count::int,
-                    m.popularity::float, m.poster_path, m.collection_id,
-                    EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int
-                        AS release_year,
-                    ARRAY(
-                        SELECT g.name FROM tmdb_genres g
-                        JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
-                    ) as genres,
-                    GREATEST(0.0, 1 - (m.{emb} <=> (SELECT {emb} FROM seed)))
-                        AS knn_similarity
-                FROM tmdb_media m
-                WHERE m.{emb} IS NOT NULL
-                  AND (m.id, m.media_type) != ($1, $2)
-                  AND m.vote_average >= 5.5
-                  AND m.vote_count >= $5
-                  AND ($3::text IS NULL OR m.media_type = $3::text)
-                ORDER BY m.{emb} <=> (SELECT {emb} FROM seed)
-                LIMIT $4
-                """.replace("{emb}", _emb),
-                seed_id,
-                seed_media_type,
-                None if allow_cross_media else seed_media_type,
-                limit,
-                _vote_floor(seed_media_type if not allow_cross_media else None),
-            )
+        rows = await _fetch_knn_rows(
+            pool, seed_id, seed_media_type, limit, _emb, media,
+            vote_floor if vote_floor is not None
+            else _vote_floor(seed_media_type if not allow_cross_media else None),
+        )
     except (
         _asyncpg.UndefinedColumnError,
         _asyncpg.UndefinedObjectError,
         _asyncpg.UndefinedTableError,
     ):
         _KNN_DISABLED.add(emb_column or "default")
+        return []
+    if not rows:
         return []
 
     candidates = []
@@ -788,26 +843,35 @@ async def generate_knn_candidates(
 # ---------------------------------------------------------------------------
 
 # Embedding columns live on the split fact tables (schema.sql §2), not on
-# the compatibility view — so this reads both sides with UNION ALL.
+# the compatibility view — so this reads both sides with UNION ALL. Each
+# arm keeps its own ORDER BY + LIMIT so the medium's ANN index serves the
+# arm; the outer merge only sorts the (at most 2×limit) survivors. A
+# single ORDER BY over the whole UNION would force a full sort of both
+# tables on every request.
 _USER_VECTOR_RECALL = """
     SELECT * FROM (
-        SELECT id, title, title AS title_en, 'movie'::text AS media_type,
-               overview, overview AS overview_en,
-               vote_average::float, vote_count::int,
-               popularity::float, poster_path, collection_id,
-               EXTRACT(YEAR FROM release_date)::int AS release_year,
-               1 - ({emb} <=> $1) AS knn_similarity
-        FROM tmdb_movies WHERE {emb} IS NOT NULL
+        (SELECT id, title, title AS title_en, 'movie'::text AS media_type,
+                overview, overview AS overview_en,
+                vote_average::float, vote_count::int,
+                popularity::float, poster_path, collection_id,
+                EXTRACT(YEAR FROM release_date)::int AS release_year,
+                1 - ({emb} <=> $1) AS knn_similarity
+         FROM tmdb_movies
+         WHERE {emb} IS NOT NULL AND vote_average >= 5.5
+         ORDER BY {emb} <=> $1
+         LIMIT $2)
         UNION ALL
-        SELECT id, name, name AS title_en, 'tv'::text,
-               overview, overview,
-               vote_average::float, vote_count::int,
-               popularity::float, poster_path, NULL::bigint,
-               EXTRACT(YEAR FROM first_air_date)::int,
-               1 - ({emb} <=> $1)
-        FROM tmdb_tv WHERE {emb} IS NOT NULL
+        (SELECT id, name, name AS title_en, 'tv'::text,
+                overview, overview,
+                vote_average::float, vote_count::int,
+                popularity::float, poster_path, NULL::bigint,
+                EXTRACT(YEAR FROM first_air_date)::int,
+                1 - ({emb} <=> $1)
+         FROM tmdb_tv
+         WHERE {emb} IS NOT NULL AND vote_average >= 5.5
+         ORDER BY {emb} <=> $1
+         LIMIT $2)
     ) m
-    WHERE m.vote_average >= 5.5
     ORDER BY m.knn_similarity DESC
     LIMIT $2
 """
@@ -847,7 +911,10 @@ async def generate_user_vector_candidates(
             )
     except (_asyncpg.UndefinedColumnError, _asyncpg.UndefinedObjectError,
             _asyncpg.UndefinedTableError):
-        _KNN_DISABLED.add(col)
+        # Latch the key the guard checks (emb_column or "default"), not
+        # the resolved column name — a latched key that nothing reads
+        # would retry the failing query on every request forever.
+        _KNN_DISABLED.add(emb_column or "default")
         return []
     out = []
     for r in rows:
@@ -858,8 +925,445 @@ async def generate_user_vector_candidates(
     return out
 
 
+def _vec_as_list(v) -> Optional[list]:
+    if v is None:
+        return None
+    if isinstance(v, (list, tuple)):
+        return list(v)
+    return v.to_list()  # pgvector Vector
+
+
+async def fetch_embeddings_batch(
+    pool,
+    pairs: list,
+    emb_column: Optional[str] = None,
+) -> dict:
+    """(id, media_type) -> embedding vector, for the user-tilt pass.
+
+    Two small queries against the split fact tables (the column lives
+    there, not on the view). Degrades to {} on any missing piece —
+    no embeddings, no tilt, never an error.
+    """
+    if not pairs:
+        return {}
+    try:
+        from pgvector.asyncpg import register_vector
+    except ImportError:
+        return {}
+    from .config import EMBEDDING_COLUMN
+
+    col = emb_column or EMBEDDING_COLUMN
+    movie_ids = sorted({i for i, mt in pairs if mt != "tv"})
+    tv_ids = sorted({i for i, mt in pairs if mt == "tv"})
+    out: dict = {}
+    try:
+        async with pool.acquire() as conn:
+            try:
+                await register_vector(conn)
+            except Exception:
+                return {}
+            if movie_ids:
+                rows = await conn.fetch(
+                    f"SELECT id, {col} AS emb FROM tmdb_movies "
+                    f"WHERE id = ANY($1::bigint[]) AND {col} IS NOT NULL",
+                    movie_ids,
+                )
+                for r in rows:
+                    emb = _vec_as_list(r["emb"])
+                    if emb is not None:
+                        out[(r["id"], "movie")] = emb
+            if tv_ids:
+                rows = await conn.fetch(
+                    f"SELECT id, {col} AS emb FROM tmdb_tv "
+                    f"WHERE id = ANY($1::bigint[]) AND {col} IS NOT NULL",
+                    tv_ids,
+                )
+                for r in rows:
+                    emb = _vec_as_list(r["emb"])
+                    if emb is not None:
+                        out[(r["id"], "tv")] = emb
+    except Exception:
+        return {}
+    return out
+
+
 # ---------------------------------------------------------------------------
-# Fine-tuned KNN recall — direct retrieval from the contrastive space
+# Session filters (RFC §3, M1) — recall-boundary predicates
+# ---------------------------------------------------------------------------
+
+_FILTER_KEYS = ("year_min", "year_max", "genre_ids", "exclude_genre_ids",
+                "max_runtime")
+
+
+def normalize_filters(raw: Optional[dict]) -> Optional[dict]:
+    """Validate + normalize a session-filter dict; None when empty.
+
+    Raises ValueError on anything a caller typo'd — a filter that
+    silently did nothing is worse than a loud 400.
+    """
+    if not raw:
+        return None
+    unknown = set(raw) - set(_FILTER_KEYS)
+    if unknown:
+        raise ValueError(f"unknown filter keys: {sorted(unknown)}")
+
+    out: dict = {}
+
+    def _year(key):
+        v = raw.get(key)
+        if v is None:
+            return None
+        try:
+            v = int(v)
+        except (TypeError, ValueError):
+            raise ValueError(f"{key} must be an integer year")
+        if not 1900 <= v <= 2100:
+            raise ValueError(f"{key} out of range (1900-2100): {v}")
+        return v
+
+    out["year_min"] = _year("year_min")
+    out["year_max"] = _year("year_max")
+    if out["year_min"] is not None and out["year_max"] is not None \
+            and out["year_min"] > out["year_max"]:
+        raise ValueError("year_min must be <= year_max")
+
+    def _ids(key):
+        v = raw.get(key)
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v = [p.strip() for p in v.split(",") if p.strip()]
+        try:
+            ids = sorted({int(x) for x in v})
+        except (TypeError, ValueError):
+            raise ValueError(f"{key} must be a list of integer genre ids")
+        if any(i <= 0 for i in ids):
+            raise ValueError(f"{key} must contain positive genre ids")
+        return ids or None
+
+    out["genre_ids"] = _ids("genre_ids")
+    out["exclude_genre_ids"] = _ids("exclude_genre_ids")
+    if out["genre_ids"] and out["exclude_genre_ids"] \
+            and set(out["genre_ids"]) & set(out["exclude_genre_ids"]):
+        raise ValueError("a genre cannot be both pinned and excluded")
+
+    rt = raw.get("max_runtime")
+    if rt is not None:
+        try:
+            rt = int(rt)
+        except (TypeError, ValueError):
+            raise ValueError("max_runtime must be integer minutes")
+        if not 1 <= rt <= 1440:
+            raise ValueError("max_runtime out of range (1-1440 minutes)")
+    out["max_runtime"] = rt
+
+    if not any(v is not None for v in out.values()):
+        return None
+    return out
+
+
+def filters_fingerprint(filters: Optional[dict]) -> str:
+    """Stable cache-key component: same filters ⇒ same string, any
+    parameter of the dict order. 'none' when filters are absent."""
+    if not filters:
+        return "none"
+    parts = []
+    if filters.get("year_min") is not None:
+        parts.append(f"ym={filters['year_min']}")
+    if filters.get("year_max") is not None:
+        parts.append(f"yx={filters['year_max']}")
+    if filters.get("genre_ids"):
+        parts.append("g=" + ",".join(str(i) for i in sorted(filters["genre_ids"])))
+    if filters.get("exclude_genre_ids"):
+        parts.append("xg=" + ",".join(
+            str(i) for i in sorted(filters["exclude_genre_ids"])))
+    if filters.get("max_runtime") is not None:
+        parts.append(f"rt={filters['max_runtime']}")
+    return "|".join(parts) or "none"
+
+
+async def apply_recall_filters(pool, candidates: list, filters: dict) -> list:
+    """Drop candidates failing the session filters — one eligibility
+    query per medium, BEFORE scoring and the limit cut so limit
+    semantics stay honest. Runtime applies to movies only (the tv
+    schema has no runtime). Degrades to the unfiltered list when the
+    filter tables are missing — a filter never 500s a query path.
+    """
+    if not filters or not candidates:
+        return candidates
+    movie_ids = sorted({c["id"] for c in candidates if c.get("media_type") != "tv"})
+    tv_ids = sorted({c["id"] for c in candidates if c.get("media_type") == "tv"})
+    eligible: set = set()
+
+    def _year_clause(col, params):
+        clauses, p = [], list(params)
+        if filters.get("year_min") is not None:
+            p.append(filters["year_min"])
+            clauses.append(f"EXTRACT(YEAR FROM {col}) >= ${len(p)}")
+        if filters.get("year_max") is not None:
+            p.append(filters["year_max"])
+            clauses.append(f"EXTRACT(YEAR FROM {col}) <= ${len(p)}")
+        return clauses, p
+
+    try:
+        async with pool.acquire() as conn:
+            if movie_ids:
+                clauses, p = _year_clause("m.release_date", [movie_ids])
+                if filters.get("max_runtime") is not None:
+                    p.append(filters["max_runtime"])
+                    clauses.append(f"m.runtime <= ${len(p)}")
+                if filters.get("genre_ids"):
+                    p.append(filters["genre_ids"])
+                    clauses.append(
+                        f"EXISTS (SELECT 1 FROM tmdb_movie_genres_map g "
+                        f"WHERE g.movie_id = m.id AND g.genre_id = ANY(${len(p)}))")
+                if filters.get("exclude_genre_ids"):
+                    p.append(filters["exclude_genre_ids"])
+                    clauses.append(
+                        f"NOT EXISTS (SELECT 1 FROM tmdb_movie_genres_map g "
+                        f"WHERE g.movie_id = m.id AND g.genre_id = ANY(${len(p)}))")
+                where = " AND ".join(["m.id = ANY($1)"] + clauses)
+                rows = await conn.fetch(
+                    f"SELECT m.id FROM tmdb_movies m WHERE {where}", *p)
+                eligible |= {(r["id"], "movie") for r in rows}
+            if tv_ids:
+                clauses, p = _year_clause("t.first_air_date", [tv_ids])
+                if filters.get("genre_ids"):
+                    p.append(filters["genre_ids"])
+                    clauses.append(
+                        f"EXISTS (SELECT 1 FROM tmdb_tv_genres_map g "
+                        f"WHERE g.tv_id = t.id AND g.genre_id = ANY(${len(p)}))")
+                if filters.get("exclude_genre_ids"):
+                    p.append(filters["exclude_genre_ids"])
+                    clauses.append(
+                        f"NOT EXISTS (SELECT 1 FROM tmdb_tv_genres_map g "
+                        f"WHERE g.tv_id = t.id AND g.genre_id = ANY(${len(p)}))")
+                where = " AND ".join(["t.id = ANY($1)"] + clauses)
+                rows = await conn.fetch(
+                    f"SELECT t.id FROM tmdb_tv t WHERE {where}", *p)
+                eligible |= {(r["id"], "tv") for r in rows}
+    except Exception:
+        return candidates  # filter tables missing — degrade open
+    return [c for c in candidates
+            if (c["id"], c.get("media_type")) in eligible]
+
+
+# ---------------------------------------------------------------------------
+# Page rows (RFC §1, M1) — direct rows outside the LTR pipeline
+# ---------------------------------------------------------------------------
+
+HIDDEN_GEMS_RATING_MIN = 7.0   # quality floor — a gem must actually be good
+HIDDEN_GEMS_VOTES_MAX = 2000   # above this it's a hit, not hidden
+HIDDEN_GEMS_VOTES_MIN = 30     # below this is 12-votes noise
+
+
+async def top_user_genre_ids(pool, user_id: int, limit: int = 3) -> list:
+    """The user's top genre clusters by weighted watch share. Degrades
+    to [] — the caller falls back to global rows."""
+    try:
+        rows = await pool.fetch(
+            """SELECT genre_id, SUM(weighted_sum) AS w
+               FROM user_genre_stats WHERE user_id = $1
+               GROUP BY genre_id ORDER BY w DESC NULLS LAST, genre_id LIMIT $2""",
+            user_id, limit,
+        )
+        return [r["genre_id"] for r in rows]
+    except Exception:
+        return []
+
+
+async def genre_names_for_ids(pool, genre_ids: list) -> set:
+    """Genre NAMES for ids across both per-medium genre lists (the
+    engine's genre vocabulary is names; the stats layer stores ids).
+    Degrades to an empty set — exploration then skips, never misfires."""
+    if not genre_ids:
+        return set()
+    try:
+        rows = await pool.fetch(
+            """SELECT name FROM tmdb_movie_genres WHERE id = ANY($1::int[])
+               UNION
+               SELECT name FROM tmdb_tv_genres WHERE id = ANY($1::int[])""",
+            sorted(set(genre_ids)),
+        )
+        return {r["name"] for r in rows}
+    except Exception:
+        return set()
+
+
+async def generate_popular_candidates(
+    pool, limit: int = 120, filters: Optional[dict] = None,
+) -> List[dict]:
+    """Popularity slice above the vote floor — the /by-text recall
+    fallback when no encoder is configured (RFC §3 Phase B). Rows carry
+    via="text" so the genre gate exempts them. Deterministic; degrades
+    to []."""
+    rows = await _gem_or_trending_rows(
+        pool, limit, None, filters, mode="popular")
+    for r in rows:
+        r["id"] = r["tmdb_id"]  # internal recall-pool shape (find_similar)
+        r["via"] = "text"
+    return rows
+
+
+_DISCOVERY_RECALL = """
+    SELECT * FROM (
+        SELECT m.id, m.title, m.title AS title_en, 'movie'::text AS media_type,
+               m.overview, m.overview AS overview_en,
+               m.vote_average::float, m.vote_count::int,
+               m.popularity::float, m.poster_path, m.collection_id,
+               EXTRACT(YEAR FROM m.release_date)::int AS release_year,
+               1 - (m.{emb} <=> $1) AS knn_similarity
+        FROM tmdb_movies m
+        WHERE m.{emb} IS NOT NULL AND m.vote_average >= 5.5
+          AND NOT EXISTS (SELECT 1 FROM tmdb_movie_genres_map g
+                          WHERE g.movie_id = m.id AND g.genre_id = ANY($2))
+        UNION ALL
+        SELECT t.id, t.name, t.name AS title_en, 'tv'::text,
+               t.overview, t.overview,
+               t.vote_average::float, t.vote_count::int,
+               t.popularity::float, t.poster_path, NULL::bigint,
+               EXTRACT(YEAR FROM t.first_air_date)::int,
+               1 - (t.{emb} <=> $1)
+        FROM tmdb_tv t
+        WHERE t.{emb} IS NOT NULL AND t.vote_average >= 5.5
+          AND NOT EXISTS (SELECT 1 FROM tmdb_tv_genres_map g
+                          WHERE g.tv_id = t.id AND g.genre_id = ANY($2))
+    ) d
+    ORDER BY d.knn_similarity DESC, d.id ASC
+    LIMIT $3
+"""
+
+
+async def generate_discovery_candidates(
+    pool, user_vector: list, exclude_genre_ids: list,
+    limit: int = 60, emb_column: Optional[str] = None,
+) -> List[dict]:
+    """The dedicated discovery row (RFC §2): titles NEAREST the user
+    vector among those OUTSIDE her top genre clusters — novel by the
+    SQL exclusion, relevant by ANN distance. Deterministic; degrades
+    to [] (missing column/extension/tables)."""
+    import asyncpg as _asyncpg
+
+    if not _knn_available(emb_column):
+        return []
+    from .config import EMBEDDING_COLUMN
+
+    col = emb_column or EMBEDDING_COLUMN
+    try:
+        from pgvector.asyncpg import register_vector
+    except ImportError:
+        return []
+    try:
+        async with pool.acquire() as conn:
+            try:
+                await register_vector(conn)
+            except Exception:
+                return []
+            rows = await conn.fetch(
+                _DISCOVERY_RECALL.format(emb=col),
+                user_vector, sorted(set(exclude_genre_ids)) or [0], limit,
+            )
+    except (_asyncpg.UndefinedColumnError, _asyncpg.UndefinedObjectError,
+            _asyncpg.UndefinedTableError, Exception):
+        return []
+    out = []
+    for r in rows:
+        c = dict(r)
+        c["via"] = "uvec"
+        c["knn_similarity"] = float(c.get("knn_similarity") or 0.0)
+        out.append(c)
+    return out
+
+
+async def generate_hidden_gems(
+    pool, limit: int = 12, genre_ids: Optional[list] = None,
+    filters: Optional[dict] = None,
+) -> List[dict]:
+    """High-rated, under-seen titles (optionally inside given genres).
+
+    Ranked rating DESC, votes ASC — the better AND lesser-known a title
+    is, the higher. Deterministic. Degrades to [] when tables are
+    missing. Rows are API-shaped (tmdb_id, rating, ...), not scored.
+    """
+    return await _gem_or_trending_rows(
+        pool, limit, genre_ids, filters, mode="gems")
+
+
+async def generate_trending_genre(
+    pool, genre_id: int, limit: int = 12,
+    filters: Optional[dict] = None,
+) -> List[dict]:
+    """Most-popular titles in one genre, above the per-medium vote
+    floor. Deterministic (popularity DESC, id ASC). Degrades to []."""
+    return await _gem_or_trending_rows(
+        pool, limit, [genre_id], filters, mode="trending")
+
+
+async def _gem_or_trending_rows(pool, limit, genre_ids, filters, mode) -> List[dict]:
+    per_medium = max(limit, 1)
+    out: List[dict] = []
+
+    # movies title column is `title`, tv's is `name` (the split schema's
+    # one naming asymmetry — _USER_VECTOR_RECALL does the same aliasing)
+    async def _fetch(conn, table, title_col, date_col, media_type, gmap, gcol):
+        where, p = ["vote_count >= $1"], [_vote_floor(media_type)]
+        if mode == "gems":
+            p.extend([HIDDEN_GEMS_RATING_MIN,
+                      HIDDEN_GEMS_VOTES_MIN, HIDDEN_GEMS_VOTES_MAX])
+            where += [f"vote_average >= ${len(p) - 2}",
+                      f"vote_count BETWEEN ${len(p) - 1} AND ${len(p)}"]
+        if genre_ids:
+            p.append(list(genre_ids))
+            where.append(
+                f"EXISTS (SELECT 1 FROM {gmap} g WHERE g.{gcol} = m.id "
+                f"AND g.genre_id = ANY(${len(p)}))")
+        f_ = filters or {}
+        if f_.get("year_min") is not None:
+            p.append(f_["year_min"])
+            where.append(f"EXTRACT(YEAR FROM {date_col}) >= ${len(p)}")
+        if f_.get("year_max") is not None:
+            p.append(f_["year_max"])
+            where.append(f"EXTRACT(YEAR FROM {date_col}) <= ${len(p)}")
+        order = ("vote_average DESC, vote_count ASC, id ASC" if mode == "gems"
+                 else "popularity DESC, id ASC")
+        return [dict(r) for r in await conn.fetch(
+            f"SELECT m.id AS tmdb_id, m.{title_col} AS title, "
+            f"m.{title_col} AS title_en, "
+            f"'{media_type}'::text AS media_type, m.vote_average::float AS rating, "
+            f"m.vote_count::int AS vote_count, m.popularity::float AS popularity, "
+            f"m.poster_path, EXTRACT(YEAR FROM {date_col})::int AS release_year "
+            f"FROM {table} m WHERE {' AND '.join(where)} "
+            f"ORDER BY {order} LIMIT ${len(p) + 1}",
+            *p, per_medium,
+        )]
+
+    movies: List[dict] = []
+    tvs: List[dict] = []
+    try:
+        async with pool.acquire() as conn:
+            try:
+                movies = await _fetch(
+                    conn, "tmdb_movies", "title", "release_date", "movie",
+                    "tmdb_movie_genres_map", "movie_id")
+            except Exception as e:
+                logger.debug(f"page row ({mode}) movie side degraded: {e}")
+            try:
+                tvs = await _fetch(
+                    conn, "tmdb_tv", "name", "first_air_date", "tv",
+                    "tmdb_tv_genres_map", "tv_id")
+            except Exception as e:
+                logger.debug(f"page row ({mode}) tv side degraded: {e}")
+    except Exception as e:
+        logger.debug(f"page row ({mode}) degraded: {e}")
+        return []
+
+    # interleave by rank (best movie, best tv, 2nd movie, …) so neither
+    # medium monopolizes the row
+    while len(out) < limit and (movies or tvs):
+        for bucket in (movies, tvs):
+            if bucket and len(out) < limit:
+                out.append(bucket.pop(0))
+    return out
 # ---------------------------------------------------------------------------
 
 
@@ -872,10 +1376,11 @@ async def generate_knn_finetuned_candidates(
 ) -> List[dict]:
     """Semantic neighbors from the contrastively fine-tuned embedding space.
 
-    Identical SQL to generate_knn_candidates — the difference is the
-    vectors themselves (from the MNRL fine-tuned model after re-embed).
-    This channel surfaces thematic neighbors the vanilla MiniLM could
-    never see (Annihilation for Arrival, Vinland Saga for AoT).
+    Identical recall to generate_knn_candidates (same-medium only, higher
+    vote floor) — the difference is the vectors themselves (from the
+    MNRL fine-tuned model after re-embed). This channel surfaces thematic
+    neighbors the vanilla MiniLM could never see (Annihilation for
+    Arrival, Vinland Saga for AoT).
 
     Args:
         emb_column: per-request embedding column override (/set_model).
@@ -884,51 +1389,22 @@ async def generate_knn_finetuned_candidates(
     if not _knn_available(emb_column):
         return []
 
-    try:
-        async with pool.acquire() as conn:
-            from .config import EMBEDDING_COLUMN
+    from .config import EMBEDDING_COLUMN
 
-            _emb2 = emb_column or EMBEDDING_COLUMN
-            await conn.execute("SET hnsw.ef_search = 400")
-            rows = await conn.fetch(
-                """
-                WITH seed AS (
-                    SELECT {emb} FROM tmdb_media
-                    WHERE (id, media_type) = ($1, $2)
-                )
-                SELECT
-                    m.id, m.title, m.title_en, m.media_type,
-                    m.overview, m.overview_en,
-                    m.vote_average::float, m.vote_count::int, m.popularity::float,
-                    m.poster_path, m.collection_id,
-                    EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int
-                        AS release_year,
-                    ARRAY(
-                        SELECT g.name FROM tmdb_genres g
-                        JOIN tmdb_media_genres mg ON g.id = mg.genre_id
-                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
-                    ) as genres,
-                    GREATEST(0.0, 1 - (m.{emb} <=> (SELECT {emb} FROM seed)))
-                        AS knn_similarity
-                FROM tmdb_media m
-                WHERE m.{emb} IS NOT NULL
-                  AND (m.id, m.media_type) != ($1, $2)
-                  AND m.media_type = $2
-                  AND m.vote_average >= 5.5
-                  AND m.vote_count >= 100
-                ORDER BY m.{emb} <=> (SELECT {emb} FROM seed)
-                LIMIT $3
-                """.replace("{emb}", _emb2),
-                seed_id,
-                seed_media_type,
-                limit,
-            )
+    _emb = emb_column or EMBEDDING_COLUMN
+    try:
+        rows = await _fetch_knn_rows(
+            pool, seed_id, seed_media_type, limit, _emb,
+            {seed_media_type}, vote_floor=100,
+        )
     except (
         asyncpg.UndefinedColumnError,
         asyncpg.UndefinedObjectError,
         asyncpg.UndefinedTableError,
     ):
         _KNN_DISABLED.add(emb_column or "default")
+        return []
+    if not rows:
         return []
 
     candidates = []

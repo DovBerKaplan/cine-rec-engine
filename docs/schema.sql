@@ -313,6 +313,13 @@ CREATE TABLE IF NOT EXISTS title_ratings (
 
 CREATE INDEX IF NOT EXISTS tmdb_movies_popularity_idx   ON tmdb_movies (popularity DESC);
 CREATE INDEX IF NOT EXISTS tmdb_movies_votes_idx        ON tmdb_movies (vote_average, vote_count);
+-- Saga/sequel grouping: the per-user filter pass (watched-saga
+-- advancement, seed-saga blocking) and same-story dedup look titles up
+-- by collection — without this index those lookups scan the catalog.
+-- Existing deployments: CREATE INDEX CONCURRENTLY the same statement.
+CREATE INDEX IF NOT EXISTS tmdb_movies_collection_idx
+    ON tmdb_movies (collection_id)
+    WHERE collection_id IS NOT NULL AND collection_id > 0;
 CREATE INDEX IF NOT EXISTS tmdb_tv_popularity_idx       ON tmdb_tv (popularity DESC);
 CREATE INDEX IF NOT EXISTS tmdb_tv_votes_idx            ON tmdb_tv (vote_average, vote_count);
 

@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS user_feedback (
     user_id    bigint NOT NULL,
     tmdb_id    bigint NOT NULL,
     media_type text   NOT NULL CHECK (media_type IN ('movie', 'tv')),
-    kind       text   NOT NULL CHECK (kind IN ('dislike', 'favorite', 'watchlist')),
+    kind       text   NOT NULL CHECK (kind IN ('dislike', 'favorite', 'watchlist', 'click', 'skip')),  -- click/skip: RFC §4 feedback loop
     created_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, tmdb_id, media_type, kind)
 );

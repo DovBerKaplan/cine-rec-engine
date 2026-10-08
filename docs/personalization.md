@@ -45,6 +45,12 @@ waits for real smearing data, per the spec.
    intent-only users).
 2. An extra ANN channel recalls titles nearest the user vector and
    feeds them through the same LTR scorer (cosine reuses the distance).
+   A missing or stale vector (> `USER_VECTOR_MAX_AGE_HOURS`, default 24)
+   is rebuilt inline first (`ensure_user_vector`) — the channel works
+   from the first request with no cron configured. With
+   `vector_space="e5e"` (any `model_spaces.REC_MODELS` key), the
+   vector, the ANN recall, and the scorer's cosine all run in that
+   space's embedding column for the whole request.
 3. Hard filters: watched (derived `user_watches` view), rated,
    disliked, plus saga advancement — all via the existing
    `find_similar(user_id=...)` path.
@@ -53,9 +59,12 @@ waits for real smearing data, per the spec.
 
 - `record_event()` — one transaction: raw event + title stats + w_i +
   `last_event_at` (§J). `record_feedback()` refreshes the touched title.
-- `nightly_recompute()` — recency refresh for active users (default
-  90-day window), stats rebuild, vector rebuild when older than 24h.
-- Vector rebuilds are async by design — never on the player hot path.
+- **On-demand is the primary mechanism**: every read path rebuilds what
+  it needs when stale — the engine self-heals with zero scheduled jobs.
+- `nightly_recompute()` is OPTIONAL fleet tooling (recency refresh for
+  active users, stats rebuild, vector rebuild when older than 24h) —
+  useful to keep request paths read-only at scale, never required for
+  correctness.
 
 ## Quick start
 
@@ -76,6 +85,7 @@ async def main():
         "watched_sec": 8000, "duration_sec": 8000, "completed": True,
     })
     await user_stats.refresh_user_stats(pool, 1)
+    # optional: recommend_for_user rebuilds a missing/stale vector itself
     await user_vector.build_user_vector(pool, 1)
     rec = RecommendationService(); await rec.initialize(pool)
     out = await rec.recommend_for_user(1, limit=10, include_why=True)
@@ -86,7 +96,7 @@ async def main():
 asyncio.run(main())
 ```
 
-Nightly (cron, after the catalog refresh):
+Optional nightly cron (fleets — the engine never depends on it):
 
 ```python
 from cine_rec_engine.user_stats import nightly_recompute

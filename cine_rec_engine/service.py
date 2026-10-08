@@ -26,14 +26,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import random
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import asyncpg
 from loguru import logger
 
 from . import config as rec_config_module
+from . import metrics as _metrics
 from .config import (
     AUTEUR_DECAY_FACTORS,
     COLLECTION_MATCH_BONUS,
@@ -50,17 +52,23 @@ from .config import (
     POP_ACTION_PENALTY,
     POP_ACTION_SIM_FLOOR,
     TMDB_REC_BONUS,
+    EXPLORE_SHARE,
+    USER_TILT_ALPHA,
     WRITER_BONUS,
 )
 from .queries import (
+    apply_recall_filters,
     enrich_candidates_batch,
+    filters_fingerprint,
     generate_candidates,
     generate_director_candidates,
     generate_knn_candidates,
-    generate_knn_finetuned_candidates,
     generate_tmdb_rec_candidates,
     generate_user_vector_candidates,
+    genre_names_for_ids,
     get_movie_info_batch,
+    normalize_filters,
+    top_user_genre_ids,
 )
 from .scoring import (
     audience_score,
@@ -69,11 +77,11 @@ from .scoring import (
     bigram_set,
     keyword_set,
     optimize_candidate_selection,
-    semantic_overview_similarity,
+    semantic_overview_similarity_batch,
     tone_score,
 )
 from .tmdb_recs import ensure_seeds_synced
-from .model_spaces import REC_MODELS, normalize_model
+from .model_spaces import REC_MODELS, column_for, normalize_model
 
 
 
@@ -190,7 +198,20 @@ class RecommendationService:
             if self.pool is not None:
                 return
             self.pool = pool
-            logger.info("RecommendationService initialized with shared pool")
+            try:
+                max_size = pool.get_max_size()
+            except Exception:
+                max_size = None
+            if max_size is not None and max_size < 20:
+                # Recall fans out ~5 queries per seed concurrently; small
+                # pools queue them and that queueing dominates cold-path
+                # latency.
+                logger.info(
+                    "RecommendationService initialized with shared pool "
+                    f"(max_size={max_size}; >=20 recommended for cold-path latency)"
+                )
+            else:
+                logger.info("RecommendationService initialized with shared pool")
 
     async def _ensure_initialized(self) -> None:
         """Ensure the connection pool is set (thread-safe)."""
@@ -234,18 +255,23 @@ class RecommendationService:
         seeds = seed_ids or set()
 
         # The seeds' own sagas are off-limits entirely: every member of
-        # any collection the seeds belong to is blocked (movies only).
+        # any collection the seeds belong to is blocked (movies only —
+        # tv rows carry a NULL collection_id, so only movie seeds can
+        # contribute). Driven seed-first so it runs on the pkey + the
+        # collection index instead of a catalog-wide join over the view.
         blocked: set = set(seeds)
         if seeds:
             try:
                 rows = await self.pool.fetch(
                     """
                     SELECT DISTINCT m2.id
-                    FROM tmdb_media m2
-                    JOIN tmdb_media s ON s.collection_id = m2.collection_id
-                    WHERE s.id = ANY($1::bigint[])
-                      AND s.collection_id > 0
-                      AND m2.media_type = 'movie'
+                    FROM tmdb_movies m2
+                    WHERE m2.collection_id > 0
+                      AND m2.collection_id IN (
+                        SELECT s.collection_id FROM tmdb_movies s
+                        WHERE s.id = ANY($1::bigint[])
+                          AND s.collection_id > 0
+                    )
                     """,
                     sorted(seeds),
                 )
@@ -263,17 +289,22 @@ class RecommendationService:
         )
         members: dict[int, list[dict]] = {}
         if coll_ids:
+            # Straight at tmdb_movies (sagas are movie-only; the view's
+            # COALESCE/title_en are no-ops on its movie branch) so the
+            # collection index serves it — the same query through the
+            # compatibility view planned a catalog-wide union+sort.
             try:
                 rows = await self.pool.fetch(
                     """
-                    SELECT m.collection_id, m.id, m.title, m.title_en,
+                    SELECT m.collection_id, m.id, m.title, m.title AS title_en,
                            m.vote_average::float AS vote_average, m.poster_path,
-                           EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int
+                           EXTRACT(YEAR FROM m.release_date)::int
                                AS release_year
-                    FROM tmdb_media m
-                    WHERE m.collection_id = ANY($1::int[]) AND m.media_type = 'movie'
+                    FROM tmdb_movies m
+                    WHERE m.collection_id > 0
+                      AND m.collection_id = ANY($1::int[])
                     ORDER BY m.collection_id,
-                             COALESCE(m.release_date, m.first_air_date) ASC NULLS LAST,
+                             m.release_date ASC NULLS LAST,
                              m.popularity DESC
                     """,
                     coll_ids,
@@ -320,6 +351,79 @@ class RecommendationService:
                 out.append(r)
         return out
 
+    async def _apply_user_tilt(
+        self, results: List[dict], user_id: int, model_key: Optional[str],
+        context: Optional[dict] = None,
+    ) -> List[dict]:
+        """Controlled personalization: a gentle re-rank toward the user's
+        taste, AFTER the hard filters and BEFORE balancing/noise. Boost-
+        only and capped (USER_TILT_ALPHA) — the seed stays primary; this
+        breaks near-ties, it never reshapes the list. The user vector is
+        ensured on demand in the SAME model space as the request's
+        embedding column (or taken from `context["uvec"]` — a page
+        computes it once and threads it through every row). Every
+        failure degrades to the untitled list. When `context` is a dict,
+        it receives {"uvec", "affinities"} for the exploration pass.
+        """
+        if not results:
+            return results
+        try:
+            uvec = (context or {}).get("uvec")
+            if uvec is None:
+                from .user_vector import ensure_user_vector
+
+                uvec = await ensure_user_vector(self.pool, user_id, model_key)
+            if not uvec:
+                return results
+            if context is not None:
+                context["uvec"] = uvec
+            from .queries import fetch_embeddings_batch
+
+            embs = await fetch_embeddings_batch(
+                self.pool,
+                [(r["tmdb_id"], r.get("media_type")) for r in results],
+                column_for(model_key),
+            )
+            if not embs:
+                return results
+            affinities = {key: _cosine(uvec, vec) for key, vec in embs.items()}
+            if context is not None:
+                context["affinities"] = affinities
+            return _tilt_scores(results, affinities, USER_TILT_ALPHA)
+        except Exception as e:
+            logger.debug(f"user tilt skipped for {user_id}: {e}")
+            return results
+
+    async def _user_top_genres(self, user_id: int) -> set:
+        """The user's top genre cluster NAMES (ids → names across both
+        per-medium lists). Degrades to an empty set — exploration skips."""
+        try:
+            ids = await top_user_genre_ids(self.pool, user_id, 3)
+            if not ids:
+                return set()
+            return await genre_names_for_ids(self.pool, ids)
+        except Exception:
+            return set()
+
+    async def _apply_exploration(
+        self, results: List[dict], user_id: int, movie_ratio: float,
+        limit: int, share: float, tilt_ctx: dict,
+    ) -> List[dict]:
+        """Deterministic discovery slice (RFC §2): reserve share·limit
+        downstream slots for adjacent-cluster candidates (novel AND
+        relevant — see _exploration_slice), then rebalance the main
+        portion to the freed size and re-insert the picks at fixed
+        slots. Degrades to plain balancing whenever the relevance signal
+        is missing — exploration without relevance is noise."""
+        user_genres = await self._user_top_genres(user_id)
+        main, picks = _exploration_slice(
+            results, limit, user_genres,
+            tilt_ctx.get("affinities") or {}, share)
+        if not picks:
+            return _balance_by_media_type(results, movie_ratio, limit)
+        main = _balance_by_media_type(main, movie_ratio, limit - len(picks))
+        return _insert_exploration(main, picks, limit)
+
     async def _merged_exclusions(
         self, exclude: Optional[set], user_id: Optional[int]
     ) -> Optional[set]:
@@ -350,6 +454,8 @@ class RecommendationService:
         randomness: float = 0.0,
         vector_space: Optional[str] = None,
         include_why: bool = False,
+        explore: Optional[float] = None,
+        user_context: Optional[dict] = None,
     ) -> dict:
         """§F end-to-end: user_id in, personalized list out.
 
@@ -359,15 +465,33 @@ class RecommendationService:
                         (cold_start ⇒ results is EMPTY by design —
                         never a silent blockbuster list)
           seeds:        the top-10 (tmdb_id, media_type, w_i) used
-          vector_used:  whether the user-vector ANN channel ran
+          vector_used:  whether the user-vector ANN channel is active —
+                        a usable vector existed (a missing/stale one is
+                        rebuilt inline first, bounded by
+                        USER_VECTOR_MAX_AGE_HOURS, so the channel works
+                        with no nightly cron). The ANN itself runs lazily:
+                        cached lists skip the query, the flag still
+                        reflects that the channel shaped the payload.
           why:          per-result top contributing features
                         (include_why=True; costs one extra pass)
 
         Saga rule (documented): a seed never returns its own saga —
         watched Rocky I blocks I AND recommends II via advancement.
+
+        vector_space accepts a model key from model_spaces.REC_MODELS
+        (e.g. "e5e"): the vector, the ANN recall, and the scorer's
+        cosine all run in that space's embedding column for the whole
+        request; unknown/absent → the default space.
         """
+        from .model_spaces import column_for, normalize_model
         from .queries import enrich_candidates_batch
-        from .user_vector import load_user_vector, top_weighted_seeds
+        from .user_vector import ensure_user_vector, top_weighted_seeds
+
+        # One model space for the whole request: the user vector is
+        # built/ensured, ANN-recalled, and cosine-scored in the SAME
+        # embedding column — a vector from one space searched against
+        # another is a dimension mismatch, not a soft error.
+        model_key = normalize_model(vector_space)
 
         weighted = await top_weighted_seeds(self.pool, user_id, limit=20)
         watchlist_rows = await self.pool.fetch(
@@ -386,15 +510,27 @@ class RecommendationService:
                 "seeds": [], "vector_used": False, "why": {},
             }
 
-        extra: Optional[List[dict]] = None
+        extra_factory = None
         vector_used = False
         try:
-            uvec = await load_user_vector(self.pool, user_id, vector_space)
+            # Absent or stale (>USER_VECTOR_MAX_AGE_HOURS) vectors are
+            # rebuilt inline — the channel works with no cron configured.
+            uvec = await ensure_user_vector(self.pool, user_id, model_key)
             if uvec:
-                extra = await generate_user_vector_candidates(
-                    self.pool, uvec, limit=60
-                )
-                vector_used = bool(extra)
+                # The ANN query runs lazily INSIDE find_similar: a cache
+                # hit never needs the rows, so it is skipped entirely —
+                # but the cache key still records that the channel was
+                # armed (xc=f60), keeping hits stable across requests.
+                uvec_column = column_for(model_key)
+
+                async def _uvec_ann() -> List[dict]:
+                    return await generate_user_vector_candidates(
+                        self.pool, uvec, limit=60,
+                        emb_column=uvec_column,
+                    )
+
+                extra_factory = _uvec_ann
+                vector_used = True
         except Exception as e:
             logger.debug(f"user-vector recall skipped for {user_id}: {e}")
 
@@ -404,8 +540,16 @@ class RecommendationService:
             # own invariant; see AGENTS.md)
             limit=limit,
             randomness=randomness,
+            # An EMPTY set, not None: None skips the per-user pass inside
+            # find_similar entirely, so watched/disliked titles outside
+            # the seed set would surface in the list.
+            exclude=set(),
             user_id=user_id,
-            extra_candidates=extra,
+            rec_model=model_key,
+            explore=explore,
+            user_context=user_context,
+            extra_factory=extra_factory,
+            extra_limit=60,
         )
 
         why: dict = {}
@@ -464,6 +608,11 @@ class RecommendationService:
         seed_info_override: Optional[dict] = None,
         user_id: Optional[int] = None,
         extra_candidates: Optional[List[dict]] = None,
+        extra_factory: Optional[Callable[[], Awaitable[List[dict]]]] = None,
+        extra_limit: int = 60,
+        filters: Optional[dict] = None,
+        explore: Optional[float] = None,
+        user_context: Optional[dict] = None,
     ) -> List[dict]:
         """Find similar movies/series, ranked by score.
 
@@ -506,10 +655,36 @@ class RecommendationService:
             extra_candidates: Pre-recalled rows (e.g. user-vector ANN)
                 merged into the candidate pool; carry `via` to bypass the
                 genre gate, `knn_similarity` to feed the cosine feature.
-            user_id: Convenience — when given (and a pool is attached),
-                loads that user's watched ∪ rated pairs from
-                user_watches/title_ratings (engine/watched.py) and merges
-                them into `exclude`. Explicit `exclude` entries are kept.
+            extra_factory: Lazy form of extra_candidates — awaited only on
+                the compute path (a cache hit never calls it, so the ANN
+                query behind it is skipped when the answer is already
+                cached). The cache key records extra_limit instead of the
+                fetched row count, so the key stays stable across requests.
+            extra_limit: The limit extra_factory recalls with — part of
+                the cache key when extra_factory is given.
+            filters: Session/context filters (RFC §3): year_min, year_max,
+                genre_ids, exclude_genre_ids, max_runtime (minutes,
+                movies only — tv has no runtime). Validated by
+                queries.normalize_filters (ValueError on bad input),
+                hashed into the cache key, and applied at the recall
+                boundary BEFORE scoring and the limit cut.
+            explore: Exploration budget share override (RFC §2), 0.0–0.5.
+                None = config EXPLORE_SHARE (default 0.12); 0 disables.
+                Post-cache and per-user, deterministic: eligible picks
+                are genre-disjoint from the user's top clusters AND
+                affinity ≥ the main list's median.
+            user_context: Precomputed per-request context {"exclusions":
+                set, "uvec": list} — a page computes it once and threads
+                it through every row instead of re-querying per row.
+                Pure optimization; results are identical without it.
+            user_id: Per-user context — merges the user's watched ∪ rated
+                ∪ disliked pairs into `exclude`, advances sagas, then
+                applies a GENTLE taste tilt: near-tied candidates break
+                toward the user's profile (boost-only, capped by
+                USER_TILT_ALPHA, applied after the hard filters, per
+                request — the shared cache stays user-agnostic). The
+                seed's relevance stays primary; this reorders near-ties,
+                never the candidate pool. Explicit `exclude` kept.
 
         Returns:
             List of dicts sorted by score (descending), each containing:
@@ -539,6 +714,16 @@ class RecommendationService:
                 f"Recommendation: per-user model={model_key} column={emb_column} "
                 f"cosine_w={model_spec['cosine_weight']}"
             )
+
+        # Session filters (RFC §3): validated once, hashed into the cache
+        # key, applied at the recall boundary. ValueError on bad input —
+        # a filter that silently did nothing is worse than a loud error.
+        session_filters = normalize_filters(filters)
+        # Exploration budget (RFC §2) — post-cache and per-user, so it is
+        # deliberately NOT part of the cache key.
+        explore_share = EXPLORE_SHARE if explore is None else float(explore)
+        if not 0.0 <= explore_share <= 0.5:
+            raise ValueError(f"explore must be in [0.0, 0.5], got {explore}")
 
         # Normalize input and extract per-seed media_types
         seed_media_types: dict[int, str] = {}
@@ -585,13 +770,15 @@ class RecommendationService:
             f":rnd={round(randomness, 4)}"
             f":sw={sorted((k, round(v, 4)) for k, v in (seed_weights or {}).items())}"
             f":emb={EMBEDDING_COLUMN}"
-            f":xc={len(extra_candidates) if extra_candidates else 0}"
-            f":v=2"  # cache format version — bump on any result-shape change
+            f":xc={len(extra_candidates) if extra_candidates else (f'f{extra_limit}' if extra_factory else 0)}"
+            f":fl={filters_fingerprint(session_filters)}"
+            f":v=3"  # cache format version — bump on any result-shape change
         )
         cache = await _get_cache()
         if cache:
             try:
                 cached = await cache.get(cache_key)
+                _metrics.observe_cache("hit" if cached else "miss")
                 if cached:
                     logger.debug(f"Recommendation cache HIT: {len(tmdb_ids)} seeds")
                     # Cached format: {"movie_ratio": float, "results": list,
@@ -623,15 +810,27 @@ class RecommendationService:
                     # an EMPTY watch set is still a user context — a
                     # truthiness check here would skip the seed guard
                     # entirely for users with no history.
+                    tilt_ctx: dict = {}
                     if exclude is not None:
+                        merged = (user_context or {}).get("exclusions")
+                        if merged is None:
+                            merged = await self._merged_exclusions(exclude, user_id)
+                        elif exclude:
+                            merged = set(merged) | set(exclude)
                         result = await self._apply_user_filters(
-                            result,
-                            await self._merged_exclusions(exclude, user_id),
-                            set(tmdb_ids),
+                            result, merged, set(tmdb_ids),
                         )
+                        if user_id is not None:
+                            result = await self._apply_user_tilt(
+                                result, user_id, model_key, context=tilt_ctx)
                     # Balance FIRST, then noise on the final list (see step 9)
                     if limit is not None:
-                        result = _balance_by_media_type(result, movie_ratio, limit)
+                        if explore_share > 0 and tilt_ctx.get("affinities"):
+                            result = await self._apply_exploration(
+                                result, user_id, movie_ratio, limit,
+                                explore_share, tilt_ctx)
+                        else:
+                            result = _balance_by_media_type(result, movie_ratio, limit)
                     if randomness > 0:
                         result = _apply_noise(result, randomness)
                         for r in result:
@@ -649,24 +848,26 @@ class RecommendationService:
         # never writes tmdb_media at all.
         if seed_info_override and tmdb_ids:
             seed_infos = [dict(seed_info_override, id=tmdb_ids[0])]
-        elif seed_media_types:
-            # Group IDs by media_type so each group is a single query
-            groups: dict[str, list[int]] = {}
-            for sid in tmdb_ids:
-                mt = seed_media_types.get(sid, media_type or "")
-                groups.setdefault(mt, []).append(sid)
-            batch_tasks = [
-                get_movie_info_batch(self.pool, ids, media_type=mt if mt else None)
-                for mt, ids in groups.items()
-            ]
-            batch_results = await asyncio.gather(*batch_tasks)
         else:
-            batch_results = [await get_movie_info_batch(self.pool, tmdb_ids, media_type=media_type)]
+            if seed_media_types:
+                # Group IDs by media_type so each group is a single query
+                groups: dict[str, list[int]] = {}
+                for sid in tmdb_ids:
+                    mt = seed_media_types.get(sid, media_type or "")
+                    groups.setdefault(mt, []).append(sid)
+                batch_tasks = [
+                    get_movie_info_batch(self.pool, ids, media_type=mt if mt else None)
+                    for mt, ids in groups.items()
+                ]
+                batch_results = await asyncio.gather(*batch_tasks)
+            else:
+                batch_results = [
+                    await get_movie_info_batch(self.pool, tmdb_ids, media_type=media_type)]
 
-        seed_map: dict[int, dict] = {}
-        for br in batch_results:
-            seed_map.update(br)
-        seed_infos = [seed_map[sid] for sid in tmdb_ids if sid in seed_map]
+            seed_map: dict[int, dict] = {}
+            for br in batch_results:
+                seed_map.update(br)
+            seed_infos = [seed_map[sid] for sid in tmdb_ids if sid in seed_map]
         if not seed_infos:
             logger.warning(f"Recommendation: none of {tmdb_ids} found")
             return []
@@ -711,6 +912,13 @@ class RecommendationService:
         #    recommendations ("people also liked"), and the seed director's
         #    other works (auteur DNA). Non-classic failures degrade silently.
         channel_coros: list[tuple[str, object]] = []
+        # Both KNN channels share the same embedding column in every
+        # configuration, so when the fine-tuned channel is enabled ONE
+        # query per seed (at its looser vote floor) covers both result
+        # sets — the strict-floor list is a near-subset of the loose one.
+        # Gated by ENABLE_KNN_FINETUNED (default true) for instant revert
+        # to the two-channel form.
+        knn_ft_enabled = os.getenv("ENABLE_KNN_FINETUNED", "true").lower() != "false"
         for s in seed_infos:
             channel_coros.append(
                 (
@@ -735,6 +943,7 @@ class RecommendationService:
                         limit=KNN_CANDIDATES_PER_SEED,
                         allow_cross_media=allow_cross_media,
                         emb_column=emb_column,
+                        vote_floor=100 if knn_ft_enabled else None,
                     ),
                 )
             )
@@ -744,22 +953,6 @@ class RecommendationService:
             channel_coros.append(
                 ("director", generate_director_candidates(self.pool, s["id"], s["media_type"]))
             )
-            # Fifth channel: fine-tuned KNN — direct retrieval from the
-            # contrastively trained space. Gated by ENABLE_KNN_FINETUNED
-            # (default true) for instant revert.
-            if os.getenv("ENABLE_KNN_FINETUNED", "true").lower() != "false":
-                channel_coros.append(
-                    (
-                        "knn_ft",
-                        generate_knn_finetuned_candidates(
-                            self.pool,
-                            s["id"],
-                            s["media_type"],
-                            limit=KNN_CANDIDATES_PER_SEED,
-                            emb_column=emb_column,
-                        ),
-                    )
-                )
         all_results = await asyncio.gather(
             *(coro for _, coro in channel_coros), return_exceptions=True
         )
@@ -780,7 +973,9 @@ class RecommendationService:
                 logger.debug(
                     f"Recommendation: {channel} recall failed for seed {seed['id']}: {res}"
                 )
+                _metrics.observe_channel(channel, 0)
                 continue
+            _metrics.observe_channel(channel, len(res))
             if channel == "KNN" and res:
                 sims = {c["id"]: c["knn_similarity"] for c in res if c.get("knn_similarity")}
                 if sims:
@@ -793,6 +988,17 @@ class RecommendationService:
         if not candidates:
             logger.debug(f"Recommendation: no candidates for {tmdb_ids}")
             return []
+
+        # 2b. Session filters at the recall boundary — before scoring and
+        # the limit cut, so limit semantics stay honest (RFC §3).
+        if session_filters:
+            candidates = await apply_recall_filters(
+                self.pool, candidates, session_filters)
+            if not candidates:
+                logger.debug(
+                    f"Recommendation: filters {filters_fingerprint(session_filters)}"
+                    f" removed every candidate for {tmdb_ids}")
+                return []
 
         # 3. Merge all seed genres for pre-filtering
         all_genres: list[str] = []
@@ -809,33 +1015,43 @@ class RecommendationService:
         )
 
         # 5b. Precompute semantic overview similarity for every seed × candidate
-        # pair via pgvector. `_score_candidate_vs_seed` is synchronous, so we
-        # fetch all similarities up-front in one query per seed and pass them
-        # in. Similarities already harvested from the KNN ranking results are
-        # kept (they are the same cosine, computed for free). Missing
+        # pair via pgvector — ONE batched cross-join query per blend column
+        # instead of one query per seed. `_score_candidate_vs_seed` is
+        # synchronous, so we fetch all similarities up-front and pass them
+        # in. Similarities already harvested from the KNN ranking results
+        # are kept (they are the same cosine, computed for free). Missing
         # embeddings silently degrade to legacy bigram similarity.
         seed_sim_by_seed: dict[int, dict[int, float]] = knn_sim_by_seed
         if candidate_ids:
-            sim_tasks = [
-                semantic_overview_similarity(
+            try:
+                batched = await semantic_overview_similarity_batch(
                     self.pool,
-                    s["id"],
+                    [s["id"] for s in seed_infos],
                     candidate_ids,
                     columns=sem_cols,
                     weights=sem_wts,
-                    seed_vectors=(seed_vectors.get(s["id"]) if seed_vectors else None),
+                    seed_vectors=seed_vectors,
                 )
-                for s in seed_infos
-            ]
-            sim_results = await asyncio.gather(*sim_tasks, return_exceptions=True)
-            for seed, res in zip(seed_infos, sim_results):
-                if isinstance(res, dict) and res:
-                    existing = seed_sim_by_seed.setdefault(seed["id"], {})
-                    for cid, sim in res.items():
-                        existing.setdefault(cid, sim)
+            except Exception as e:
+                logger.debug(f"batched semantic similarity failed: {e}")
+                batched = {}
+            for sid, cmap in batched.items():
+                existing = seed_sim_by_seed.setdefault(sid, {})
+                for cid, sim in cmap.items():
+                    existing.setdefault(cid, sim)
 
         # 5b. Caller-injected candidates (e.g. user-vector ANN, §F.1):
         # merged through the same dedup + seed guard as recall channels.
+        # The factory form resolves HERE — a cache hit returns before this
+        # point, so its ANN query never runs when the list is already
+        # cached. A factory failure degrades to no extras, like the eager
+        # path in recommend_for_user always has.
+        if extra_factory and not extra_candidates:
+            try:
+                extra_candidates = await extra_factory()
+            except Exception as e:
+                logger.debug(f"extra candidates factory failed: {e}")
+                extra_candidates = None
         if extra_candidates:
             for c in extra_candidates:
                 if c["id"] not in seen_ids and c["id"] not in seed_id_set:
@@ -996,6 +1212,7 @@ class RecommendationService:
                     },
                     ttl=self.CACHE_TTL,
                 )
+                _metrics.observe_cache("store")
                 logger.debug(f"Recommendation cache STORE: {tmdb_ids}")
             except Exception as e:
                 logger.debug(f"Recommendation cache store error: {e}")
@@ -1008,13 +1225,28 @@ class RecommendationService:
         # stays user-agnostic. Skipped without a user context
         # (benchmark/eval calls) to keep comparisons stable.
         if exclude is not None:  # empty set = real user with no history yet
+            merged = (user_context or {}).get("exclusions")
+            if merged is None:
+                merged = await self._merged_exclusions(exclude, user_id)
+            elif exclude:
+                merged = set(merged) | set(exclude)
             results = await self._apply_user_filters(
-                results,
-                await self._merged_exclusions(exclude, user_id),
-                set(tmdb_ids),
+                results, merged, set(tmdb_ids),
             )
+            tilt_ctx: dict = {}
+            if user_id is not None:
+                results = await self._apply_user_tilt(
+                    results, user_id, model_key, context=tilt_ctx)
+        else:
+            tilt_ctx = {}
         if limit is not None:
-            results = _balance_by_media_type(results, movie_ratio, limit)
+            if user_id is not None and explore_share > 0 \
+                    and tilt_ctx.get("affinities"):
+                results = await self._apply_exploration(
+                    results, user_id, movie_ratio, limit,
+                    explore_share, tilt_ctx)
+            else:
+                results = _balance_by_media_type(results, movie_ratio, limit)
         if randomness > 0:
             results = _apply_noise(results, randomness)
             for r in results:
@@ -1073,6 +1305,14 @@ FEATURE_NAMES = [
     "composer_match",  # shared Original Music Composer person_id
     "dp_match",  # shared Director of Photography person_id
     "medium_mismatch",  # seed and candidate live in DIFFERENT mediums
+    # ---- reserved: cinematic-tag features (see weights.json note) ----
+    # These six are NOT covered by the published weights.json — the
+    # heuristic baseline serves them. Their tagger inputs come from the
+    # private tmdb_cinematic enrichment: narrative/pacing/emotional_arc
+    # are always 0 in public builds (no tag data); tone/audience
+    # degrade to genre-only behavior; heuristic_score is a residual
+    # tree input with self-weight 0. Kept (not pruned): the names are
+    # zero-cost and removing them breaks golden-vector parity.
     "narrative_match",  # same narrative structure from tmdb_cinematic
     # Mood/tone features (a teen musical
     # next to a dark fantasy: keywords overlap while the vibe inverts).
@@ -1881,6 +2121,113 @@ def _reweight_from_raw(
             result.append({**orig, "score": avg})
     result.sort(key=lambda x: x["score"], reverse=True)
     return result
+
+
+def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
+    """Cosine with explicit norms — catalog embeddings are not guaranteed
+    unit-length (pgvector's <=> normalizes internally; a raw dot doesn't)."""
+    dot = na = nb = 0.0
+    for x, y in zip(a, b):
+        dot += x * y
+        na += x * x
+        nb += y * y
+    if na == 0.0 or nb == 0.0:
+        return 0.0
+    return dot / (math.sqrt(na) * math.sqrt(nb))
+
+
+def _tilt_scores(
+    results: List[dict],
+    affinities: dict,
+    alpha: float,
+) -> List[dict]:
+    """User-taste tilt: score' = score · (1 + α · max(cos, 0)).
+
+    Multiplicative and boost-only, so the seed's relevance stays primary
+    (a 2× better candidate can never be overtaken; negative affinity
+    never buries). Re-packages dicts — the shared cached payload is
+    never mutated. Candidates without an affinity pass through
+    untouched, in place.
+    """
+    out = []
+    for r in results:
+        cos = affinities.get((r["tmdb_id"], r.get("media_type")))
+        if cos is None:
+            out.append(r)
+            continue
+        boost = max(cos, 0.0)
+        out.append({
+            **r,
+            "score": r["score"] * (1.0 + alpha * boost),
+            "user_affinity": round(boost, 3),
+        })
+    out.sort(key=lambda r: r["score"], reverse=True)
+    return out
+
+
+def _exploration_slice(
+    results: List[dict],
+    limit: int,
+    user_genres: set,
+    affinities: dict,
+    share: float,
+) -> Tuple[List[dict], List[dict]]:
+    """Split results into (main, discovery_picks) — RFC §2.
+
+    An eligible pick is NOVEL (genre set disjoint from the user's top
+    clusters) AND RELEVANT (affinity ≥ the main list's median) —
+    serendipity, never random noise. Highest-scoring eligible first,
+    capped at ceil(share·limit) and never intruding on the top-3.
+    Pure and deterministic: same inputs, same slice."""
+    if share <= 0 or not results or limit is None or not user_genres \
+            or not affinities:
+        return results, []
+    n = min(max(1, math.ceil(share * limit)), max(0, limit - 3))
+    if n <= 0:
+        return results, []
+
+    def _aff(r):
+        return affinities.get((r["tmdb_id"], r.get("media_type")))
+
+    main_affs = sorted(
+        a for a in (_aff(r) for r in results[:limit]) if a is not None)
+    if not main_affs:
+        return results, []
+    median = main_affs[len(main_affs) // 2]
+
+    picks: List[dict] = []
+    picked: set = set()
+    for r in results:  # score order
+        if len(picks) >= n:
+            break
+        key = (r["tmdb_id"], r.get("media_type"))
+        if key in picked:
+            continue
+        rg = r.get("genres") or []
+        if not rg or (user_genres & set(rg)):
+            continue  # not novel (or unclassifiable)
+        aff = _aff(r)
+        if aff is None or aff < median:
+            continue  # not relevant
+        picks.append(r)
+        picked.add(key)
+    if not picks:
+        return results, []
+    main = [r for r in results
+            if (r["tmdb_id"], r.get("media_type")) not in picked]
+    return main, picks
+
+
+def _insert_exploration(
+    main: List[dict], picks: List[dict], limit: int,
+) -> List[dict]:
+    """Re-insert discovery picks at fixed downstream slots (top-3
+    pinned): slot_i = 3 + (i+1)·(limit−3)//(len(picks)+1)."""
+    out = list(main)
+    for i, p in enumerate(picks):
+        pos = min(3 + ((i + 1) * (limit - 3)) // (len(picks) + 1), len(out))
+        out.insert(pos, p)
+    return out
 
 
 async def _get_cache():

@@ -76,6 +76,46 @@ results = await rec.find_similar(
 Each result carries its evidence — score, matched features, media type —
 so your UI can explain *why* it recommended something.
 
+## Run it as a service
+
+```bash
+pip install "cine-rec-engine[serve]"
+DATABASE_URL=postgresql://user:pw@localhost/yourdb \
+    uvicorn cine_rec_engine.serve:app --port 8000
+```
+
+Or as a container (`docker build -t cine-rec-engine .`):
+
+```bash
+docker run -p 8000:8000 -e DATABASE_URL=postgresql://user:pw@host/db cine-rec-engine
+```
+
+```bash
+curl 'localhost:8000/similar?seed=155:movie,1396:tv&limit=10&user_id=42&year_min=1995&genres=80'
+curl 'localhost:8000/for-user/42?include_why=true&limit=12&explore=0.15'
+curl 'localhost:8000/page?user_id=42&rows=top_picks,because:155,discover,hidden_gems'
+curl 'localhost:8000/by-text?q=like+Inception+but+darker'
+curl -X POST localhost:8000/feedback -d '{"token":"<impression>","outcome":"watch","tmdb_id":111}'
+curl 'localhost:8000/health'
+curl 'localhost:8000/metrics'   # latency histogram, cache hit rate, channel coverage (Prometheus text)
+```
+
+`/similar` is item-to-item — `user_id` optionally filters watched
+titles, advances sagas, and gently tilts near-ties toward the user
+(boost-only; the seed stays primary). Session filters (`year_min/max`,
+`genres`, `exclude_genres`, `max_runtime`) apply at the recall level and
+hash into the cache key. `/for-user` is the personalized row;
+`explore=` reserves a deterministic discovery slice (novel AND relevant
+— never noise). `/page` composes themed rows in one call — concurrent
+execution, first-row-wins dedup, a stateless impression token per row,
+and a `discover` row of adjacent-cluster titles. `/by-text` is the
+no-history cold start (bring your own encoder via
+`CINE_REC_ENCODER="module:function"`; falls back honestly otherwise).
+`/feedback` closes the loop: verified impression token + outcome
+(click/watch/skip/dislike) adjusts the user's weights transactionally —
+no trainer, no cron. User vectors rebuild on demand behind every
+endpoint. `model=e5e` runs a whole request in one embedding space.
+
 ## Why another recommender
 
 | | Hosted rec APIs | Collaborative-filtering stacks | **Cine Rec Engine** |
@@ -95,27 +135,34 @@ deliberately not shipped).
 
 ## Measured against baselines
 
-On the bundled 830-title demo catalog with hand-curated adjacency judgments
-(`eval/judgments.jsonl`, `eval/eval.py`; **10 judgments — a smoke-scale
-regression gate, not a power claim**):
+On the bundled 830-title demo catalog with a 160-pair consensus
+judgment file (`eval/judgments.jsonl`, regenerated anytime by
+`eval/build_judgments.py`, scored by `eval/eval.py`; **a regression
+gate, not a power claim** — every pair is included only when two
+independent methods already agree it is obvious: a structured-metadata
+rule AND the embedding space):
 
 | method | pairwise acc. | NDCG@10 |
 |---|---|---|
-| TMDB similar (behavioral graph) | 0.11 | 0.10 |
-| MiniLM cosine over overviews | **0.89** | 0.05 |
-| **this engine (learned 22-feature scorer)** | 0.82 | **0.46** |
+| TMDB similar (behavioral graph) | 0.88 | **0.78** |
+| MiniLM cosine over overviews | **0.99** | 0.26 |
+| **this engine (learned 22-feature scorer)** | 0.88 | 0.34 |
 
-Full honesty: raw vector cosine wins pairwise (is A closer than B to the
-seed? — a single-signal task it's built for), while the engine wins at
-**ranking** (NDCG@10, ~9× the cosine) because it fuses behavioral,
-auteur, saga and tone signals instead of plot-text alone. That's the
-trade the engine exists for — shown here with the real vector baseline,
-not a strawman.
+Full honesty: single-signal baselines score high here BY CONSTRUCTION —
+half the inclusion rule is cosine agreement and the goods sit in the
+TMDB graph's head, so each corresponding baseline aces its own half.
+The file exists to gate regressions: CI fails if the engine drops
+below pairwise 0.75 / NDCG@10 0.28 (`--min-pairwise --min-ndcg`),
+floors set measured-minus-margin. On the old 10 hand pairs the spread
+was similar; the expanded file trades discriminator power for
+regression coverage across genres, decades and both media.
 
 Honest caveats: the pool is small (830 titles, recommendation-closed,
 with bundled MiniLM embeddings — `demo/data/`), recall runs in the same
-same-medium mode the bot uses, and the judgments are one curator's.
-Bring your own judgments file — the harness is in the repo.
+same-medium mode the bot uses, and the judgments are mechanically
+generated consensus, not human taste. Bring your own judgments file —
+the harness is in the repo. The same gates run on a laptop via
+`make test-integration` (throwaway pgvector + the live CI-class suite).
 
 ## Feature highlights
 
@@ -126,8 +173,9 @@ Bring your own judgments file — the harness is in the repo.
   *Rocky II*, not *Rocky I* again. Whole-saga watchers graduate out.
 - **Per-user personalization** — `recommend_for_user()`: raw watch
   events → per-title weights (completion, series depth, recency,
-  engagement) → a normalized user vector → an ANN recall channel through
-  the same LTR scorer, with watched/rated/disliked hard-filtered.
+  engagement) → a normalized user vector (rebuilt automatically when
+  stale — no cron needed) → an ANN recall channel through the
+  same LTR scorer, with watched/rated/disliked hard-filtered.
   See `docs/personalization.md`.
 - **Auteur recall** — director/writer/composer/DP channels with decay
   (someone's 8th film matters less than their 2nd).
@@ -209,9 +257,25 @@ pairs/second/core with outputs within 1 float ULP of the reference
 implementation (golden-vector tests). `benchmarks/bench_scoring.py`
 reproduces the hot-loop number without any database.
 
+Personalized rows (`recommend_for_user`, 15–18 weighted seeds, same
+catalog, `benchmarks/bench_personalization.py`): **first request ≈ 1.2 s**
+(includes the inline vector rebuild; once per freshness window) ·
+**repeat request ≈ 0.2–0.3 s** (result cache hit; the ANN query is
+skipped when the list is cached; ~9 small per-user queries remain —
+seeds, freshness probe, watched/dislike exclusions, saga filters) ·
+**cold, other users ≈ 0.9 s median**. A cold request fires ~4 recall
+queries per seed (the two KNN channels share one query; semantic
+similarity is one batched cross-join for all seeds) — size the
+connection pool `max_size ≥ 20` or the queue dominates: at
+`max_size=10` cold requests measured ~3× slower than at 25. The vector
+recalls are ANN-indexed (hnsw/ivfflat on your embedding column); without
+an index they degrade to a table scan but still work. Keep the
+`tmdb_movies_collection_idx` partial index from `docs/schema.sql` in
+place — the saga filter pass needs it to stay off a catalog scan.
+
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) — personalization shipped in 0.3; next: exploration budget, trainer CLI, serving.
+See [ROADMAP.md](ROADMAP.md) — personalization shipped in 0.3; v0.7 ships on-demand user vectors + the HTTP API/Docker service; next: controlled personalized item-to-item.
 
 ## License
 

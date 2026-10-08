@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 DSN = os.environ.get("BENCH_DSN") or os.environ.get("DATABASE_URL", "postgresql://localhost/postgres")
 print("DSN host:", DSN.split("@")[1])
-NOW = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
+NOW = datetime.now(timezone.utc)  # real clock — w_i decay assertions are relative
 
 MOVIES = {
     155:  ("The Dark Knight", [0.9, 0.1, 0.0, 0.0]),
@@ -115,7 +115,7 @@ async def main():
         print("title_stats:", [(r["tmdb_id"], round(r["w_item"],3)) for r in rows2])
     import math
     assert vec is not None, "vector missing"
-    assert math.sqrt(sum(x*x for x in vec)) == 1.0
+    assert abs(math.sqrt(sum(x*x for x in vec)) - 1.0) < 1e-9  # unit norm
     # dominant direction follows TDK+Inception+BB (all near [0.9,0.1,0,0])
     assert vec[0] > 0.9, vec
     print(f"vector: {[round(x,3) for x in vec]} norm=1")
@@ -123,9 +123,10 @@ async def main():
     # §F recommendations
     rec = RecommendationService()
     await rec.initialize(pool)
-    results = await rec.recommend_for_user(U, limit=5)
-    ids = [r["tmdb_id"] for r in results]
-    print(f"recs for user {U}: {ids}")
+    out = await rec.recommend_for_user(U, limit=5)
+    ids = [r["tmdb_id"] for r in out["results"]]
+    print(f"recs for user {U}: reason={out['reason']} "
+          f"vector_used={out['vector_used']} ids={ids}")
     assert 155 not in ids and 27205 not in ids and 1396 not in ids  # watched
     assert 475557 not in ids                                     # disliked
     assert 999 not in ids or rows[999]["dropped"]                # dropped ok out

@@ -2,6 +2,13 @@
   "model": "pairwise-logistic-sgd",
   "alpha": 0.0001,
   "triplets": 6650,
+  "_schema_note": {
+    "reserved_features": [
+      "narrative_match", "tone_compatibility", "emotional_arc_match",
+      "pacing_match", "audience_compatibility", "heuristic_score"
+    ],
+    "reserved_features_note": "not fitted here by design: their tagger inputs come from the private cinematic enrichment (tmdb_cinematic). narrative/pacing/emotional_arc are always 0 in public builds; tone/audience run their genre-only fallback; heuristic_score is a residual tree input with self-weight 0. The feature slots stay in FEATURE_NAMES (pruning would break golden-vector parity for no gain)."
+  },
   "feature_names": [
     "cosine_sim",
     "keyword_sim",

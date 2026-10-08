@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,serve]"
       - name: Lint
         run: ruff check cine_rec_engine ingest tests benchmarks eval demo examples
       - name: Test
@@ -72,12 +72,8 @@ jobs:
               await pool.close()
           asyncio.run(m())
           PY
-      - name: Eval regression gate (pairwise must not regress)
-        run: |
-          python eval/eval.py | tee eval_out.txt
-          PAIR=$(grep "| engine" eval_out.txt | awk -F'|' '{print $3}' | tr -d ' ')
-          echo "engine pairwise: $PAIR"
-          python -c "exit(0 if float('$PAIR') >= 0.70 else 1)"
+      - name: Eval regression gate (pairwise + NDCG + coverage floors)
+        run: python eval/eval.py --min-pairwise 0.75 --min-ndcg 0.28 --min-coverage 0.50
 
   build:
     runs-on: ubuntu-latest

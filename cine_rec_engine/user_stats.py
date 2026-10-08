@@ -19,6 +19,7 @@ import asyncpg
 from loguru import logger
 
 from . import user_weights as uw
+from .config import SKIP_DECAY
 
 EPISODE_THRESHOLD_RATIO = 0.50   # an episode counts as watched at ≥ 50%
 
@@ -418,10 +419,13 @@ async def record_feedback(
     """§B.2 + §G.1 — upsert an explicit signal and refresh what it touches.
 
     dislike/favorite change w_i (and the vector later); watchlist-only
-    titles get their intent weight on the next recompute.
+    titles get their intent weight on the next recompute. click/skip
+    (RFC §4 feedback loop) are recorded as-is — a click is attribution
+    data; a skip's bounded w_i nudge is apply_skip_decay.
     """
-    if kind not in ("dislike", "favorite", "watchlist"):
-        raise ValueError(f"kind must be dislike|favorite|watchlist, got {kind!r}")
+    if kind not in ("dislike", "favorite", "watchlist", "click", "skip"):
+        raise ValueError(
+            f"kind must be dislike|favorite|watchlist|click|skip, got {kind!r}")
     async with pool.acquire() as conn:
         await conn.execute(
             """INSERT INTO user_feedback (user_id, tmdb_id, media_type, kind)
@@ -434,7 +438,26 @@ async def record_feedback(
            WHERE user_id=$1 AND tmdb_id=$2 AND media_type=$3""",
         user_id, tmdb_id, media_type,
     )
-    if has_stats:
+    if has_stats and kind in ("dislike", "favorite"):
+        # click/skip never trigger a w_i recompute here — a click is
+        # attribution, and a skip's bounded nudge is apply_skip_decay.
         async with pool.acquire() as conn:
             await _recompute_title_stats(conn, user_id, tmdb_id, media_type)
+
+
+async def apply_skip_decay(
+    pool: asyncpg.Pool, user_id: int, tmdb_id: int, media_type: str,
+    factor: float = SKIP_DECAY,
+) -> bool:
+    """One skip = a bounded nudge, never a bury (RFC §4): w_item *=
+    factor on titles the user has stats for. Returns whether a row was
+    touched (skipping an unseen title is recorded, not weighted)."""
+    if not 0.0 < factor < 1.0:
+        raise ValueError(f"skip decay factor must be in (0, 1), got {factor}")
+    async with pool.acquire() as conn:
+        return await conn.execute(
+            """UPDATE user_title_stats SET w_item = w_item * $4
+               WHERE user_id=$1 AND tmdb_id=$2 AND media_type=$3""",
+            user_id, tmdb_id, media_type, factor,
+        ) not in ("UPDATE 0", "UPDATE 0\n")
 

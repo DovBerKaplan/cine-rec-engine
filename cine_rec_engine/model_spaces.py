@@ -55,6 +55,21 @@ def normalize_model(name: Optional[str]) -> Optional[str]:
     return None
 
 
+def column_for(space: Optional[str]) -> Optional[str]:
+    """The embedding column a solo space builds and searches from.
+
+    None = the default column (config.EMBEDDING_COLUMN) — used by the
+    ensemble and unknown spaces. Single source for this mapping: the
+    user-vector build, the ANN recall, and the request path must agree,
+    or a vector built from one column gets searched against another.
+    """
+    if space:
+        spec = REC_MODELS.get(space)
+        if spec and spec["column"]:
+            return spec["column"]
+    return None
+
+
 def is_solo(model_key: str) -> bool:
     """True when the key selects a single embedding column."""
     spec = REC_MODELS.get(model_key)
