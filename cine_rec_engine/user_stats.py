@@ -20,11 +20,12 @@ from loguru import logger
 
 from . import user_weights as uw
 from .config import SKIP_DECAY
+from . import db
 
 EPISODE_THRESHOLD_RATIO = 0.50   # an episode counts as watched at ≥ 50%
 
 _UPSERT_TITLE_STATS = """
-    INSERT INTO user_title_stats (
+    INSERT INTO {t_user_title_stats} (
         user_id, tmdb_id, media_type, sessions, total_watched_sec, max_ratio,
         pause_count_total, rewatch_count, last_watched_at, episodes_watched,
         last_season, last_episode, last_ep_watched_sec, last_ep_duration_sec,
@@ -41,7 +42,7 @@ _UPSERT_TITLE_STATS = """
         -- (same season/episode for tv; the movie itself for movies) —
         -- continuing to the NEXT episode is progress, never a rewatch.
         COUNT(*) FILTER (WHERE EXISTS (
-            SELECT 1 FROM user_watch_events p
+            SELECT 1 FROM {t_user_watch_events} p
             WHERE p.user_id = e.user_id AND p.tmdb_id = e.tmdb_id
               AND p.media_type = e.media_type AND p.completed
               AND p.watched_at < e.watched_at
@@ -57,10 +58,10 @@ _UPSERT_TITLE_STATS = """
         last_ev.watched_sec,
         last_ev.duration_sec,
         FALSE, 0, now()
-    FROM user_watch_events e
+    FROM {t_user_watch_events} e
     LEFT JOIN LATERAL (
         SELECT h.season, h.episode, h.watched_sec, h.duration_sec
-        FROM user_watch_events h
+        FROM {t_user_watch_events} h
         WHERE h.user_id = e.user_id AND h.tmdb_id = e.tmdb_id
           AND h.media_type = e.media_type
         ORDER BY h.watched_at DESC LIMIT 1
@@ -102,9 +103,9 @@ async def record_event(pool: asyncpg.Pool, event: dict) -> None:
 
     async with pool.acquire() as conn:
         async with conn.transaction():
-            await conn.execute(
+            await db.execute(conn,
                 """
-                INSERT INTO user_watch_events (
+                INSERT INTO {t_user_watch_events} (
                     user_id, tmdb_id, media_type, watched_at, watched_sec,
                     duration_sec, pause_count, completed, season, episode,
                     last_position_sec
@@ -119,9 +120,9 @@ async def record_event(pool: asyncpg.Pool, event: dict) -> None:
             row = await _recompute_title_stats(
                 conn, event["user_id"], event["tmdb_id"], event["media_type"]
             )
-            await conn.execute(
+            await db.execute(conn,
                 """
-                INSERT INTO user_stats (user_id, last_event_at, updated_at)
+                INSERT INTO {t_user_stats} (user_id, last_event_at, updated_at)
                 VALUES ($1, $2, now())
                 ON CONFLICT (user_id) DO UPDATE SET
                     last_event_at = EXCLUDED.last_event_at, updated_at = now()
@@ -139,20 +140,20 @@ async def _recompute_title_stats(
     conn, user_id: int, tmdb_id: int, media_type: str
 ) -> Optional[asyncpg.Record]:
     """Rebuild one user_title_stats row from the raw events + feedback."""
-    await conn.execute(
+    await db.execute(conn,
         _UPSERT_TITLE_STATS, user_id, tmdb_id, media_type, EPISODE_THRESHOLD_RATIO
     )
-    row = await conn.fetchrow(
+    row = await db.fetchrow(conn,
         """SELECT uts.*, COALESCE(
-               (SELECT TRUE FROM user_feedback f
+               (SELECT TRUE FROM {t_user_feedback} f
                 WHERE f.user_id = uts.user_id AND f.tmdb_id = uts.tmdb_id
                   AND f.media_type = uts.media_type AND f.kind = 'favorite'), FALSE)
            AS favorite,
-           EXISTS (SELECT 1 FROM user_feedback f
+           EXISTS (SELECT 1 FROM {t_user_feedback} f
                    WHERE f.user_id = uts.user_id AND f.tmdb_id = uts.tmdb_id
                      AND f.media_type = uts.media_type AND f.kind = 'dislike')
            AS disliked
-           FROM user_title_stats uts
+           FROM {t_user_title_stats} uts
            WHERE uts.user_id = $1 AND uts.tmdb_id = $2 AND uts.media_type = $3""",
         user_id, tmdb_id, media_type,
     )
@@ -190,8 +191,8 @@ async def _recompute_title_stats(
         media_type, row["max_ratio"],
         series.episodes_watched, series.last_ep_ratio,
     )
-    await conn.execute(
-        """UPDATE user_title_stats
+    await db.execute(conn,
+        """UPDATE {t_user_title_stats}
            SET w_item = $4, dropped = $5, updated_at = now()
            WHERE user_id = $1 AND tmdb_id = $2 AND media_type = $3""",
         user_id, tmdb_id, media_type, w, dropped,
@@ -204,8 +205,8 @@ async def _catalog_episode_count(conn, tmdb_id: int, media_type: str) -> int:
     if media_type != "tv":
         return 0
     try:
-        n = await conn.fetchval(
-            "SELECT number_of_episodes FROM tmdb_tv WHERE id = $1", tmdb_id
+        n = await db.fetchval(conn,
+            "SELECT number_of_episodes FROM {t_tmdb_tv} WHERE id = $1", tmdb_id
         )
         return int(n or 0)
     except Exception:
@@ -216,9 +217,9 @@ async def refresh_user_stats(pool: asyncpg.Pool, user_id: int) -> None:
     """§C — full recompute of user_stats + user_genre_stats for one user."""
     async with pool.acquire() as conn:
         async with conn.transaction():
-            await conn.execute(
+            await db.execute(conn,
                 """
-                INSERT INTO user_stats (
+                INSERT INTO {t_user_stats} (
                     user_id, titles_touched, titles_weighted,
                     movies_completed, movies_dropped,
                     series_started, series_hooked, series_abandoned_mid_ep,
@@ -247,14 +248,14 @@ async def refresh_user_stats(pool: asyncpg.Pool, user_id: int) -> None:
                                          / NULLIF(last_ep_duration_sec,0), 1)
                                          < 0.20),
                     COUNT(*) FILTER (WHERE rewatch_count >= 1),
-                    (SELECT COUNT(*) FROM user_feedback f
+                    (SELECT COUNT(*) FROM {t_user_feedback} f
                      WHERE f.user_id = $1 AND f.kind = 'dislike'),
-                    (SELECT COUNT(*) FROM user_feedback f
+                    (SELECT COUNT(*) FROM {t_user_feedback} f
                      WHERE f.user_id = $1 AND f.kind = 'favorite'),
-                    (SELECT COUNT(*) FROM user_feedback f
+                    (SELECT COUNT(*) FROM {t_user_feedback} f
                      WHERE f.user_id = $1 AND f.kind = 'watchlist'
                        AND NOT EXISTS (
-                           SELECT 1 FROM user_title_stats uts
+                           SELECT 1 FROM {t_user_title_stats} uts
                            WHERE uts.user_id = $1 AND uts.tmdb_id = f.tmdb_id
                              AND uts.media_type = f.media_type)),
                     COALESCE(SUM(total_watched_sec) FILTER (WHERE last_watched_at > now() - interval '30 days'), 0),
@@ -268,12 +269,12 @@ async def refresh_user_stats(pool: asyncpg.Pool, user_id: int) -> None:
                             AND media_type='tv')
                         ::float / NULLIF(SUM(total_watched_sec) FILTER (WHERE last_watched_at > now() - interval '30 days'), 0)), 0),
                     (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY watched_sec)
-                     FROM user_watch_events WHERE user_id = $1)::int,
+                     FROM {t_user_watch_events} WHERE user_id = $1)::int,
                     COALESCE((
                         SUM(uts.pause_count_total) FILTER (WHERE uts.media_type='movie' AND uts.max_ratio < 0.75)
                         ::float / NULLIF(COUNT(*) FILTER (WHERE uts.media_type='movie' AND uts.max_ratio < 0.75), 0)), 0),
                     now()
-                FROM user_title_stats uts
+                FROM {t_user_title_stats} uts
                 WHERE uts.user_id = $1
                 ON CONFLICT (user_id) DO UPDATE SET
                     titles_touched = EXCLUDED.titles_touched,
@@ -300,10 +301,10 @@ async def refresh_user_stats(pool: asyncpg.Pool, user_id: int) -> None:
             )
 
             # genre distribution from the weighted catalog join
-            await conn.execute("DELETE FROM user_genre_stats WHERE user_id = $1", user_id)
-            await conn.execute(
+            await db.execute(conn, "DELETE FROM {t_user_genre_stats} WHERE user_id = $1", user_id)
+            await db.execute(conn,
                 """
-                INSERT INTO user_genre_stats (
+                INSERT INTO {t_user_genre_stats} (
                     user_id, media_type, genre_id, watch_sec, weighted_sum,
                     title_count, last_watched_at
                 )
@@ -312,8 +313,8 @@ async def refresh_user_stats(pool: asyncpg.Pool, user_id: int) -> None:
                        SUM(uts.w_item),
                        COUNT(*),
                        MAX(uts.last_watched_at)
-                FROM user_title_stats uts
-                JOIN tmdb_media_genres gm
+                FROM {t_user_title_stats} uts
+                JOIN {t_tmdb_media_genres} gm
                   ON gm.media_id = uts.tmdb_id AND gm.media_type = uts.media_type
                 WHERE uts.user_id = $1
                 GROUP BY gm.media_type, gm.genre_id
@@ -324,23 +325,23 @@ async def refresh_user_stats(pool: asyncpg.Pool, user_id: int) -> None:
 
 async def recompute_weights(pool: asyncpg.Pool, user_id: int) -> None:
     """Recency moves → recompute w_i for every title of one user (§G.2)."""
-    rows = await pool.fetch(
-        """SELECT uts.*, COALESCE((SELECT TRUE FROM user_feedback f
+    rows = await db.fetch(pool,
+        """SELECT uts.*, COALESCE((SELECT TRUE FROM {t_user_feedback} f
                WHERE f.user_id = uts.user_id AND f.tmdb_id = uts.tmdb_id
                  AND f.media_type = uts.media_type AND f.kind='favorite'),
                FALSE) AS favorite,
-           EXISTS (SELECT 1 FROM user_feedback f
+           EXISTS (SELECT 1 FROM {t_user_feedback} f
                    WHERE f.user_id = uts.user_id AND f.tmdb_id = uts.tmdb_id
                      AND f.media_type = uts.media_type AND f.kind='dislike')
            AS disliked
-           FROM user_title_stats uts WHERE uts.user_id = $1""",
+           FROM {t_user_title_stats} uts WHERE uts.user_id = $1""",
         user_id,
     )
     tv_ids = [r["tmdb_id"] for r in rows if r["media_type"] == "tv"]
     ep_counts = {}
     if tv_ids:
-        cat = await pool.fetch(
-            "SELECT id, number_of_episodes FROM tmdb_tv WHERE id = ANY($1::bigint[])",
+        cat = await db.fetch(pool,
+            "SELECT id, number_of_episodes FROM {t_tmdb_tv} WHERE id = ANY($1::bigint[])",
             tv_ids,
         )
         ep_counts = {r["id"]: int(r["number_of_episodes"] or 0) for r in cat}
@@ -367,8 +368,8 @@ async def recompute_weights(pool: asyncpg.Pool, user_id: int) -> None:
                 favorite=r["favorite"],
                 disliked=r["disliked"],
             )
-            await conn.execute(
-                """UPDATE user_title_stats SET w_item = $4, updated_at = now()
+            await db.execute(conn,
+                """UPDATE {t_user_title_stats} SET w_item = $4, updated_at = now()
                    WHERE user_id=$1 AND tmdb_id=$2 AND media_type=$3""",
                 r["user_id"], r["tmdb_id"], r["media_type"], w,
             )
@@ -389,8 +390,8 @@ async def nightly_recompute(
     if vector_builder is None:
         from .user_vector import build_user_vector as vector_builder
 
-    users = await pool.fetch(
-        """SELECT user_id FROM user_stats
+    users = await db.fetch(pool,
+        """SELECT user_id FROM {t_user_stats}
            WHERE last_event_at > now() - ($1 || ' days')::interval""",
         str(active_days),
     )
@@ -399,10 +400,10 @@ async def nightly_recompute(
         user_id = u["user_id"]
         await recompute_weights(pool, user_id)
         await refresh_user_stats(pool, user_id)
-        stale = await pool.fetchval(
+        stale = await db.fetchval(pool,
             """SELECT vector_updated_at IS NULL
                     OR vector_updated_at < now() - ($2 || ' hours')::interval
-               FROM user_stats WHERE user_id = $1""",
+               FROM {t_user_stats} WHERE user_id = $1""",
             user_id, str(vector_max_age_hours),
         )
         if stale:
@@ -427,14 +428,14 @@ async def record_feedback(
         raise ValueError(
             f"kind must be dislike|favorite|watchlist|click|skip, got {kind!r}")
     async with pool.acquire() as conn:
-        await conn.execute(
-            """INSERT INTO user_feedback (user_id, tmdb_id, media_type, kind)
+        await db.execute(conn,
+            """INSERT INTO {t_user_feedback} (user_id, tmdb_id, media_type, kind)
                VALUES ($1, $2, $3, $4)
                ON CONFLICT (user_id, tmdb_id, media_type, kind) DO NOTHING""",
             user_id, tmdb_id, media_type, kind,
         )
-    has_stats = await pool.fetchval(
-        """SELECT 1 FROM user_title_stats
+    has_stats = await db.fetchval(pool,
+        """SELECT 1 FROM {t_user_title_stats}
            WHERE user_id=$1 AND tmdb_id=$2 AND media_type=$3""",
         user_id, tmdb_id, media_type,
     )
@@ -455,8 +456,8 @@ async def apply_skip_decay(
     if not 0.0 < factor < 1.0:
         raise ValueError(f"skip decay factor must be in (0, 1), got {factor}")
     async with pool.acquire() as conn:
-        return await conn.execute(
-            """UPDATE user_title_stats SET w_item = w_item * $4
+        return await db.execute(conn,
+            """UPDATE {t_user_title_stats} SET w_item = w_item * $4
                WHERE user_id=$1 AND tmdb_id=$2 AND media_type=$3""",
             user_id, tmdb_id, media_type, factor,
         ) not in ("UPDATE 0", "UPDATE 0\n")

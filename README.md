@@ -52,6 +52,8 @@ A content-based recommendation engine for movies & series: give it one title
 ```bash
 pip install cine-rec-engine               # PyPI (or: pip install -e ".[pg,redis]")
 psql -d yourdb -f docs/schema.sql         # the tables it expects
+# no psql? same thing, idempotent, user layer included:
+cine-rec init --dsn postgresql://user:pw@localhost/yourdb
 ```
 
 ```python
@@ -82,12 +84,29 @@ so your UI can explain *why* it recommended something.
 pip install "cine-rec-engine[serve]"
 DATABASE_URL=postgresql://user:pw@localhost/yourdb \
     uvicorn cine_rec_engine.serve:app --port 8000
+# or equivalently: cine-rec serve --port 8000
 ```
 
 Or as a container (`docker build -t cine-rec-engine .`):
 
 ```bash
 docker run -p 8000:8000 -e DATABASE_URL=postgresql://user:pw@host/db cine-rec-engine
+```
+
+Booting against an empty database? One env var applies the schema
+first (idempotent — same files `cine-rec init` uses):
+
+```bash
+docker run -p 8000:8000 \
+    -e DATABASE_URL=postgresql://user:pw@host/db \
+    -e CINE_REC_AUTO_INIT=1 cine-rec-engine
+```
+
+For a self-host with compose (pool sizing, persistent feedback secret,
+optional table-name map — all commented in place):
+
+```bash
+cd deploy && DATABASE_URL=postgresql://user:pw@host/db docker compose up -d
 ```
 
 ```bash
@@ -115,6 +134,56 @@ no-history cold start (bring your own encoder via
 (click/watch/skip/dislike) adjusts the user's weights transactionally —
 no trainer, no cron. User vectors rebuild on demand behind every
 endpoint. `model=e5e` runs a whole request in one embedding space.
+
+## Configuration
+
+Everything is environment-driven — no code edits, no config class to
+instantiate. Vars marked ⚙ are read once at process start.
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `DATABASE_URL` (or `CINE_REC_DATABASE_URL`) | — | the PostgreSQL DSN (required) |
+| `CINE_REC_SCHEMA_MAP` | off | path to a JSON **table-name map** (below) |
+| `CINE_REC_TABLE_<NAME>` | off | per-table override, e.g. `CINE_REC_TABLE_TMDB_MEDIA=app_media` (wins over the file) |
+| `CINE_REC_AUTO_INIT` | off | `1` = apply the schema on serve boot, idempotent |
+| `CINE_REC_POOL_SIZE` | 20 | asyncpg pool `max_size` (small pools dominate cold latency) |
+| `CINE_REC_PORT` / `CINE_REC_HOST` | 8000 / 0.0.0.0 | for `cine-rec serve` and the Docker image |
+| ⚙ `CINE_REC_EMBEDDING` | `original` | embedding column/space (`CINE_REC_EMBEDDING=minilm` → `embedding_minilm`) |
+| ⚙ `CINE_REC_COSINE_BLEND` | — | blend several embedding columns (`col:weight,col:weight`) |
+| ⚙ `CINE_REC_SCORER` | heuristic | `learned` = the published fitted weights |
+| `CINE_REC_ENCODER` | — | `module:function` providing `/by-text` embeddings |
+| `CINE_REC_REDIS_URL` | off | Redis result/history cache (falls back to in-process) |
+| `CINE_REC_IMPRESSION_SECRET` | random | persistent feedback tokens across restarts |
+| `CINE_REC_CORS_ORIGINS` | off | comma-separated allow-list |
+| `TMDB_API_KEY` | — | behavioral-graph sync (`ingest/`, `tmdb_recs.py`) |
+| ⚙ `CINE_REC_USER_TILT_ALPHA` / `CINE_REC_EXPLORE_SHARE` / `CINE_REC_SKIP_DECAY` / `CINE_REC_USER_VECTOR_MAX_AGE_HOURS` | 0.15 / 0.12 / 0.9 / 24 | personalization tuning |
+
+### Bring your own tables
+
+Every table and view the engine (and the ingest loader) touches has one
+logical name — all 41 are listed in `cine_rec_engine/tables.py`
+(`LOGICAL_TABLES`). Point them at your own names with a JSON map:
+
+```json
+{ "tmdb_media": "app_media",
+  "user_watches": "app_schema.user_watches",
+  "user_watch_events": "app_events" }
+```
+
+```bash
+CINE_REC_SCHEMA_MAP=/etc/cine-rec/tables.json cine-rec serve
+```
+
+Rules: physical names are lower-case identifiers, optionally
+schema-qualified; unknown keys are rejected with the valid list; and an
+explicitly mapped table that doesn't exist **fails startup loudly** — a
+misconfigured map must never look like "no recommendations" (missing
+default-named tables keep the usual graceful degradation instead).
+
+Names map; **columns stay the contract**. If your existing table has
+different column names too, write one thin view with aliases — the
+§6 compatibility views in `docs/schema.sql` are exactly this pattern
+and the reference for the shape each logical name expects.
 
 ## Why another recommender
 
@@ -222,8 +291,9 @@ per title, upserts by key). The catalog schema splits movies and TV into
 two fact tables with independent id spaces — exactly like TMDB — with
 compatibility views serving the engine unchanged. `docs/data.md` has the
 full contract. For user data, feed `user_watch_events` from your player
-(`docs/personalization.md`) — or point `cine_rec_engine/watched.py` at
-whatever events table you already have, one SQL string away.
+(`docs/personalization.md`). Already recording events in your own
+tables? Rename, don't re-plumb — the [table map](#bring-your-own-tables)
+above points the engine at your names with zero code changes.
 
 ## Repo layout
 
@@ -231,6 +301,7 @@ whatever events table you already have, one SQL string away.
 cine_rec_engine/    the engine (recall · scoring · ranking · weights)
 ingest/             built-in TMDB mirror loader (bootstrap + daily refresh)
 demo/               one-command demo: 830 bundled titles, no API key
+deploy/             self-host compose: env knobs + optional table map
 eval/               pairwise/NDCG harness + the demo judgments
 models/             embedding sidecar — YOUR encoders plug in here
 docs/schema.sql     canonical split schema (movies | tv) + engine views

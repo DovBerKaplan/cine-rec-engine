@@ -14,6 +14,8 @@ import math
 from typing import Dict, List, Optional, Tuple
 
 from .config import KEYWORDS_STYLE, MIN_VOTE_COUNT, VOTE_FLOOR_TV
+from . import db
+from . import tables
 
 
 def bigram_set(text: str) -> set:
@@ -338,14 +340,15 @@ def _fact_emb_union(cols_sql: str) -> str:
     prefixing 'id, ' yourself duplicates the output column and makes
     every outer reference to it ambiguous (AmbiguousColumnError).
 
-    The embedding columns live on tmdb_movies/tmdb_tv — the tmdb_media
+    The embedding columns live on the tmdb_movies/tmdb_tv fact tables (by
+    logical name — remappable via tables.py) — the tmdb_media
     compatibility view does not expose columns added after its CREATE,
     so reading them through the view silently fails on any schema
     upgraded in place.
     """
     return (
-        f"(SELECT id, {cols_sql} FROM tmdb_movies "
-        f"UNION ALL SELECT id, {cols_sql} FROM tmdb_tv)"
+        f"(SELECT id, {cols_sql} FROM {tables.name('tmdb_movies')} "
+        f"UNION ALL SELECT id, {cols_sql} FROM {tables.name('tmdb_tv')})"
     )
 
 
@@ -425,7 +428,7 @@ async def semantic_overview_similarity(
         # Pull the seed embedding(s). NULL or missing -> no semantic signal
         # for that column — unless an on-demand override fills it below.
         try:
-            seed_row = await conn.fetchrow(
+            seed_row = await db.fetchrow(conn,
                 f"SELECT {seed_cols} FROM {_fact_emb_union(seed_cols)} m"
                 f" WHERE id = $1 LIMIT 1",
                 seed_id,
@@ -460,7 +463,7 @@ async def semantic_overview_similarity(
         params.append(list(candidate_ids))
 
         try:
-            rows = await conn.fetch(
+            rows = await db.fetch(conn,
                 f"""
                 SELECT m.id, {select_sims}
                 FROM {_fact_emb_union(", ".join(active_cols))} m
@@ -529,7 +532,7 @@ async def semantic_overview_similarity_batch(
         # All seed vectors in one query (last row wins on a colliding
         # movie/tv id — same tie behavior as the single-seed path).
         try:
-            seed_rows = await conn.fetch(
+            seed_rows = await db.fetch(conn,
                 f"SELECT id, {', '.join(cols)} FROM {_fact_emb_union(', '.join(cols))} m"
                 f" WHERE id = ANY($1::bigint[])",
                 list(seed_ids),
@@ -561,7 +564,7 @@ async def semantic_overview_similarity_batch(
             if not any(vecs.get(col) is not None for vecs in usable.values()):
                 continue
             try:
-                rows = await conn.fetch(
+                rows = await db.fetch(conn,
                     f"""
                     SELECT s.id AS seed_id, c.id AS cand_id,
                            GREATEST(0.0, 1 - (c.{col} <=> s.{col})) AS sim

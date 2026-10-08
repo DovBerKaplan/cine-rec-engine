@@ -4,6 +4,44 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.11.0] — 2026-10-08
+
+### Added — bring-your-own tables & one-command deploy
+- **Table-name remapping** (`cine_rec_engine/tables.py`): every table
+  and view the engine or the ingest loader touches (41 logical names)
+  can be pointed at your own names via a JSON map
+  (`CINE_REC_SCHEMA_MAP`) or per-table env overrides
+  (`CINE_REC_TABLE_TMDB_MEDIA=app_media`). Names map; columns remain
+  the documented contract (thin alias views cover column differences —
+  the §6 compatibility views are the reference pattern). The ingest
+  loader writes through the same registry, so engine and ingest can
+  never disagree. Unknown keys and invalid names are rejected at load;
+  an explicitly mapped table missing from the database **fails startup
+  loudly** (via `init_db.check_schema`) so a misconfigured map never
+  looks like empty results — missing default names keep the
+  degrade-never-fail behavior.
+- **`cine-rec` console command** (`[project.scripts]`):
+  `cine-rec init` (idempotent schema apply — catalog + user layer,
+  bundled as package data under `cine_rec_engine/sql/`, sync-guarded
+  against `docs/` by a test), `cine-rec check` (connectivity, schema,
+  map verification, degraded-channel report), `cine-rec serve`
+  (uvicorn boot honoring `CINE_REC_HOST/PORT`).
+- **Deployment knobs in the serving lifespan**: `CINE_REC_POOL_SIZE`
+  (default 20 — small pools dominate cold latency), `CINE_REC_AUTO_INIT=1`
+  applies the schema on boot before accepting traffic (the user layer
+  degrades with a loud warning when the pgvector extension is absent).
+- **Docker/compose**: the image honors `CINE_REC_PORT` in both CMD and
+  healthcheck; `deploy/docker-compose.yml` is the commented self-host
+  starter (env knobs, optional map-file mount, impression secret).
+- README gained a full **Configuration** section (every env var) and a
+  **Bring your own tables** guide.
+
+### Changed
+- All engine SQL is built through `cine_rec_engine/db.py` helpers that
+  resolve `{t_<name>}` placeholders — behavior and results are
+  identical with no map active (regression-gated by the eval suite;
+  scoring paths untouched).
+
 ## [0.10.0] — 2026-10-08
 
 ### Added — M3 (RFC §5): regression hardening

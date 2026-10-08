@@ -11,11 +11,14 @@ from typing import List, Optional
 import asyncpg
 from loguru import logger
 
+from . import tables
+from . import db
+
 # ---------------------------------------------------------------------------
 # Single combined query (replaces 7 round-trips with 1)
 # ---------------------------------------------------------------------------
 
-# SQL with keywords subquery
+# SQL with keywords subquery ({t_<name>} placeholders resolve via tables.py)
 _QUERY_WITH_KEYWORDS = """
     SELECT
         m.id,
@@ -32,85 +35,87 @@ _QUERY_WITH_KEYWORDS = """
                     EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int AS release_year,
         ARRAY(
             SELECT g.name
-            FROM tmdb_media_genres mg
-            JOIN tmdb_genres g ON g.id = mg.genre_id
+            FROM {t_tmdb_media_genres} mg
+            JOIN {t_tmdb_genres} g ON g.id = mg.genre_id
             WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
         ) as genres,
         (
             SELECT p.name
-            FROM tmdb_crew c
-            JOIN tmdb_people p ON c.person_id = p.id
+            FROM {t_tmdb_crew} c
+            JOIN {t_tmdb_people} p ON c.person_id = p.id
             WHERE (c.media_id, c.media_type) = (m.id, m.media_type)
               AND c.job IN ('Director', 'Creator')
             LIMIT 1
         ) as director,
         ARRAY(
             SELECT c.person_id
-            FROM tmdb_crew c
+            FROM {t_tmdb_crew} c
             WHERE (c.media_id, c.media_type) = (m.id, m.media_type)
               AND c.job IN ('Director', 'Creator')
         ) as director_ids,
         ARRAY(
             SELECT c.person_id
-            FROM tmdb_crew c
+            FROM {t_tmdb_crew} c
             WHERE (c.media_id, c.media_type) = (m.id, m.media_type)
               AND c.job = 'Writer'
         ) as writer_ids,
         ARRAY(
             SELECT c.person_id
-            FROM tmdb_crew c
+            FROM {t_tmdb_crew} c
             WHERE (c.media_id, c.media_type) = (m.id, m.media_type)
               AND c.job = 'Original Music Composer'
         ) as composer_ids,
         ARRAY(
             SELECT c.person_id
-            FROM tmdb_crew c
+            FROM {t_tmdb_crew} c
             WHERE (c.media_id, c.media_type) = (m.id, m.media_type)
               AND c.job = 'Director of Photography'
         ) as dp_ids,
         ARRAY(
             SELECT p.name
-            FROM tmdb_cast c
-            JOIN tmdb_people p ON c.person_id = p.id
+            FROM {t_tmdb_cast} c
+            JOIN {t_tmdb_people} p ON c.person_id = p.id
             WHERE (c.media_id, c.media_type) = (m.id, m.media_type)
             ORDER BY c.cast_order ASC NULLS LAST
             LIMIT 5
         ) as cast_list,
         ARRAY(
             SELECT c.person_id
-            FROM tmdb_cast c
+            FROM {t_tmdb_cast} c
             WHERE (c.media_id, c.media_type) = (m.id, m.media_type)
             ORDER BY c.cast_order ASC NULLS LAST
             LIMIT 5
         ) as cast_ids,
         ARRAY(
             SELECT k.name
-            FROM tmdb_media_keywords mk
-            JOIN tmdb_keywords k ON k.id = mk.keyword_id
+            FROM {t_tmdb_media_keywords} mk
+            JOIN {t_tmdb_keywords} k ON k.id = mk.keyword_id
             WHERE (mk.media_id, mk.media_type) = (m.id, m.media_type)
         ) as keywords,
         ARRAY(
             SELECT pc.name
-            FROM tmdb_media_companies mc
-            JOIN tmdb_production_companies pc ON mc.company_id = pc.id
+            FROM {t_tmdb_media_companies} mc
+            JOIN {t_tmdb_production_companies} pc ON mc.company_id = pc.id
             WHERE (mc.media_id, mc.media_type) = (m.id, m.media_type)
         ) as companies,
         ARRAY(
             SELECT n.name
-            FROM tmdb_media_networks mn
-            JOIN tmdb_networks n ON n.id = mn.network_id
+            FROM {t_tmdb_media_networks} mn
+            JOIN {t_tmdb_networks} n ON n.id = mn.network_id
             WHERE (mn.media_id, mn.media_type) = (m.id, m.media_type)
         ) as networks
-    FROM tmdb_media m
+    FROM {t_tmdb_media} m
     WHERE m.id = ANY($1::bigint[])
 """
 
-# Same query without keywords (fallback when tmdb_keywords table missing)
+# Same query without keywords (fallback when the keywords tables are missing).
+# Kept as a template too: the replace happens before name resolution so the
+# derivation survives any table remap.
 _QUERY_NO_KEYWORDS = _QUERY_WITH_KEYWORDS.replace(
     """        ARRAY(
             SELECT k.name
-            FROM tmdb_media_keywords mk
-            JOIN tmdb_keywords k ON k.id = mk.keyword_id
+            FROM {t_tmdb_media_keywords} mk
+            JOIN {t_tmdb_keywords} k ON k.id = mk.keyword_id
             WHERE (mk.media_id, mk.media_type) = (m.id, m.media_type)
         ) as keywords,""",
     "        ARRAY[]::text[] as keywords,",
@@ -161,24 +166,30 @@ async def get_movie_info_batch(
     async with pool.acquire() as conn:
         try:
             if media_type:
-                rows = await conn.fetch(
-                    _QUERY_WITH_KEYWORDS + " AND m.media_type = $2",
+                rows = await db.fetch(conn,
+                    tables.resolve(_QUERY_WITH_KEYWORDS)
+                    + " AND m.media_type = $2",
                     movie_ids,
                     media_type,
                 )
             else:
-                rows = await conn.fetch(_QUERY_WITH_KEYWORDS, movie_ids)
+                rows = await db.fetch(conn,
+                    tables.resolve(_QUERY_WITH_KEYWORDS), movie_ids
+                )
         except asyncpg.UndefinedTableError:
             # tmdb_keywords / tmdb_media_keywords tables don't exist — retry without
             logger.debug("tmdb_keywords table not found — retrying without keywords")
             if media_type:
-                rows = await conn.fetch(
-                    _QUERY_NO_KEYWORDS + " AND m.media_type = $2",
+                rows = await db.fetch(conn,
+                    tables.resolve(_QUERY_NO_KEYWORDS)
+                    + " AND m.media_type = $2",
                     movie_ids,
                     media_type,
                 )
             else:
-                rows = await conn.fetch(_QUERY_NO_KEYWORDS, movie_ids)
+                rows = await db.fetch(conn,
+                    tables.resolve(_QUERY_NO_KEYWORDS), movie_ids
+                )
 
     return {row["id"]: _row_to_movie_info(row) for row in rows}
 
@@ -206,11 +217,11 @@ async def _get_keywords(conn, media_id: int) -> list[str]:
     don't exist in PostgreSQL (they may only exist in the MySQL DB).
     """
     try:
-        rows = await conn.fetch(
+        rows = await db.fetch(conn,
             """
             SELECT k.name
-            FROM tmdb_keywords k
-            JOIN tmdb_media_keywords mk ON k.id = mk.keyword_id
+            FROM {t_tmdb_keywords} k
+            JOIN {t_tmdb_media_keywords} mk ON k.id = mk.keyword_id
             WHERE mk.media_id = $1
             """,
             media_id,
@@ -253,7 +264,7 @@ async def generate_candidates(
 
     async with pool.acquire() as conn:
         if allow_cross_media:
-            rows = await conn.fetch(
+            rows = await db.fetch(conn,
                 """
                 SELECT
                     m.id,
@@ -270,16 +281,16 @@ async def generate_candidates(
                     EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int AS release_year,
                     ARRAY(
                         SELECT g.name
-                        FROM tmdb_genres g
-                        JOIN tmdb_media_genres mg ON g.id = mg.genre_id
+                        FROM {t_tmdb_genres} g
+                        JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
                         WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                     ) as genres
-                FROM tmdb_media m
+                FROM {t_tmdb_media} m
                 WHERE m.id != $1
                   AND m.vote_average >= 5.5
                   AND EXISTS (
-                      SELECT 1 FROM tmdb_media_genres mg
-                      JOIN tmdb_genres g ON mg.genre_id = g.id
+                      SELECT 1 FROM {t_tmdb_media_genres} mg
+                      JOIN {t_tmdb_genres} g ON mg.genre_id = g.id
                       WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                         AND g.name = ANY($2::text[])
                   )
@@ -288,8 +299,8 @@ async def generate_candidates(
                     -- then a quality blend — raw popularity alone buried
                     -- classics under fresh high-pop titles (#1)
                     (
-                        SELECT count(*) FROM tmdb_media_genres mg
-                        JOIN tmdb_genres g ON mg.genre_id = g.id
+                        SELECT count(*) FROM {t_tmdb_media_genres} mg
+                        JOIN {t_tmdb_genres} g ON mg.genre_id = g.id
                         WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                           AND g.name = ANY($2::text[])
                     ) DESC,
@@ -323,7 +334,7 @@ async def generate_candidates(
                 kept[mt] = kept.get(mt, 0) + 1
                 budgeted.append(r)
         else:
-            rows = await conn.fetch(
+            rows = await db.fetch(conn,
                 """
                 SELECT
                     m.id,
@@ -340,17 +351,17 @@ async def generate_candidates(
                     EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int AS release_year,
                     ARRAY(
                         SELECT g.name
-                        FROM tmdb_genres g
-                        JOIN tmdb_media_genres mg ON g.id = mg.genre_id
+                        FROM {t_tmdb_genres} g
+                        JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
                         WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                     ) as genres
-                FROM tmdb_media m
+                FROM {t_tmdb_media} m
                 WHERE m.media_type = $1
                   AND m.id != $2
                   AND m.vote_average >= 5.5
                   AND EXISTS (
-                      SELECT 1 FROM tmdb_media_genres mg
-                      JOIN tmdb_genres g ON mg.genre_id = g.id
+                      SELECT 1 FROM {t_tmdb_media_genres} mg
+                      JOIN {t_tmdb_genres} g ON mg.genre_id = g.id
                       WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                         AND g.name = ANY($3::text[])
                   )
@@ -369,7 +380,7 @@ async def generate_candidates(
         # genre — mid-tail gems (an 8.5-rated anime with modest popularity)
         # never make the popularity slice but belong in the shortlist.
         if allow_cross_media:
-            q_rows = await conn.fetch(
+            q_rows = await db.fetch(conn,
                 """
                 SELECT m.id, m.title, m.title_en, m.media_type, m.overview,
                        m.overview_en, m.vote_average::float, m.vote_count::int,
@@ -377,15 +388,15 @@ async def generate_candidates(
                        EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int
                            AS release_year,
                        ARRAY(
-                           SELECT g.name FROM tmdb_genres g
-                           JOIN tmdb_media_genres mg ON g.id = mg.genre_id
+                           SELECT g.name FROM {t_tmdb_genres} g
+                           JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
                            WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                        ) as genres
-                FROM tmdb_media m
+                FROM {t_tmdb_media} m
                 WHERE m.id != $1 AND m.vote_average >= 7.0 AND m.vote_count >= $4
                   AND EXISTS (
-                      SELECT 1 FROM tmdb_media_genres mg
-                      JOIN tmdb_genres g ON mg.genre_id = g.id
+                      SELECT 1 FROM {t_tmdb_media_genres} mg
+                      JOIN {t_tmdb_genres} g ON mg.genre_id = g.id
                       WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND g.name = ANY($2::text[])
                   )
                 ORDER BY m.vote_average DESC, m.vote_count DESC
@@ -397,7 +408,7 @@ async def generate_candidates(
                 VOTE_FLOOR_MOVIE,  # cross-media slice spans both types
             )
         else:
-            q_rows = await conn.fetch(
+            q_rows = await db.fetch(conn,
                 """
                 SELECT m.id, m.title, m.title_en, m.media_type, m.overview,
                        m.overview_en, m.vote_average::float, m.vote_count::int,
@@ -405,16 +416,16 @@ async def generate_candidates(
                        EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int
                            AS release_year,
                        ARRAY(
-                           SELECT g.name FROM tmdb_genres g
-                           JOIN tmdb_media_genres mg ON g.id = mg.genre_id
+                           SELECT g.name FROM {t_tmdb_genres} g
+                           JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
                            WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
                        ) as genres
-                FROM tmdb_media m
+                FROM {t_tmdb_media} m
                 WHERE m.media_type = $1 AND m.id != $2
                   AND m.vote_average >= 7.0 AND m.vote_count >= $4
                   AND EXISTS (
-                      SELECT 1 FROM tmdb_media_genres mg
-                      JOIN tmdb_genres g ON mg.genre_id = g.id
+                      SELECT 1 FROM {t_tmdb_media_genres} mg
+                      JOIN {t_tmdb_genres} g ON mg.genre_id = g.id
                       WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
                         AND g.name = ANY($3::text[])
                   )
@@ -461,13 +472,13 @@ async def enrich_candidates_batch(
         # Batch: directors — names for display/string-fallback plus the
         # person_id array the scoring layer matches on.
         if media_types is not None:
-            director_rows = await conn.fetch(
+            director_rows = await db.fetch(conn,
                 """
                 SELECT c.media_id,
                        MIN(p.name) as director,
                        ARRAY_AGG(c.person_id) as director_ids
-                FROM tmdb_crew c
-                JOIN tmdb_people p ON c.person_id = p.id
+                FROM {t_tmdb_crew} c
+                JOIN {t_tmdb_people} p ON c.person_id = p.id
                 WHERE (c.media_id, c.media_type) IN (
                           SELECT * FROM unnest($1::bigint[], $2::text[])
                       )
@@ -478,13 +489,13 @@ async def enrich_candidates_batch(
                 media_types,
             )
         else:
-            director_rows = await conn.fetch(
+            director_rows = await db.fetch(conn,
                 """
                 SELECT c.media_id,
                        MIN(p.name) as director,
                        ARRAY_AGG(c.person_id) as director_ids
-                FROM tmdb_crew c
-                JOIN tmdb_people p ON c.person_id = p.id
+                FROM {t_tmdb_crew} c
+                JOIN {t_tmdb_people} p ON c.person_id = p.id
                 WHERE c.media_id = ANY($1::bigint[])
                   AND c.job IN ('Director', 'Creator')
                 GROUP BY c.media_id
@@ -496,10 +507,10 @@ async def enrich_candidates_batch(
 
         # Batch: writers (person_ids for the writer-DNA match)
         if media_types is not None:
-            writer_rows = await conn.fetch(
+            writer_rows = await db.fetch(conn,
                 """
                 SELECT c.media_id, ARRAY_AGG(DISTINCT c.person_id) as writer_ids
-                FROM tmdb_crew c
+                FROM {t_tmdb_crew} c
                 WHERE (c.media_id, c.media_type) IN (
                           SELECT * FROM unnest($1::bigint[], $2::text[])
                       )
@@ -510,10 +521,10 @@ async def enrich_candidates_batch(
                 media_types,
             )
         else:
-            writer_rows = await conn.fetch(
+            writer_rows = await db.fetch(conn,
                 """
                 SELECT c.media_id, ARRAY_AGG(DISTINCT c.person_id) as writer_ids
-                FROM tmdb_crew c
+                FROM {t_tmdb_crew} c
                 WHERE c.media_id = ANY($1::bigint[])
                   AND c.job = 'Writer'
                 GROUP BY c.media_id
@@ -524,14 +535,14 @@ async def enrich_candidates_batch(
 
         # Batch: composer + cinematographer ids (cinematic DNA beyond the
         # director — the visual/audio language of a body of work)
-        dna_rows = await conn.fetch(
+        dna_rows = await db.fetch(conn,
             """
             SELECT c.media_id,
                    ARRAY_AGG(c.person_id) FILTER (WHERE c.job = 'Original Music Composer')
                        AS composer_ids,
                    ARRAY_AGG(c.person_id) FILTER (WHERE c.job = 'Director of Photography')
                        AS dp_ids
-            FROM tmdb_crew c
+            FROM {t_tmdb_crew} c
             WHERE c.media_id = ANY($1::bigint[])
               AND c.job IN ('Original Music Composer', 'Director of Photography')
             GROUP BY c.media_id
@@ -543,11 +554,11 @@ async def enrich_candidates_batch(
 
         # Batch: cast (top 5 per movie, ordered) — names for display,
         # person_ids for transliteration-proof similarity.
-        cast_rows = await conn.fetch(
+        cast_rows = await db.fetch(conn,
             """
             SELECT c.media_id, p.name, c.person_id
-            FROM tmdb_cast c
-            JOIN tmdb_people p ON c.person_id = p.id
+            FROM {t_tmdb_cast} c
+            JOIN {t_tmdb_people} p ON c.person_id = p.id
             WHERE c.media_id = ANY($1::bigint[])
             ORDER BY c.cast_order ASC NULLS LAST
             """,
@@ -564,11 +575,11 @@ async def enrich_candidates_batch(
         # Batch: keywords (graceful degradation if tables missing)
         keywords_map: dict[int, list[str]] = {}
         try:
-            kw_rows = await conn.fetch(
+            kw_rows = await db.fetch(conn,
                 """
                 SELECT mk.media_id, k.name
-                FROM tmdb_media_keywords mk
-                JOIN tmdb_keywords k ON mk.keyword_id = k.id
+                FROM {t_tmdb_media_keywords} mk
+                JOIN {t_tmdb_keywords} k ON mk.keyword_id = k.id
                 WHERE mk.media_id = ANY($1::bigint[])
                 """,
                 candidate_ids,
@@ -581,11 +592,11 @@ async def enrich_candidates_batch(
 
         # Batch: production companies
         company_map: dict[int, list[str]] = {}
-        comp_rows = await conn.fetch(
+        comp_rows = await db.fetch(conn,
             """
             SELECT mc.media_id, pc.name
-            FROM tmdb_media_companies mc
-            JOIN tmdb_production_companies pc ON mc.company_id = pc.id
+            FROM {t_tmdb_media_companies} mc
+            JOIN {t_tmdb_production_companies} pc ON mc.company_id = pc.id
             WHERE mc.media_id = ANY($1::bigint[])
             """,
             candidate_ids,
@@ -596,11 +607,11 @@ async def enrich_candidates_batch(
 
         # Batch: networks (TV)
         network_map: dict[int, list[str]] = {}
-        net_rows = await conn.fetch(
+        net_rows = await db.fetch(conn,
             """
             SELECT mn.media_id, n.name
-            FROM tmdb_media_networks mn
-            JOIN tmdb_networks n ON mn.network_id = n.id
+            FROM {t_tmdb_media_networks} mn
+            JOIN {t_tmdb_networks} n ON mn.network_id = n.id
             WHERE mn.media_id = ANY($1::bigint[])
             """,
             candidate_ids,
@@ -611,10 +622,10 @@ async def enrich_candidates_batch(
 
         # Batch: collection_ids + original_language (modality feature) from
         # tmdb_media
-        coll_rows = await conn.fetch(
+        coll_rows = await db.fetch(conn,
             """
             SELECT id, collection_id, original_language
-            FROM tmdb_media
+            FROM {t_tmdb_media}
             WHERE id = ANY($1::bigint[])
             """,
             candidate_ids,
@@ -629,10 +640,10 @@ async def enrich_candidates_batch(
         pacing_map: dict[int, str] = {}
         arc_map: dict[int, list] = {}
         try:
-            cin_rows = await conn.fetch(
+            cin_rows = await db.fetch(conn,
                 """
                 SELECT media_id, narrative_complexity, pacing, emotional_arc
-                FROM tmdb_cinematic
+                FROM {t_tmdb_cinematic}
                 WHERE media_id = ANY($1::bigint[])
                 """,
                 candidate_ids,
@@ -714,7 +725,7 @@ def _knn_arm_sql(mt: str, emb: str, seed_mt: str, vote_floor: int) -> str:
     seed = _KNN_MEDIUM[seed_mt]
     excl = "\n          AND c.id != $1" if mt == seed_mt else ""
     return f"""
-        WITH seed AS (SELECT {emb} AS v FROM {seed['table']} WHERE id = $1)
+        WITH seed AS (SELECT {emb} AS v FROM {tables.name(seed['table'])} WHERE id = $1)
         SELECT c.id, c.{s['title']} AS title, c.{s['title']} AS title_en,
                '{mt}'::text AS media_type,
                c.overview, c.overview AS overview_en,
@@ -722,13 +733,13 @@ def _knn_arm_sql(mt: str, emb: str, seed_mt: str, vote_floor: int) -> str:
                c.popularity::float, c.poster_path, {s['coll']} AS collection_id,
                EXTRACT(YEAR FROM c.{s['date']})::int AS release_year,
                ARRAY(
-                   SELECT g.name FROM tmdb_genres g
-                   JOIN {s['gmap']} gm ON gm.genre_id = g.id
+                   SELECT g.name FROM {tables.name('tmdb_genres')} g
+                   JOIN {tables.name(s['gmap'])} gm ON gm.genre_id = g.id
                    WHERE gm.{s['gid']} = c.id
                ) AS genres,
                GREATEST(0.0, 1 - (c.{emb} <=> (SELECT v FROM seed)))
                    AS knn_similarity
-        FROM {s['table']} c
+        FROM {tables.name(s['table'])} c
         WHERE c.{emb} IS NOT NULL{excl}
           AND c.vote_average >= 5.5
           AND c.vote_count >= {int(vote_floor)}
@@ -766,8 +777,8 @@ async def _fetch_knn_rows(pool, seed_id, seed_media_type, limit, emb,
             return None
         # ef_search must be raised per session for pgvector's hnsw
         # indexes to return deep-enough candidate lists.
-        await conn.execute("SET hnsw.ef_search = 400")
-        return await conn.fetch(sql, seed_id, limit)
+        await db.execute(conn, "SET hnsw.ef_search = 400")
+        return await db.fetch(conn, sql, seed_id, limit)
 
 
 async def generate_knn_candidates(
@@ -856,7 +867,7 @@ _USER_VECTOR_RECALL = """
                 popularity::float, poster_path, collection_id,
                 EXTRACT(YEAR FROM release_date)::int AS release_year,
                 1 - ({emb} <=> $1) AS knn_similarity
-         FROM tmdb_movies
+         FROM {t_tmdb_movies}
          WHERE {emb} IS NOT NULL AND vote_average >= 5.5
          ORDER BY {emb} <=> $1
          LIMIT $2)
@@ -867,7 +878,7 @@ _USER_VECTOR_RECALL = """
                 popularity::float, poster_path, NULL::bigint,
                 EXTRACT(YEAR FROM first_air_date)::int,
                 1 - ({emb} <=> $1)
-         FROM tmdb_tv
+         FROM {t_tmdb_tv}
          WHERE {emb} IS NOT NULL AND vote_average >= 5.5
          ORDER BY {emb} <=> $1
          LIMIT $2)
@@ -906,7 +917,7 @@ async def generate_user_vector_candidates(
                 await register_vector(conn)
             except Exception:
                 return []
-            rows = await conn.fetch(
+            rows = await db.fetch(conn,
                 _USER_VECTOR_RECALL.format(emb=col), user_vector, limit
             )
     except (_asyncpg.UndefinedColumnError, _asyncpg.UndefinedObjectError,
@@ -963,8 +974,8 @@ async def fetch_embeddings_batch(
             except Exception:
                 return {}
             if movie_ids:
-                rows = await conn.fetch(
-                    f"SELECT id, {col} AS emb FROM tmdb_movies "
+                rows = await db.fetch(conn,
+                    f"SELECT id, {col} AS emb FROM {tables.name('tmdb_movies')} "
                     f"WHERE id = ANY($1::bigint[]) AND {col} IS NOT NULL",
                     movie_ids,
                 )
@@ -973,8 +984,8 @@ async def fetch_embeddings_batch(
                     if emb is not None:
                         out[(r["id"], "movie")] = emb
             if tv_ids:
-                rows = await conn.fetch(
-                    f"SELECT id, {col} AS emb FROM tmdb_tv "
+                rows = await db.fetch(conn,
+                    f"SELECT id, {col} AS emb FROM {tables.name('tmdb_tv')} "
                     f"WHERE id = ANY($1::bigint[]) AND {col} IS NOT NULL",
                     tv_ids,
                 )
@@ -1115,32 +1126,32 @@ async def apply_recall_filters(pool, candidates: list, filters: dict) -> list:
                 if filters.get("genre_ids"):
                     p.append(filters["genre_ids"])
                     clauses.append(
-                        f"EXISTS (SELECT 1 FROM tmdb_movie_genres_map g "
+                        f"EXISTS (SELECT 1 FROM {tables.name('tmdb_movie_genres_map')} g "
                         f"WHERE g.movie_id = m.id AND g.genre_id = ANY(${len(p)}))")
                 if filters.get("exclude_genre_ids"):
                     p.append(filters["exclude_genre_ids"])
                     clauses.append(
-                        f"NOT EXISTS (SELECT 1 FROM tmdb_movie_genres_map g "
+                        f"NOT EXISTS (SELECT 1 FROM {tables.name('tmdb_movie_genres_map')} g "
                         f"WHERE g.movie_id = m.id AND g.genre_id = ANY(${len(p)}))")
                 where = " AND ".join(["m.id = ANY($1)"] + clauses)
-                rows = await conn.fetch(
-                    f"SELECT m.id FROM tmdb_movies m WHERE {where}", *p)
+                rows = await db.fetch(conn,
+                    f"SELECT m.id FROM {tables.name('tmdb_movies')} m WHERE {where}", *p)
                 eligible |= {(r["id"], "movie") for r in rows}
             if tv_ids:
                 clauses, p = _year_clause("t.first_air_date", [tv_ids])
                 if filters.get("genre_ids"):
                     p.append(filters["genre_ids"])
                     clauses.append(
-                        f"EXISTS (SELECT 1 FROM tmdb_tv_genres_map g "
+                        f"EXISTS (SELECT 1 FROM {tables.name('tmdb_tv_genres_map')} g "
                         f"WHERE g.tv_id = t.id AND g.genre_id = ANY(${len(p)}))")
                 if filters.get("exclude_genre_ids"):
                     p.append(filters["exclude_genre_ids"])
                     clauses.append(
-                        f"NOT EXISTS (SELECT 1 FROM tmdb_tv_genres_map g "
+                        f"NOT EXISTS (SELECT 1 FROM {tables.name('tmdb_tv_genres_map')} g "
                         f"WHERE g.tv_id = t.id AND g.genre_id = ANY(${len(p)}))")
                 where = " AND ".join(["t.id = ANY($1)"] + clauses)
-                rows = await conn.fetch(
-                    f"SELECT t.id FROM tmdb_tv t WHERE {where}", *p)
+                rows = await db.fetch(conn,
+                    f"SELECT t.id FROM {tables.name('tmdb_tv')} t WHERE {where}", *p)
                 eligible |= {(r["id"], "tv") for r in rows}
     except Exception:
         return candidates  # filter tables missing — degrade open
@@ -1161,9 +1172,9 @@ async def top_user_genre_ids(pool, user_id: int, limit: int = 3) -> list:
     """The user's top genre clusters by weighted watch share. Degrades
     to [] — the caller falls back to global rows."""
     try:
-        rows = await pool.fetch(
+        rows = await db.fetch(pool,
             """SELECT genre_id, SUM(weighted_sum) AS w
-               FROM user_genre_stats WHERE user_id = $1
+               FROM {t_user_genre_stats} WHERE user_id = $1
                GROUP BY genre_id ORDER BY w DESC NULLS LAST, genre_id LIMIT $2""",
             user_id, limit,
         )
@@ -1179,10 +1190,10 @@ async def genre_names_for_ids(pool, genre_ids: list) -> set:
     if not genre_ids:
         return set()
     try:
-        rows = await pool.fetch(
-            """SELECT name FROM tmdb_movie_genres WHERE id = ANY($1::int[])
+        rows = await db.fetch(pool,
+            """SELECT name FROM {t_tmdb_movie_genres} WHERE id = ANY($1::int[])
                UNION
-               SELECT name FROM tmdb_tv_genres WHERE id = ANY($1::int[])""",
+               SELECT name FROM {t_tmdb_tv_genres} WHERE id = ANY($1::int[])""",
             sorted(set(genre_ids)),
         )
         return {r["name"] for r in rows}
@@ -1213,9 +1224,9 @@ _DISCOVERY_RECALL = """
                m.popularity::float, m.poster_path, m.collection_id,
                EXTRACT(YEAR FROM m.release_date)::int AS release_year,
                1 - (m.{emb} <=> $1) AS knn_similarity
-        FROM tmdb_movies m
+        FROM {t_tmdb_movies} m
         WHERE m.{emb} IS NOT NULL AND m.vote_average >= 5.5
-          AND NOT EXISTS (SELECT 1 FROM tmdb_movie_genres_map g
+          AND NOT EXISTS (SELECT 1 FROM {t_tmdb_movie_genres_map} g
                           WHERE g.movie_id = m.id AND g.genre_id = ANY($2))
         UNION ALL
         SELECT t.id, t.name, t.name AS title_en, 'tv'::text,
@@ -1224,9 +1235,9 @@ _DISCOVERY_RECALL = """
                t.popularity::float, t.poster_path, NULL::bigint,
                EXTRACT(YEAR FROM t.first_air_date)::int,
                1 - (t.{emb} <=> $1)
-        FROM tmdb_tv t
+        FROM {t_tmdb_tv} t
         WHERE t.{emb} IS NOT NULL AND t.vote_average >= 5.5
-          AND NOT EXISTS (SELECT 1 FROM tmdb_tv_genres_map g
+          AND NOT EXISTS (SELECT 1 FROM {t_tmdb_tv_genres_map} g
                           WHERE g.tv_id = t.id AND g.genre_id = ANY($2))
     ) d
     ORDER BY d.knn_similarity DESC, d.id ASC
@@ -1259,7 +1270,7 @@ async def generate_discovery_candidates(
                 await register_vector(conn)
             except Exception:
                 return []
-            rows = await conn.fetch(
+            rows = await db.fetch(conn,
                 _DISCOVERY_RECALL.format(emb=col),
                 user_vector, sorted(set(exclude_genre_ids)) or [0], limit,
             )
@@ -1306,6 +1317,7 @@ async def _gem_or_trending_rows(pool, limit, genre_ids, filters, mode) -> List[d
     # movies title column is `title`, tv's is `name` (the split schema's
     # one naming asymmetry — _USER_VECTOR_RECALL does the same aliasing)
     async def _fetch(conn, table, title_col, date_col, media_type, gmap, gcol):
+        table, gmap = tables.name(table), tables.name(gmap)
         where, p = ["vote_count >= $1"], [_vote_floor(media_type)]
         if mode == "gems":
             p.extend([HIDDEN_GEMS_RATING_MIN,
@@ -1326,7 +1338,7 @@ async def _gem_or_trending_rows(pool, limit, genre_ids, filters, mode) -> List[d
             where.append(f"EXTRACT(YEAR FROM {date_col}) <= ${len(p)}")
         order = ("vote_average DESC, vote_count ASC, id ASC" if mode == "gems"
                  else "popularity DESC, id ASC")
-        return [dict(r) for r in await conn.fetch(
+        return [dict(r) for r in await db.fetch(conn,
             f"SELECT m.id AS tmdb_id, m.{title_col} AS title, "
             f"m.{title_col} AS title_en, "
             f"'{media_type}'::text AS media_type, m.vote_average::float AS rating, "
@@ -1444,7 +1456,7 @@ async def generate_tmdb_rec_candidates(
     """
     try:
         async with pool.acquire() as conn:
-            rows = await conn.fetch(
+            rows = await db.fetch(conn,
                 """
                 SELECT
                     m.id,
@@ -1462,12 +1474,12 @@ async def generate_tmdb_rec_candidates(
                     r.rank AS tmdb_rank,
                     ARRAY(
                         SELECT g.name
-                        FROM tmdb_genres g
-                        JOIN tmdb_media_genres mg ON g.id = mg.genre_id
+                        FROM {t_tmdb_genres} g
+                        JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
                         WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
                     ) as genres
-                FROM tmdb_recommendations r
-                JOIN tmdb_media m
+                FROM {t_tmdb_recommendations} r
+                JOIN {t_tmdb_media} m
                   ON (m.id, m.media_type) = (r.rec_media_id, r.rec_media_type)
                 WHERE (r.media_id, r.media_type) = ($1, $2)
                 ORDER BY r.rank
@@ -1511,11 +1523,11 @@ async def generate_director_candidates(
     """
     try:
         async with pool.acquire() as conn:
-            rows = await conn.fetch(
+            rows = await db.fetch(conn,
                 """
                 WITH seed_auteurs AS (
                     SELECT person_id
-                    FROM tmdb_crew
+                    FROM {t_tmdb_crew}
                     WHERE (media_id, media_type) = ($1, $2)
                       AND job IN ('Director', 'Creator', 'Writer')
                 )
@@ -1526,12 +1538,12 @@ async def generate_director_candidates(
                     EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int AS release_year,
                     BOOL_OR(c.job IN ('Director', 'Creator')) AS via_director,
                     ARRAY(
-                        SELECT g.name FROM tmdb_genres g
-                        JOIN tmdb_media_genres mg ON g.id = mg.genre_id
+                        SELECT g.name FROM {t_tmdb_genres} g
+                        JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
                         WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
                     ) as genres
-                FROM tmdb_crew c
-                JOIN tmdb_media m
+                FROM {t_tmdb_crew} c
+                JOIN {t_tmdb_media} m
                   ON (m.id, m.media_type) = (c.media_id, c.media_type)
                 WHERE c.person_id IN (SELECT person_id FROM seed_auteurs)
                   AND c.job IN ('Director', 'Creator', 'Writer')

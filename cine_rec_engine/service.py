@@ -35,6 +35,7 @@ import asyncpg
 from loguru import logger
 
 from . import config as rec_config_module
+from . import db
 from . import metrics as _metrics
 from .config import (
     AUTEUR_DECAY_FACTORS,
@@ -262,13 +263,13 @@ class RecommendationService:
         blocked: set = set(seeds)
         if seeds:
             try:
-                rows = await self.pool.fetch(
+                rows = await db.fetch(self.pool,
                     """
                     SELECT DISTINCT m2.id
-                    FROM tmdb_movies m2
+                    FROM {t_tmdb_movies} m2
                     WHERE m2.collection_id > 0
                       AND m2.collection_id IN (
-                        SELECT s.collection_id FROM tmdb_movies s
+                        SELECT s.collection_id FROM {t_tmdb_movies} s
                         WHERE s.id = ANY($1::bigint[])
                           AND s.collection_id > 0
                     )
@@ -294,13 +295,13 @@ class RecommendationService:
             # collection index serves it — the same query through the
             # compatibility view planned a catalog-wide union+sort.
             try:
-                rows = await self.pool.fetch(
+                rows = await db.fetch(self.pool,
                     """
                     SELECT m.collection_id, m.id, m.title, m.title AS title_en,
                            m.vote_average::float AS vote_average, m.poster_path,
                            EXTRACT(YEAR FROM m.release_date)::int
                                AS release_year
-                    FROM tmdb_movies m
+                    FROM {t_tmdb_movies} m
                     WHERE m.collection_id > 0
                       AND m.collection_id = ANY($1::int[])
                     ORDER BY m.collection_id,
@@ -494,8 +495,8 @@ class RecommendationService:
         model_key = normalize_model(vector_space)
 
         weighted = await top_weighted_seeds(self.pool, user_id, limit=20)
-        watchlist_rows = await self.pool.fetch(
-            """SELECT f.tmdb_id, f.media_type FROM user_feedback f
+        watchlist_rows = await db.fetch(self.pool,
+            """SELECT f.tmdb_id, f.media_type FROM {t_user_feedback} f
                WHERE f.user_id = $1 AND f.kind = 'watchlist'
                ORDER BY f.created_at DESC LIMIT 10""",
             user_id,
@@ -876,10 +877,10 @@ class RecommendationService:
         # — powers narrative_match + the mood features. Missing → None.
         try:
             async with self.pool.acquire() as conn:
-                narr_rows = await conn.fetch(
+                narr_rows = await db.fetch(conn,
                     """
                     SELECT media_id, narrative_complexity, pacing, emotional_arc
-                    FROM tmdb_cinematic
+                    FROM {t_tmdb_cinematic}
                     WHERE media_id = ANY($1::bigint[])
                     """,
                     [s["id"] for s in seed_infos],

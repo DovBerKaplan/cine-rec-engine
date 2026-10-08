@@ -1,0 +1,31 @@
+# Self-host the HTTP API against your own PostgreSQL — minimum fuss.
+#
+#   cd deploy
+#   DATABASE_URL=postgresql://user:pw@db-host:5432/yourdb docker compose up -d
+#
+# What you get: the engine container, schema auto-applied on boot
+# (idempotent), pool sized for the measured hot path, healthcheck.
+#
+# Bring your own table names (optional): create tables.json like
+#   {"tmdb_media": "app_media", "user_watches": "app.user_watches"}
+# and uncomment the volumes + CINE_REC_SCHEMA_MAP lines. Startup fails
+# loudly if a mapped table is missing — misconfig never looks like
+# "no recommendations".
+services:
+  engine:
+    build: ..
+    ports:
+      - "${CINE_REC_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL=postgresql://user:pw@host/db}
+      CINE_REC_AUTO_INIT: "1"
+      CINE_REC_POOL_SIZE: "${CINE_REC_POOL_SIZE:-20}"
+      # persistent impression tokens across restarts (feedback endpoint):
+      CINE_REC_IMPRESSION_SECRET: "${CINE_REC_IMPRESSION_SECRET:-}"
+      # table-name remap — mount the file and uncomment:
+      # CINE_REC_SCHEMA_MAP: /config/tables.json
+      # CINE_REC_EMBEDDING: "${CINE_REC_EMBEDDING:-original}"
+      # CINE_REC_REDIS_URL: "${CINE_REC_REDIS_URL:-}"
+    # volumes:
+    #   - ./tables.json:/config/tables.json:ro
+    restart: unless-stopped

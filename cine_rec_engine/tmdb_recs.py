@@ -27,6 +27,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 import aiohttp
 from loguru import logger
+from . import db
 
 TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
 TMDB_BASE = "https://api.themoviedb.org/3"
@@ -119,8 +120,10 @@ async def has_local_recommendations(pool, media_id: int, media_type: str) -> boo
         True if at least one recommendation row exists locally.
     """
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT 1 FROM tmdb_recommendations " "WHERE (media_id, media_type) = ($1, $2) LIMIT 1",
+        row = await db.fetchrow(
+            conn,
+            "SELECT 1 FROM {t_tmdb_recommendations} "
+            "WHERE (media_id, media_type) = ($1, $2) LIMIT 1",
             media_id,
             media_type,
         )
@@ -186,9 +189,9 @@ async def store_recommendations(pool, media_id: int, media_type: str, recs: List
         for i, r in enumerate(recs)
     ]
     async with pool.acquire() as conn:
-        await conn.executemany(
+        await db.executemany(conn,
             """
-            INSERT INTO tmdb_recommendations (
+            INSERT INTO {t_tmdb_recommendations} (
                 media_id, media_type, rec_media_id, rec_media_type,
                 rank, popularity
             ) VALUES ($1, $2, $3, $4, $5, $6)

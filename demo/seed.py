@@ -9,6 +9,8 @@ import json
 import os
 import sys
 from pathlib import Path
+from cine_rec_engine import db
+from cine_rec_engine import tables
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -22,12 +24,12 @@ async def main():
 
     pool = await asyncpg.create_pool(DSN)
     async with pool.acquire() as c:
-        await c.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        await c.execute((ROOT / "docs" / "schema.sql").read_text())
-        await c.execute(
-            "ALTER TABLE tmdb_movies ADD COLUMN IF NOT EXISTS embedding_minilm vector(384)")
-        await c.execute(
-            "ALTER TABLE tmdb_tv ADD COLUMN IF NOT EXISTS embedding_minilm vector(384)")
+        await db.execute(c, "CREATE EXTENSION IF NOT EXISTS vector")
+        await db.execute(c, (ROOT / "docs" / "schema.sql").read_text())
+        await db.execute(c,
+            "ALTER TABLE {t_tmdb_movies} ADD COLUMN IF NOT EXISTS embedding_minilm vector(384)")
+        await db.execute(c,
+            "ALTER TABLE {t_tmdb_tv} ADD COLUMN IF NOT EXISTS embedding_minilm vector(384)")
     # offline loader: no fetches happen, so a placeholder key is fine
     ingest = TmdbIngest(pool, api_key="offline-demo")
     n = 0
@@ -47,8 +49,9 @@ async def main():
                 rec = json.loads(line)
                 vec = rec.get("embedding_minilm")
                 if vec:
-                    table = "tmdb_movies" if rec["medium"] == "movie" else "tmdb_tv"
-                    await c.execute(
+                    table = tables.name(
+                        "tmdb_movies" if rec["medium"] == "movie" else "tmdb_tv")
+                    await db.execute(c,
                         f"UPDATE {table} SET embedding_minilm = $1 WHERE id = $2",
                         vec, rec["payload"]["id"])
     print(f"seeded {n} titles (+embeddings) into {DSN.split('@')[-1]}")

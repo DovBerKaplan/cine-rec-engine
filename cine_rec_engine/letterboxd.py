@@ -17,6 +17,7 @@ import csv
 import io
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
+from . import db
 
 
 @dataclass
@@ -73,8 +74,8 @@ async def match_title(pool, name: str, year: Optional[int]) -> Optional[Tuple[in
     Never fuzzy-forces: a confident miss stays a miss.
     """
     if year:
-        row = await pool.fetchrow(
-            """SELECT id FROM tmdb_movies
+        row = await db.fetchrow(pool,
+            """SELECT id FROM {t_tmdb_movies}
                WHERE lower(title) = lower($1)
                  AND EXTRACT(YEAR FROM release_date) = $2
                LIMIT 1""",
@@ -82,8 +83,8 @@ async def match_title(pool, name: str, year: Optional[int]) -> Optional[Tuple[in
         )
         if row:
             return row["id"], "movie"
-    row = await pool.fetchrow(
-        """SELECT id, EXTRACT(YEAR FROM release_date) AS y FROM tmdb_movies
+    row = await db.fetchrow(pool,
+        """SELECT id, EXTRACT(YEAR FROM release_date) AS y FROM {t_tmdb_movies}
            WHERE lower(title) = lower($1) ORDER BY popularity DESC LIMIT 1""",
         name,
     )

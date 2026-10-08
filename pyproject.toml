@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cine-rec-engine"
-version = "0.10.0"
+version = "0.11.0"
 description = "Content-based movie & series recommendation engine over your own PostgreSQL TMDB mirror"
 readme = "README.md"
 license = { text = "MIT" }
@@ -43,6 +43,9 @@ dev = [
     "pgvector>=0.3",           # offline regression pins use real Vector objects
 ]
 
+[project.scripts]
+cine-rec = "cine_rec_engine.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/DovBerKaplan/cine-rec-engine"
 Issues = "https://github.com/DovBerKaplan/cine-rec-engine/issues"
@@ -51,7 +54,7 @@ Issues = "https://github.com/DovBerKaplan/cine-rec-engine/issues"
 include = ["cine_rec_engine*", "ingest*"]
 
 [tool.setuptools.package-data]
-cine_rec_engine = ["weights.json"]
+cine_rec_engine = ["weights.json", "sql/*.sql"]
 
 [tool.ruff]
 line-length = 100

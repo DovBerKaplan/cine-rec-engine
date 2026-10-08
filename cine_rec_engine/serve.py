@@ -28,6 +28,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from . import __version__
+from . import init_db
 from .impressions import verify as verify_impression
 from .model_spaces import REC_MODELS, normalize_model
 from .page import compose_page
@@ -135,7 +136,26 @@ def create_app(
                     "no database: set DATABASE_URL "
                     "(or pass dsn=/service= to create_app)"
                 )
-            pool = await asyncpg.create_pool(url)
+            try:
+                pool_size = max(1, int(os.getenv("CINE_REC_POOL_SIZE", "20")))
+            except ValueError:
+                pool_size = 20
+            pool = await asyncpg.create_pool(
+                url, min_size=min(pool_size, 10), max_size=pool_size
+            )
+            if os.getenv("CINE_REC_AUTO_INIT", "").strip().lower() in ("1", "true", "yes"):
+                async with pool.acquire() as conn:
+                    result = await init_db.apply_schema(conn, full=True)
+                app.state.auto_init = result
+            # An explicitly remapped table that is missing is a config
+            # error — refuse to serve rather than degrade to empty rows.
+            problems = await init_db.startup_verify(pool)
+            if problems:
+                await pool.close()
+                raise RuntimeError(
+                    "table map failed startup verification: "
+                    + "; ".join(problems)
+                )
             svc = RecommendationService()
             await svc.initialize(pool)
             app.state.service = svc

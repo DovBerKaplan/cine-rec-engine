@@ -15,6 +15,8 @@ from loguru import logger
 from cine_rec_engine.tmdb_client import fetch_with_retry
 
 from .rate import RateLimiter
+from cine_rec_engine import db
+from cine_rec_engine import tables
 
 API_BASE = "https://api.themoviedb.org/3"
 
@@ -68,23 +70,23 @@ def keep_crew(crew: Iterable[dict]) -> List[Tuple[int, str, Optional[str]]]:
 
 
 def gmap_table(movie: bool) -> str:
-    return "tmdb_movie_genres_map" if movie else "tmdb_tv_genres_map"
+    return tables.name("tmdb_movie_genres_map" if movie else "tmdb_tv_genres_map")
 
 
 def kw_table(movie: bool) -> str:
-    return "tmdb_movie_keywords" if movie else "tmdb_tv_keywords"
+    return tables.name("tmdb_movie_keywords" if movie else "tmdb_tv_keywords")
 
 
 def company_table(movie: bool) -> str:
-    return "tmdb_movie_companies" if movie else "tmdb_tv_companies"
+    return tables.name("tmdb_movie_companies" if movie else "tmdb_tv_companies")
 
 
 def cast_table(movie: bool) -> str:
-    return "tmdb_movie_cast" if movie else "tmdb_tv_cast"
+    return tables.name("tmdb_movie_cast" if movie else "tmdb_tv_cast")
 
 
 def crew_table(movie: bool) -> str:
-    return "tmdb_movie_crew" if movie else "tmdb_tv_crew"
+    return tables.name("tmdb_movie_crew" if movie else "tmdb_tv_crew")
 
 
 def append_to_response(medium: str) -> str:
@@ -211,19 +213,19 @@ async def _sync_bridge(conn, table: str, media_col: str, media_id: int,
     would linger forever under ON CONFLICT DO NOTHING.
     """
     if current_ids:
-        await conn.execute(
+        await db.execute(conn,
             f"DELETE FROM {table} WHERE {media_col} = $1 "
             f"AND {other_col} <> ALL($2::bigint[])",
             media_id, current_ids,
         )
     else:
-        await conn.execute(f"DELETE FROM {table} WHERE {media_col} = $1", media_id)
+        await db.execute(conn, f"DELETE FROM {table} WHERE {media_col} = $1", media_id)
     if rows:
-        await conn.executemany(insert_sql, rows)
+        await db.executemany(conn, insert_sql, rows)
 
 
 UPSERT_MOVIE = """
-    INSERT INTO tmdb_movies (id, title, original_title, original_language,
+    INSERT INTO {t_tmdb_movies} (id, title, original_title, original_language,
         overview, release_date, runtime, status, adult, vote_average,
         vote_count, popularity, poster_path, backdrop_path, collection_id,
         imdb_id, budget, revenue, updated_at)
@@ -241,7 +243,7 @@ UPSERT_MOVIE = """
 """
 
 UPSERT_TV = """
-    INSERT INTO tmdb_tv (id, name, original_name, original_language,
+    INSERT INTO {t_tmdb_tv} (id, name, original_name, original_language,
         overview, first_air_date, last_air_date, status, in_production,
         number_of_seasons, number_of_episodes, adult, vote_average,
         vote_count, popularity, poster_path, backdrop_path, imdb_id, updated_at)
@@ -311,9 +313,9 @@ class TmdbIngest:
         col = "movie_id" if movie else "tv_id"
 
         if movie:
-            await self.pool.execute(UPSERT_MOVIE, *title_row_from_payload(payload))
+            await db.execute(self.pool, UPSERT_MOVIE, *title_row_from_payload(payload))
         else:
-            await self.pool.execute(UPSERT_TV, *tv_row_from_payload(payload))
+            await db.execute(self.pool, UPSERT_TV, *tv_row_from_payload(payload))
 
         genres = [(g["id"], g["name"]) for g in payload.get("genres", [])]
         kw = (payload.get("keywords", {}) or {}).get("keywords", [])
@@ -332,15 +334,16 @@ class TmdbIngest:
                     int(c["id"]): c.get("name") or ""
                     for c in (credits.get("cast") or []) + (credits.get("crew") or [])
                 }
-                await conn.executemany(
-                    "INSERT INTO tmdb_people (id, name) VALUES ($1, $2) "
+                await db.executemany(conn,
+                    "INSERT INTO {t_tmdb_people} (id, name) VALUES ($1, $2) "
                     "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
                     list(names.items()),
                 )
 
             if genres:
-                genre_table = "tmdb_movie_genres" if movie else "tmdb_tv_genres"
-                await conn.executemany(
+                genre_table = tables.name(
+                    "tmdb_movie_genres" if movie else "tmdb_tv_genres")
+                await db.executemany(conn,
                     f"INSERT INTO {genre_table} (id, name) VALUES ($1, $2) "
                     "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
                     genres,
@@ -354,8 +357,8 @@ class TmdbIngest:
             )
 
             if kw:
-                await conn.executemany(
-                    "INSERT INTO tmdb_keywords (id, name) VALUES ($1, $2) "
+                await db.executemany(conn,
+                    "INSERT INTO {t_tmdb_keywords} (id, name) VALUES ($1, $2) "
                     "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
                     [(int(k["id"]), k["name"]) for k in kw],
                 )
@@ -368,8 +371,8 @@ class TmdbIngest:
             )
 
             if companies:
-                await conn.executemany(
-                    "INSERT INTO tmdb_production_companies (id, name) "
+                await db.executemany(conn,
+                    "INSERT INTO {t_tmdb_production_companies} (id, name) "
                     "VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name",
                     [(int(c["id"]), c["name"]) for c in companies],
                 )
@@ -382,15 +385,15 @@ class TmdbIngest:
             )
 
             if networks:
-                await conn.executemany(
-                    "INSERT INTO tmdb_networks (id, name) VALUES ($1, $2) "
+                await db.executemany(conn,
+                    "INSERT INTO {t_tmdb_networks} (id, name) VALUES ($1, $2) "
                     "ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name",
                     [(int(n["id"]), n["name"]) for n in networks],
                 )
             await _sync_bridge(
-                conn, "tmdb_tv_networks_map", "tv_id", media_id, "network_id",
+                conn, tables.name("tmdb_tv_networks_map"), "tv_id", media_id, "network_id",
                 [int(n["id"]) for n in networks],
-                "INSERT INTO tmdb_tv_networks_map (tv_id, network_id) "
+                "INSERT INTO {t_tmdb_tv_networks_map} (tv_id, network_id) "
                 "VALUES ($1, $2) ON CONFLICT DO NOTHING",
                 [(media_id, int(n["id"])) for n in networks],
             )
@@ -415,14 +418,14 @@ class TmdbIngest:
             )
 
             recs = rec_rows_from_payload(payload)
-            await conn.execute(
-                "DELETE FROM tmdb_recommendations WHERE media_id = $1 "
+            await db.execute(conn,
+                "DELETE FROM {t_tmdb_recommendations} WHERE media_id = $1 "
                 "AND media_type = $2 AND rank > $3",
                 media_id, medium, len(recs),
             )
             if recs:
-                await conn.executemany(
-                    "INSERT INTO tmdb_recommendations (media_id, media_type, "
+                await db.executemany(conn,
+                    "INSERT INTO {t_tmdb_recommendations} (media_id, media_type, "
                     "rec_media_id, rec_media_type, rank, popularity) "
                     "VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT "
                     "(media_id, media_type, rec_media_id, rec_media_type) DO UPDATE "
@@ -459,8 +462,8 @@ class TmdbIngest:
 
     async def existing_ids(self) -> dict:
         """id sets per medium — the skip-existing index for bootstrap/refresh."""
-        movies = await self.pool.fetch("SELECT id FROM tmdb_movies")
-        tv = await self.pool.fetch("SELECT id FROM tmdb_tv")
+        movies = await db.fetch(self.pool, "SELECT id FROM {t_tmdb_movies}")
+        tv = await db.fetch(self.pool, "SELECT id FROM {t_tmdb_tv}")
         return {"movie": {r["id"] for r in movies}, "tv": {r["id"] for r in tv}}
 
     async def bootstrap(

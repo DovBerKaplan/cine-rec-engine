@@ -21,6 +21,8 @@ from loguru import logger
 
 from .config import USER_VECTOR_MAX_AGE_HOURS
 from .model_spaces import column_for
+from . import db
+from . import tables
 
 
 def _as_list(v) -> list:
@@ -96,16 +98,16 @@ async def build_user_vector(
                 await register_vector(conn)
             except Exception:
                 return None  # no vector infrastructure — no user vector
-            rows = await conn.fetch(
+            rows = await db.fetch(conn,
                 f"""
                 SELECT uts.w_item, m.emb
-                FROM user_title_stats uts
+                FROM {tables.name('user_title_stats')} uts
                 JOIN (
                     SELECT id, 'movie'::text AS media_type, {emb_col} AS emb
-                    FROM tmdb_movies WHERE {emb_col} IS NOT NULL
+                    FROM {tables.name('tmdb_movies')} WHERE {emb_col} IS NOT NULL
                     UNION ALL
                     SELECT id, 'tv'::text, {emb_col}
-                    FROM tmdb_tv WHERE {emb_col} IS NOT NULL
+                    FROM {tables.name('tmdb_tv')} WHERE {emb_col} IS NOT NULL
                 ) m ON m.id = uts.tmdb_id AND m.media_type = uts.media_type
                 WHERE uts.user_id = $1 AND uts.w_item > 0
                 ORDER BY uts.w_item DESC
@@ -122,12 +124,12 @@ async def build_user_vector(
 
     async with pool.acquire() as conn:
         if vec is None:
-            await conn.execute(
-                "DELETE FROM user_vectors WHERE user_id = $1 AND persona_id = 0",
+            await db.execute(conn,
+                "DELETE FROM {t_user_vectors} WHERE user_id = $1 AND persona_id = 0",
                 user_id,
             )
-            await conn.execute(
-                """UPDATE user_stats
+            await db.execute(conn,
+                """UPDATE {t_user_stats}
                    SET vector_updated_at = now(), persona_count = 0
                    WHERE user_id = $1""",
                 user_id,
@@ -135,9 +137,9 @@ async def build_user_vector(
             return None
 
         await register_vector(conn)
-        await conn.execute(
+        await db.execute(conn,
             """
-            INSERT INTO user_vectors (user_id, persona_id, space, embedding,
+            INSERT INTO {t_user_vectors} (user_id, persona_id, space, embedding,
                                       weight, updated_at)
             VALUES ($1, 0, $2, $3, 1.0, now())
             ON CONFLICT (user_id, persona_id, space) DO UPDATE SET
@@ -147,8 +149,8 @@ async def build_user_vector(
             """,
             user_id, space or "default", vec,
         )
-        await conn.execute(
-            """UPDATE user_stats
+        await db.execute(conn,
+            """UPDATE {t_user_stats}
                SET vector_updated_at = now(), persona_count = 1
                WHERE user_id = $1""",
             user_id,
@@ -186,8 +188,8 @@ async def ensure_user_vector(
     try:
         async with pool.acquire() as conn:
             await register_vector(conn)
-            row = await conn.fetchrow(
-                """SELECT embedding FROM user_vectors
+            row = await db.fetchrow(conn,
+                """SELECT embedding FROM {t_user_vectors}
                    WHERE user_id = $1 AND persona_id = 0
                      AND space = COALESCE($2, space)
                      AND updated_at > now() - ($3 || ' hours')::interval""",
@@ -215,8 +217,8 @@ async def load_user_vector(
 
     async with pool.acquire() as conn:
         await register_vector(conn)
-        row = await conn.fetchrow(
-            """SELECT embedding FROM user_vectors
+        row = await db.fetchrow(conn,
+            """SELECT embedding FROM {t_user_vectors}
                WHERE user_id = $1 AND persona_id = 0
                  AND space = COALESCE($2, space)""",
             user_id, space,
@@ -230,8 +232,8 @@ async def top_weighted_seeds(
     pool: asyncpg.Pool, user_id: int, limit: int = 20
 ) -> List[Tuple[int, str, float]]:
     """Highest-w_i (id, media_type, w) tuples — the LTR seed set (§F.1)."""
-    rows = await pool.fetch(
-        """SELECT tmdb_id, media_type, w_item FROM user_title_stats
+    rows = await db.fetch(pool,
+        """SELECT tmdb_id, media_type, w_item FROM {t_user_title_stats}
            WHERE user_id = $1 AND w_item > 0
            ORDER BY w_item DESC, last_watched_at DESC LIMIT $2""",
         user_id, limit,

@@ -26,9 +26,10 @@ our accuracy?* If yes, it stays out.
 
 | Path | What it is |
 |---|---|
-| `cine_rec_engine/` | the engine: `service.py` (find_similar, recommend_for_user, scoring loop), `queries.py` (SQL recall incl. user-vector ANN), `scoring.py` (pure similarity fns), `config.py` (constants/weights), `user_weights.py` (§D item weights), `user_stats.py` (events→stats pipeline), `user_vector.py` (§E user vectors), `watched.py` (per-user exclusions), `tmdb_recs.py` (behavioral-graph sync), `weights.json` (published coefficients) |
-| `ingest/` | TMDB mirror loader: `loader.py` (upserts + bridge mirroring), `exports.py` (daily ID exports, streaming), `rate.py` (token bucket), `cli.py` (`bootstrap`/`refresh`/`genres`) |
-| `demo/` | `docker compose up` → Postgres + 400 bundled titles + recommendations with WHY. No API key. |
+| `cine_rec_engine/` | the engine: `service.py` (find_similar, recommend_for_user, scoring loop), `queries.py` (SQL recall incl. user-vector ANN), `scoring.py` (pure similarity fns), `config.py` (constants/weights), `tables.py` (logical table-name registry — `CINE_REC_SCHEMA_MAP`), `db.py` (fetch/execute helpers resolving `{t_<name>}` placeholders), `user_weights.py` (§D item weights), `user_stats.py` (events→stats pipeline), `user_vector.py` (§E user vectors), `watched.py` (per-user exclusions), `tmdb_recs.py` (behavioral-graph sync), `serve.py` (HTTP API), `init_db.py` + `sql/` (schema apply + startup map verification), `cli.py` (`cine-rec init/check/serve`), `weights.json` (published coefficients) |
+| `ingest/` | TMDB mirror loader: `loader.py` (upserts + bridge mirroring — writes through the same table registry), `exports.py` (daily ID exports, streaming), `rate.py` (token bucket), `cli.py` (`bootstrap`/`refresh`/`genres`) |
+| `demo/` | `docker compose up` → Postgres + bundled titles + recommendations with WHY. No API key. |
+| `deploy/` | self-host `docker-compose.yml` (env knobs, optional table-map mount) |
 | `eval/` | pairwise/NDCG harness + demo judgments |
 | `docs/` | `schema.sql` (split catalog + compatibility views), `user_data.sql` (user layer; `user_watches` is a DERIVED view), `data.md` (ingest contract), `personalization.md` (§B–§J) |
 | `benchmarks/` | `bench_scoring.py` (offline hot loop), `bench_e2e.py` (synthetic 25k catalog), `smoke_personalization.py` (live end-to-end) |

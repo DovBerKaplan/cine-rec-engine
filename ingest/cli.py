@@ -17,19 +17,22 @@ import asyncpg
 from .exports import latest_export_url
 from .loader import API_BASE, TmdbIngest
 from cine_rec_engine.tmdb_client import fetch_with_retry
+from cine_rec_engine import db
+from cine_rec_engine import tables
 
 
 async def sync_genres(pool: asyncpg.Pool, api_key: str) -> None:
     """/genre/movie/list + /genre/tv/list — once per run (id lists rarely change)."""
     async with aiohttp.ClientSession() as session:
-        for medium, table in (("movie", "tmdb_movie_genres"), ("tv", "tmdb_tv_genres")):
+        for medium, table in (("movie", tables.name("tmdb_movie_genres")),
+                         ("tv", tables.name("tmdb_tv_genres"))):
             data = await fetch_with_retry(
                 session, f"{API_BASE}/genre/{medium}/list",
                 {"api_key": api_key, "language": "en-US"},
             )
             rows = [(g["id"], g["name"]) for g in data.get("genres", [])]
             if rows:
-                await pool.executemany(
+                await db.executemany(pool,
                     f"INSERT INTO {table} (id, name) VALUES ($1, $2) "
                     "ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name",
                     rows,
