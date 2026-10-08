@@ -39,11 +39,11 @@ A content-based recommendation engine for movies & series: give it one title
 ```
    your data (TMDB mirror + user events)        what you get back
   ┌───────────────────────────────┐            ┌───────────────────────┐
-  │ PostgreSQL                           │            │ ranked similar titles      │
-  │  · tmdb_media + satellites           │            │  · score + why             │
-  │  · (optional) embeddings             │──engine──►│  · movies/series mix       │
-  │  · (optional) TMDB rec cache         │            │  · per-user filtering      │
-  │  · your watch/rating events          │            │  · saga advancement        │
+  │ PostgreSQL                          │            │ ranked similar titles      │
+  │  · tmdb_media + satellites          │            │  · score + why             │
+  │  · (optional) embeddings            │──engine──►│  · movies/series mix       │
+  │  · (optional) TMDB rec cache        │            │  · per-user filtering      │
+  │  · your watch/rating events         │            │  · saga advancement        │
   └───────────────────────────────┘            └───────────────────────┘
 ```
 
