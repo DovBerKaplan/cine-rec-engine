@@ -57,7 +57,9 @@ our accuracy?* If yes, it stays out.
 pip install -e ".[dev]"          # or: make install
 pytest -q                        # 104 offline tests, no DB needed
 ruff check cine_rec_engine ingest tests benchmarks eval demo
-make build                       # wheel; twine step in PUBLISH.md
+make build                       # wheel locally; releases publish on tag
+                                 # push via .github/workflows/release.yml
+                                 # (Trusted Publishing — see PUBLISH.md)
 ```
 
 - Commits: `user.name=DovBerKaplan`,

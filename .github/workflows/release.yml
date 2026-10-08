@@ -1,0 +1,57 @@
+name: release
+
+# Publish to PyPI on version tags (vX.Y.Z), via Trusted Publishing (OIDC)
+# — no API token is stored anywhere: PyPI trusts this workflow directly.
+#
+# One-time setup (see PUBLISH.md):
+#   GitHub: Settings → Environments → create "pypi"
+#   PyPI:   project → Publishing → add trusted publisher:
+#           DovBerKaplan / cine-rec-engine / release.yml / environment "pypi"
+#
+# Then every release is just:
+#   git tag vX.Y.Z && git push origin vX.Y.Z
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+# a tag publishes exactly once — never race two runs for the same ref
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # PyPI Trusted Publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]" build
+      - name: Offline suite — release gate
+        run: pytest -q
+      - name: Tag, pyproject, and package versions must agree
+        run: |
+          set -eu
+          TAG="${GITHUB_REF_NAME#v}"
+          PY="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
+          PKG="$(python -c 'import cine_rec_engine; print(cine_rec_engine.__version__)')"
+          echo "tag=$TAG pyproject=$PY package=$PKG"
+          test "$TAG" = "$PY"
+          test "$TAG" = "$PKG"
+      - name: Build sdist + wheel
+        run: python -m build
+      - name: Distributions
+        run: ls -l dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
