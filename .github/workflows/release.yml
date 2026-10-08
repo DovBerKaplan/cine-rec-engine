@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: pip install -e ".[dev]" build
+        run: pip install -e ".[dev,serve]" build
       - name: Offline suite — release gate
         run: pytest -q
       - name: Tag, pyproject, and package versions must agree
