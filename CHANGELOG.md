@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.11.1] — 2026-10-09
+
+### Fixed — model-registry back-compat
+- **Legacy model keys resolve again**: `v4b` is an alias of `v4`, and
+  `original` is a first-class entry (the base `embedding` column, the
+  same key `CINE_REC_EMBEDDING=original` names). A deployment that
+  stored model choices under pre-package names no longer silently
+  degrades those users to the default after upgrading.
+- **`v4` solo cosine weight corrected 10.0 → 26.0** — the strong-space
+  default every other embedding column already carries; 10.0 was the
+  lightweight-space price and weakened solo `v4` requests.
+
 ## [0.11.0] — 2026-10-08
 
 ### Added — bring-your-own tables & one-command deploy
