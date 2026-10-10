@@ -69,6 +69,8 @@ async def cmd_check(args: argparse.Namespace) -> int:
         if problems:
             return 1
         print("schema: ok")
+        from .service import SCORER_SOURCE
+        print(f"scorer: {SCORER_SOURCE}")
         return 0
     finally:
         await conn.close()

@@ -1463,21 +1463,31 @@ _load_ensemble_config()
 def _load_learned_weights() -> Optional[dict]:
     """Load learned LTR coefficients when CINE_REC_SCORER=learned.
 
+    Artifact selection: CINE_REC_WEIGHTS=/path/artifact.json loads a
+    user-fitted artifact (same schema, e.g. from eval/tune_weights.py);
+    unset loads the bundled weights.json.
+
     Partial application: the artifact may cover a subset of FEATURE_NAMES
     (the published weights.json predates the mood features). Learned
     values override the heuristic baseline feature-by-feature; features
     the artifact lacks keep their heuristic coefficients. An artifact
     covering nothing (or a corrupt file) returns None — the engine then
     stays fully on the heuristic weights (fail-safe: a bad artifact must
-    never break recommendations)."""
+    never break recommendations; a custom path fails with a LOUD warning
+    so an owner-fitted deployment doesn't silently run heuristic)."""
+    global SCORER_SOURCE
     if os.getenv("CINE_REC_SCORER", os.getenv("REC_SCORER", "heuristic")) != "learned":
         return None
+    custom = os.getenv("CINE_REC_WEIGHTS", "").strip()
     try:
         import json
         from pathlib import Path
 
-        artifact = Path(__file__).parent / "weights.json"
-        data = json.loads(artifact.read_text())
+        if custom:
+            data = json.loads(Path(custom).read_text())
+        else:
+            data = json.loads(
+                (Path(__file__).parent / "weights.json").read_text())
         weights = {k: float(v) for k, v in data["weights"].items()
                    if k in FEATURE_NAMES}
         if not weights:
@@ -1491,10 +1501,20 @@ def _load_learned_weights() -> Optional[dict]:
                 f"learned weights cover {len(weights)}/{len(FEATURE_NAMES)} "
                 f"features; heuristic fills: {missing}"
             )
+        SCORER_SOURCE = (f"learned (custom: {custom})" if custom
+                         else "learned (bundled weights.json)")
         return blended
     except Exception as e:
-        logger.warning(f"learned weights unavailable ({e}) — using heuristic")
+        if custom:
+            logger.warning(
+                f"CINE_REC_WEIGHTS load failed from {custom!r} ({e}) — "
+                "falling back to heuristic weights")
+        else:
+            logger.warning(f"learned weights unavailable ({e}) — using heuristic")
         return None
+
+
+SCORER_SOURCE = "heuristic"
 
 
 HEURISTIC_WEIGHTS_LIST = list(HEURISTIC_WEIGHTS.values())[:27]

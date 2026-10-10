@@ -4,6 +4,28 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.12.0] — 2026-10-11
+
+### Added — public weight tuning: fit your own judgments
+- **`eval/tune_weights.py`**: self-service fitting of the 22-feature
+  scorer to a user's OWN preference judgments (public jsonl format:
+  seed + good/bad lists). Deterministic pure-Python pairwise logistic
+  descent, L2 anchored to the heuristic prior (distance-from-init, so
+  small judgment sets cannot drag the scorer away without evidence),
+  whole-seed holdout split with the heuristic baseline shown next to
+  the fitted accuracy, min-pairs guard, and a loud warning if the fit
+  tests worse than the heuristic. Emits the weights.json schema.
+- **`CINE_REC_WEIGHTS=/path/artifact.json`**: load an owner-fitted
+  artifact instead of the bundled weights (same partial-blending
+  semantics; a broken path fails LOUDLY to heuristic). `cine-rec check`
+  now reports the active scorer (heuristic / learned bundled /
+  learned @ custom path).
+- **`eval/eval.py --judgments <path>`**: gate on your own judgments file
+  end-to-end (tune → eval → serve).
+- README "Fit your own" section; AGENTS.md privacy rule clarified: a
+  generic bring-your-own-data tuner is public tooling — the ban covers
+  artifacts of OUR tuning runs, not the generic tool.
+
 ## [0.11.1] — 2026-10-09
 
 ### Fixed — model-registry back-compat

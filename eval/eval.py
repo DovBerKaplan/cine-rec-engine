@@ -35,7 +35,7 @@ def ndcg_at_k(ranked_relevant: list[bool], k: int = 10) -> float:
     return dcg / ideal if ideal else 0.0
 
 
-async def run(dsn: str) -> dict:
+async def run(dsn: str, judgments_path: str | None = None) -> dict:
     import asyncpg
 
     pool = await asyncpg.create_pool(dsn)
@@ -60,10 +60,9 @@ async def run(dsn: str) -> dict:
 
     embedding = {(r["id"], r["media_type"]): _vec(r["emb"]) for r in rows_raw}
     all_ids = list(overview.keys())
-    judgments = [
-        json.loads(line)
-        for line in (Path(__file__).parent / "judgments.jsonl").read_text().splitlines()
-    ]
+    jp = Path(judgments_path) if judgments_path else (
+        Path(__file__).parent / "judgments.jsonl")
+    judgments = [json.loads(line) for line in jp.read_text().splitlines()]
 
     svc = RecommendationService()
     await svc.initialize(pool)
@@ -149,9 +148,12 @@ def main() -> None:
     p.add_argument("--min-coverage", type=float, default=None,
                    help="regression gate: engine coverage@10 floor — the "
                         "list-diversity non-drop guard (exit 1 when below)")
+    p.add_argument("--judgments", default=None,
+                   help="judgments file (default: the bundled demo judgments; "
+                        "point at your own to gate on your data)")
     args = p.parse_args()
 
-    stats = asyncio.run(run(args.dsn))
+    stats = asyncio.run(run(args.dsn, args.judgments))
     print("| method | pairwise acc. | NDCG@10 | coverage@10 | novelty@10 |")
     print("|---|---|---|---|---|")
     engine = {}

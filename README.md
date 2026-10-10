@@ -150,7 +150,8 @@ instantiate. Vars marked ⚙ are read once at process start.
 | `CINE_REC_PORT` / `CINE_REC_HOST` | 8000 / 0.0.0.0 | for `cine-rec serve` and the Docker image |
 | ⚙ `CINE_REC_EMBEDDING` | `original` | embedding column/space (`CINE_REC_EMBEDDING=minilm` → `embedding_minilm`) |
 | ⚙ `CINE_REC_COSINE_BLEND` | — | blend several embedding columns (`col:weight,col:weight`) |
-| ⚙ `CINE_REC_SCORER` | heuristic | `learned` = the published fitted weights |
+| ⚙ `CINE_REC_SCORER` | heuristic | `learned` = fitted weights (bundled, or `CINE_REC_WEIGHTS`) |
+| ⚙ `CINE_REC_WEIGHTS` | bundled | path to your own fitted artifact (`eval/tune_weights.py`) |
 | `CINE_REC_ENCODER` | — | `module:function` providing `/by-text` embeddings |
 | `CINE_REC_REDIS_URL` | off | Redis result/history cache (falls back to in-process) |
 | `CINE_REC_IMPRESSION_SECRET` | random | persistent feedback tokens across restarts |
@@ -281,6 +282,27 @@ Also in the repo: the evaluation harness and the demo judgments. Not
 included: the larger labeled training sets the weights were fitted on and
 the optional narrative-tag enrichment — the fitted coefficients
 themselves are published in full.
+
+### Fit your own
+
+The same schema is a self-service contract. Collect preference judgments
+in the public format — one line per seed with the titles that should
+rank above and below (shape: `eval/judgments.jsonl`) — then:
+
+```bash
+python eval/tune_weights.py --dsn postgresql://... \
+    --judgments mine.jsonl --out my-weights.json
+python eval/eval.py --dsn postgresql://... --judgments mine.jsonl   # sanity gate
+CINE_REC_SCORER=learned CINE_REC_WEIGHTS=/abs/my-weights.json cine-rec serve
+```
+
+The fit is deterministic pairwise logistic regression anchored to the
+heuristic prior (L2 on the distance from it), the holdout split is whole
+seeds, and the report compares against the heuristic baseline — you see
+whether your judgments actually earned each weight move. Small sets
+overfit; treat big moves with suspicion. (The bundled demo judgments are
+mechanical consensus, not taste: the heuristic already aces them, and
+the honest fitted result there is +0.000.)
 
 ## Feeding it data
 

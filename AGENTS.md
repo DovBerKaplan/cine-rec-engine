@@ -11,6 +11,10 @@ but NEVER the labeling, training data, or tuning methodology behind them.
 - ❌ Never commit: graded/training datasets, tuning scripts, holdout
   scores, sweep results, or comments explaining HOW a coefficient was
   tuned ("blind holdout 19.15→26.27…", "the round-5 sweep picked…").
+- ✅ A generic bring-your-own-data tuner is public tooling:
+  `eval/tune_weights.py` fits a USER's own judgments with a standard
+  textbook method. The ban above covers scripts/datasets/narratives
+  that encode OUR tuning runs — never the generic tool itself.
 - ✅ Comments describe WHAT a constant does and WHY the behavior matters,
   not the measurement history that produced its value.
 - ❌ Never reintroduce the removed tuning-methodology comments. The git
@@ -30,7 +34,7 @@ our accuracy?* If yes, it stays out.
 | `ingest/` | TMDB mirror loader: `loader.py` (upserts + bridge mirroring — writes through the same table registry), `exports.py` (daily ID exports, streaming), `rate.py` (token bucket), `cli.py` (`bootstrap`/`refresh`/`genres`) |
 | `demo/` | `docker compose up` → Postgres + bundled titles + recommendations with WHY. No API key. |
 | `deploy/` | self-host `docker-compose.yml` (env knobs, optional table-map mount) |
-| `eval/` | pairwise/NDCG harness + demo judgments |
+| `eval/` | pairwise/NDCG harness + demo judgments + the public weight tuner (`tune_weights.py`) |
 | `docs/` | `schema.sql` (split catalog + compatibility views), `user_data.sql` (user layer; `user_watches` is a DERIVED view), `data.md` (ingest contract), `personalization.md` (§B–§J) |
 | `benchmarks/` | `bench_scoring.py` (offline hot loop), `bench_e2e.py` (synthetic 25k catalog), `smoke_personalization.py` (live end-to-end) |
 
