@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.13.0] — 2026-10-11
+
+### Added — blend tuning: fit the embedding mix from the same judgments
+- **`eval/tune_weights.py --tune-blend`**: also fits the per-column
+  embedding blend (today a fixed `COSINE_BLEND` config). Columns are
+  discovered on the fact tables (vector-typed `embedding_*`, through
+  the table remap — the registry alone can't see unregistered columns);
+  the fit expands the cosine feature into one feature per column, which
+  keeps scorer and blend in ONE linear logistic pass; the report
+  evaluates the DEPLOYED model exactly (renormalized average over the
+  seed-held columns, text-overlap fallback, matching scoring.py) against
+  the heuristic + current-blend baseline.
+- Artifacts may carry a `cosine_blend` section — `CINE_REC_WEIGHTS`
+  applies it at load time (live-module-attribute pattern; positive
+  weights only). The tuner also prints the zero-code-change
+  `CINE_REC_COSINE_BLEND=...` equivalent.
+- Live-verified on a synthetic second embedding column: discovery,
+  fitting, artifact emission, engine-side load, eval run, graceful
+  single-column skip.
+
 ## [0.12.0] — 2026-10-11
 
 ### Added — public weight tuning: fit your own judgments

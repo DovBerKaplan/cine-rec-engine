@@ -148,14 +148,129 @@ class TestSplit:
         assert len(train) + len(test) == len(trips)
 
 
+# ------------------------------------------------------------ blend tuning
+
+def _rec(feats21, sims, fallback=0.0, key=None):
+    return {"feats21": feats21, "sims": sims, "fallback": fallback,
+            "key": key}
+
+
+class TestDecompose:
+    def test_roundtrip_is_exact_algebra(self):
+        # w_cos * (sum(beta*s)/sum(beta)) == sum(gamma*s) when all gamma>0
+        gamma = [0.6, 0.3, 0.1]
+        cols = ["embedding_a", "embedding_b", "embedding_c"]
+        beta, w_cos = tw.decompose(gamma, cols)
+        s = [0.7, 0.4, 0.9]
+        lhs = w_cos * sum(b * x for b, x in zip(beta.values(), s)) / sum(beta.values())
+        rhs = sum(g * x for g, x in zip(gamma, s))
+        assert abs(lhs - rhs) < 1e-12
+
+    def test_negative_gamma_clipped_and_dropped(self):
+        beta, w_cos = tw.decompose([0.5, -0.2, 0.0], ["a", "b", "c"])
+        assert list(beta) == ["a"]
+        assert beta["a"] == 0.5
+
+
+class TestDeployableCosine:
+    def test_renormalizes_over_seed_active_columns(self):
+        beta = {"a": 2.0, "b": 1.0}
+        rec = _rec([], {"a": 0.8, "b": 0.5})
+        seed_has = {"a": {("s", "movie")}, "b": set()}  # seed holds only a
+        got = tw.deployable_cosine(rec, ("s", "movie"), beta,
+                                   ["a", "b"], seed_has)
+        assert got == 0.8  # renormalized away from the missing column
+
+    def test_candidate_missing_seed_column_falls_back(self):
+        beta = {"a": 2.0, "b": 1.0}
+        rec = _rec([], {"a": 0.8, "b": None}, fallback=0.31)
+        seed_has = {"a": {("s", "movie")}, "b": {("s", "movie")}}
+        got = tw.deployable_cosine(rec, ("s", "movie"), beta,
+                                   ["a", "b"], seed_has)
+        assert got == 0.31  # engine skips the pair -> text overlap
+
+    def test_empty_beta_falls_back(self):
+        rec = _rec([], {"a": 0.8}, fallback=0.2)
+        got = tw.deployable_cosine(rec, ("s", "movie"), {}, ["a"], {})
+        assert got == 0.2
+
+
+class TestBlendEndToEnd:
+    def test_informative_column_gets_the_weight(self):
+        # two columns: col 'good' separates the pairs, col 'noise' is random
+        rng = random.Random(3)
+        records = []
+        for i in range(120):
+            g_good, b_good = 0.9, 0.1
+            g_noise, b_noise = rng.random(), rng.random()
+            records.append((
+                ("s%d" % (i % 8), "movie"),
+                _rec([0.0] * 21, {"embedding_good": g_good,
+                                  "embedding_noise": g_noise}),
+                _rec([0.0] * 21, {"embedding_good": b_good,
+                                  "embedding_noise": b_noise}),
+            ))
+        cols = ["embedding_good", "embedding_noise"]
+        h21 = tw._heuristic21()
+        init = h21 + [1.0, 1.0]
+        fitted = tw.fit(tw.expand_rows(records, cols), alpha=0.0,
+                        epochs=400, init=init, dim=len(init))
+        beta, w_cos = tw.decompose(fitted[len(h21):], cols)
+        assert beta.get("embedding_good", 0) > beta.get("embedding_noise", 0)
+        acc = tw.blend_model_accuracy(
+            records, beta, cols, fitted[:len(h21)], w_cos,
+            {"embedding_good": {r[0] for r in records},
+             "embedding_noise": {r[0] for r in records}})
+        assert acc == 1.0
+
+
+class TestBlendRecords:
+    def test_build_from_canned_mat(self):
+        mat = {
+            "info": {(1, "movie"): _ent(1), (2, "movie"): _ent(2, year=2010),
+                     (3, "movie"): _ent(3, year=1990)},
+            "enriched": {}, "sim": {},
+            "sim_cols": {"embedding_a": {((1, "movie"), (2, "movie")): 0.8,
+                                         ((1, "movie"), (3, "movie")): 0.2}},
+            "seed_has_col": {"embedding_a": {(1, "movie")}},
+        }
+        trips = [((1, "movie"), (2, "movie"), (3, "movie"))]
+        records, dropped, cols = tw.build_blend_records(
+            trips, mat, ["embedding_a"])
+        assert dropped == 0 and cols == ["embedding_a"]
+        s, g, b = records[0]
+        assert len(g["feats21"]) == 21
+        assert g["sims"]["embedding_a"] == 0.8
+        assert g["fallback"] >= 0.0  # text-overlap value fills the slot
+
+    def test_missing_candidate_drops(self):
+        mat = {"info": {(1, "movie"): _ent(1), (2, "movie"): _ent(2)},
+               "enriched": {}, "sim": {}, "sim_cols": {},
+               "seed_has_col": {}}
+        trips = [((1, "movie"), (2, "movie"), (99, "movie"))]
+        records, dropped, cols = tw.build_blend_records(trips, mat, [])
+        assert records == [] and dropped == 1
+
+
+class TestBlendColumnsValidation:
+    def test_rejects_non_identifier(self):
+        import asyncio
+        with pytest.raises(SystemExit, match="invalid blend column"):
+            asyncio.run(tw.discover_blend_columns(None, override='bad"col'))
+
+
 # ------------------------------------------------- CINE_REC_WEIGHTS loader
 
 @pytest.fixture(autouse=True)
 def _restore_scorer(monkeypatch):
+    import cine_rec_engine.config as cfg
+
+    blend_before = dict(cfg.COSINE_BLEND)
     yield
     monkeypatch.delenv("CINE_REC_SCORER", raising=False)
     monkeypatch.delenv("REC_SCORER", raising=False)
     monkeypatch.delenv("CINE_REC_WEIGHTS", raising=False)
+    cfg.COSINE_BLEND = blend_before
     importlib.reload(svc)
 
 
@@ -189,6 +304,34 @@ class TestCustomWeightsLoader:
         monkeypatch.delenv("CINE_REC_WEIGHTS", raising=False)
         mod = importlib.reload(svc)
         assert "bundled" in mod.SCORER_SOURCE
+
+    def test_artifact_cosine_blend_is_applied(self, monkeypatch, tmp_path):
+        import cine_rec_engine.config as cfg
+
+        art = tmp_path / "my.json"
+        art.write_text(json.dumps({
+            "weights": {"cosine_sim": 9.5},
+            "feature_names": ["cosine_sim"],
+            "cosine_blend": {"embedding_e5e": 0.8, "embedding_v4": 0.2,
+                             "embedding_bad": 0.0},
+        }))
+        monkeypatch.setenv("CINE_REC_SCORER", "learned")
+        monkeypatch.setenv("CINE_REC_WEIGHTS", str(art))
+        importlib.reload(svc)
+        # positive weights flow to the live module attribute; zero dropped
+        assert cfg.COSINE_BLEND == {"embedding_e5e": 0.8, "embedding_v4": 0.2}
+
+    def test_artifact_without_blend_leaves_config_alone(self, monkeypatch, tmp_path):
+        import cine_rec_engine.config as cfg
+
+        art = tmp_path / "my.json"
+        art.write_text(json.dumps(
+            {"weights": {"cosine_sim": 9.5}, "feature_names": ["cosine_sim"]}))
+        monkeypatch.setenv("CINE_REC_SCORER", "learned")
+        monkeypatch.setenv("CINE_REC_WEIGHTS", str(art))
+        before = dict(cfg.COSINE_BLEND)
+        importlib.reload(svc)
+        assert cfg.COSINE_BLEND == before
 
     def test_custom_ignored_without_learned_gate(self, monkeypatch, tmp_path):
         art = tmp_path / "my.json"

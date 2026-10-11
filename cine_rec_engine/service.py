@@ -1501,6 +1501,13 @@ def _load_learned_weights() -> Optional[dict]:
                 f"learned weights cover {len(weights)}/{len(FEATURE_NAMES)} "
                 f"features; heuristic fills: {missing}"
             )
+        blend = data.get("cosine_blend")
+        if custom and isinstance(blend, dict) and blend:
+            cleaned = {str(k): float(v) for k, v in blend.items()
+                       if float(v) > 0}
+            if cleaned:
+                rec_config_module.COSINE_BLEND = cleaned
+                logger.info(f"cosine blend applied from artifact: {cleaned}")
         SCORER_SOURCE = (f"learned (custom: {custom})" if custom
                          else "learned (bundled weights.json)")
         return blended

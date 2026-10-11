@@ -304,6 +304,16 @@ overfit; treat big moves with suspicion. (The bundled demo judgments are
 mechanical consensus, not taste: the heuristic already aces them, and
 the honest fitted result there is +0.000.)
 
+With `--tune-blend` the same judgments also fit **how the ensemble mixes
+your embedding columns** (the blend behind `CINE_REC_COSINE_BLEND`):
+vector-typed `embedding_*` columns are discovered on your fact tables,
+the fit runs over one feature per column, and the artifact carries a
+`cosine_blend` section applied at load time (the zero-code-change
+alternative — the printed env line — works too). Needs at least two
+embedding columns; the holdout evaluates the deployed shape exactly
+(renormalized average over the seed's columns, text-overlap fallback
+for pairs missing one).
+
 ## Feeding it data
 
 Bring a local TMDB mirror — the built-in `ingest/` loader builds it from
