@@ -2,8 +2,6 @@
 
 > Extracted from a production self-hosted system — the same scorer serves real users daily. [Where this came from →](ORIGIN.md)
 
-<meta name="google-site-verification" content="1sq8Le6Nn7-2BksJibR_8pPAn-qy0kcM-iWSKFt0dio" />
-
 [![CI](https://github.com/DovBerKaplan/cine-rec-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/DovBerKaplan/cine-rec-engine/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
