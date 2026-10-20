@@ -1,9 +1,9 @@
 name: docs
 
-# Build the mkdocs-material site and deploy via the official Pages
-# Actions flow. The static browser demo rides along under /demo/
-# (copied from demo/site after the build — it is fully precomputed and
-# makes no API calls).
+# Build the mkdocs-material site and publish it to the gh-pages branch
+# (the repo's Pages source). The static browser demo rides along under
+# /demo/ — copied from demo/site after the build; it is fully
+# precomputed and makes no API calls.
 
 on:
   push:
@@ -29,26 +29,17 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: pip install -e ".[docs]"
-      - name: Build site
-        run: mkdocs build --strict
-      - name: Preserve the static demo under /demo/
+      - name: Build site (demo preserved under /demo/)
         run: |
+          mkdocs build --strict
           mkdir -p site/demo
           cp demo/site/index.html site/demo/index.html
-      - uses: actions/upload-pages-artifact@v3
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          # single-purpose branch — replace, don't accumulate history
+          force_orphan: true
+          commit_message: "docs site (mkdocs + /demo/) [skip ci]"
