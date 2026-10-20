@@ -1,0 +1,29 @@
+site_name: cine-rec-engine
+site_description: Content-based movie & series recommendations over your own PostgreSQL TMDB mirror
+site_url: https://dovberkaplan.github.io/cine-rec-engine/
+repo_url: https://github.com/DovBerKaplan/cine-rec-engine
+repo_name: DovBerKaplan/cine-rec-engine
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - HTTP API: api.md
+  - Data contract: data.md
+  - Personalization: personalization.md
+  - Public benchmark: benchmark.md
+  - Stability policy: stability.md
+  - Live demo: /demo/

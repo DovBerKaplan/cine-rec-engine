@@ -10,7 +10,7 @@
 
 **PostgreSQL in · ranked titles out · zero external calls on the hot path.**
 
-**🖥️ [Try it in your browser — no install](https://dovberkaplan.github.io/cine-rec-engine/)** — every recommendation precomputed by the real engine, each row with its *why*, plus two user personas producing entirely different lists. Recommendations are picked from the bundled **830-title demo catalog**, not from all of TMDB — point the engine at your own mirror (ingest included) for the full catalog.
+**🖥️ [Try it in your browser — no install](https://dovberkaplan.github.io/cine-rec-engine/demo/)** — every recommendation precomputed by the real engine, each row with its *why*, plus two user personas producing entirely different lists. Recommendations are picked from the bundled **830-title demo catalog**, not from all of TMDB — point the engine at your own mirror (ingest included) for the full catalog. 📚 **[Documentation site](https://dovberkaplan.github.io/cine-rec-engine/)** — architecture, HTTP API reference, data contract, the public benchmark, and the stability policy.
 
 ![demo](docs/demo.gif)
 

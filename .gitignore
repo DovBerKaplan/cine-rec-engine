@@ -17,3 +17,6 @@ htmlcov/
 ml-latest-small*
 ml-25m*
 eval/.mlbench/
+
+# mkdocs build output
+site/

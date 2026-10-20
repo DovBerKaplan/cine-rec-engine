@@ -48,6 +48,9 @@ dev = [
 bench = [                      # MovieLens benchmark: embeddings for the
     "sentence-transformers>=2.7",  # minilm_cosine baseline (catalog --embed)
 ]
+docs = [                       # docs site (mkdocs build; deployed by docs.yml)
+    "mkdocs-material>=9.5",
+]
 
 [project.scripts]
 cine-rec = "cine_rec_engine.cli:main"
