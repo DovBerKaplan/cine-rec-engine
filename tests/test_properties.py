@@ -77,11 +77,14 @@ _common = settings(max_examples=100, deadline=None)
 
 @_common
 @given(cand=_entity(), seed=_entity())
-def test_scores_finite_and_non_negative(cand, seed):
+def test_scores_finite(cand, seed):
+    # NOT asserting non-negativity: some weights are deliberate penalties
+    # (the anti-blockbuster damper is -1.0), and the ranking loop simply
+    # drops score<=0 candidates. The invariant that matters is finiteness
+    # — a NaN here would silently poison every downstream sort/sum.
     score = _score_candidate_vs_seed(
         cand, cand, cand["genres"], seed, weights=HEURISTIC_WEIGHTS)
     assert math.isfinite(score)
-    assert score >= 0.0
 
 
 @_common
