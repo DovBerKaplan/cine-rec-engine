@@ -193,6 +193,40 @@ VOTE_FLOOR_TV: int = 500
 # ----------------------------------------------------------------------------
 import os
 
+
+def env_float(name: str, default: float,
+              lo: float | None = None, hi: float | None = None) -> float:
+    """Parse a float env var once, at import. Empty/unset means `default`;
+    a malformed or out-of-range value raises with the variable NAMED — a
+    config typo must fail loudly at boot, not surface later inside a
+    request handler."""
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        val = float(raw)
+    except ValueError:
+        raise ValueError(f"{name}={raw!r}: expected a number") from None
+    if (lo is not None and val < lo) or (hi is not None and val > hi):
+        raise ValueError(f"{name}={raw!r}: expected a value in [{lo}, {hi}]")
+    return val
+
+
+def env_int(name: str, default: int,
+            lo: int | None = None, hi: int | None = None) -> int:
+    """env_float for integers — same loud-at-boot contract."""
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        val = int(raw)
+    except ValueError:
+        raise ValueError(f"{name}={raw!r}: expected an integer") from None
+    if (lo is not None and val < lo) or (hi is not None and val > hi):
+        raise ValueError(f"{name}={raw!r}: expected a value in [{lo}, {hi}]")
+    return val
+
+
 REC_EMBEDDING_SPACE = os.getenv("CINE_REC_EMBEDDING", os.getenv("REC_EMBEDDING", "original"))
 # Bake-off spaces map to their embedding_<name> columns; "v4b" keeps its
 # historical name and "original" the legacy 384-dim column.
@@ -250,4 +284,13 @@ EXPLORE_SHARE = float(os.getenv("CINE_REC_EXPLORE_SHARE", "0.12") or 0.12)
 
 # One skip = a bounded nudge, never a bury: the skipped title's w_item
 # is multiplied by this factor (RFC §4). 0.9 ≈ ten skips to halve.
-SKIP_DECAY = float(os.getenv("CINE_REC_SKIP_DECAY", "0.9") or 0.9)
+SKIP_DECAY = env_float("CINE_REC_SKIP_DECAY", 0.9)
+if not 0.0 < SKIP_DECAY < 1.0:
+    raise ValueError(
+        f"CINE_REC_SKIP_DECAY={SKIP_DECAY!r}: must be strictly between 0 and 1"
+    )
+
+# Decay hard floor: repeated skips (including a replayed impression
+# token) walk w_item down the geometric ladder but never past this value
+# — the "never a bury" promise holds even under replay. 0 disables.
+SKIP_DECAY_FLOOR = env_float("CINE_REC_SKIP_DECAY_FLOOR", 0.05, lo=0.0, hi=1.0)

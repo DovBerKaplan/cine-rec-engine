@@ -230,10 +230,48 @@ class TestHealth:
         assert r.status_code == 200
         assert r.json() == {"status": "ok", "db": True}
 
-    def test_degraded_reports_broken_pool(self):
+    def test_degraded_reports_broken_pool_as_503(self):
         svc = FakeService(pool=FakePool(fail=True))
         app = create_app(service=svc)
         with TestClient(app) as c:
             r = c.get("/health")
-        assert r.status_code == 200
+        assert r.status_code == 503
         assert r.json() == {"status": "degraded", "db": False}
+
+
+class TestCors:
+    """With CINE_REC_CORS_ORIGINS set, a browser preflight for POST
+    /feedback must pass — the middleware defaults (GET-only, no headers)
+    reject it with 400 Disallowed CORS method/headers."""
+
+    def test_preflight_post_feedback_is_allowed(self, monkeypatch):
+        monkeypatch.setenv("CINE_REC_CORS_ORIGINS", "https://app.example.com")
+        app = create_app(service=FakeService())
+        with TestClient(app) as c:
+            r = c.options("/feedback", headers={
+                "Origin": "https://app.example.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            })
+        assert r.status_code == 200
+        assert "POST" in r.headers.get("access-control-allow-methods", "").upper()
+        assert "content-type" in r.headers.get(
+            "access-control-allow-headers", "").lower()
+        assert r.headers.get("access-control-allow-origin") \
+            == "https://app.example.com"
+
+    def test_preflight_from_foreign_origin_gets_no_cors_grant(self, monkeypatch):
+        monkeypatch.setenv("CINE_REC_CORS_ORIGINS", "https://app.example.com")
+        app = create_app(service=FakeService())
+        with TestClient(app) as c:
+            r = c.options("/feedback", headers={
+                "Origin": "https://evil.example.net",
+                "Access-Control-Request-Method": "POST",
+            })
+        assert "access-control-allow-origin" not in r.headers
+
+
+class TestForUserValidation:
+    def test_nonpositive_user_id_is_422(self, client):
+        assert client.get("/for-user/0").status_code == 422
+        assert client.get("/for-user/-5").status_code == 422

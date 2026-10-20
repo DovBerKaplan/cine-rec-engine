@@ -13,7 +13,7 @@ test-integration:  ## throwaway pgvector container + the live CI-class suite
 	CINE_REC_INTEGRATION_AUTO=1 $(PY) -m pytest -m integration -q
 
 lint:
-	$(PY) -m ruff check cine_rec_engine ingest tests examples
+	$(PY) -m ruff check cine_rec_engine ingest tests benchmarks eval demo examples
 
 build:          ## sdist + wheel
 	python -m build

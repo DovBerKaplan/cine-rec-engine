@@ -84,3 +84,25 @@ def verify(
     if (now if now is not None else time.time()) > exp:
         return None
     return payload
+
+
+async def consume(token: str, payload: dict) -> bool:
+    """One-shot gate for an already-VERIFIED token: True the first time
+    this exact token is consumed, False on any replay. record_feedback
+    is idempotent but apply_skip_decay is not, so a replayed skip token
+    must be stopped here — each replay would otherwise re-multiply
+    w_item. Best-effort by design (degrade never fail): without Redis
+    the consumed-set is per-process, so multi-worker replay is only
+    bounded by the skip-decay floor; a cache error degrades open rather
+    than dropping legitimate feedback. Never raises."""
+    try:
+        from .cache import get_cache
+
+        ttl = max(1, int(payload.get("exp", 0) - time.time()))
+        digest = hashlib.sha256(token.encode()).hexdigest()
+        cache = await get_cache()
+        if cache is None:
+            return True
+        return bool(await cache.set_nx(f"impression:used:{digest}", 1, ttl=ttl))
+    except Exception:
+        return True

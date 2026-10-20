@@ -4,11 +4,17 @@
     DATABASE_URL=postgresql://user:pw@localhost/db \
         uvicorn cine_rec_engine.serve:app --port 8000
 
-    GET /health                     liveness + DB readiness
+    GET /health                     DB readiness — 503 when degraded, so an
+                                    orchestrator healthcheck can actually fail
     GET /metrics                    latency histogram, cache hit rate,
                                     recall-channel coverage (Prometheus text)
     GET /similar?seed=155           item-to-item (optionally user-filtered)
     GET /similar?seed=155:movie,1396:tv&user_id=42&model=e5e
+    GET /page?user_id=42&rows=...   composed rows (top_picks, because:<id>,
+                                    hidden_gems, trending:<gid>, discover)
+    GET /by-text?q=space%20western  natural-language cold start
+    POST /feedback                  one click/watch/skip/dislike outcome for
+                                    a served title (impression-token gated)
     GET /for-user/42?include_why=1  the personalized row
 
 Zero config beyond DATABASE_URL: the engine degrades every optional
@@ -24,11 +30,14 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List, Literal, Optional, Tuple, Union
 
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import FastAPI, HTTPException, Path, Query, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from . import __version__
 from . import init_db
+from .config import env_int
+from .impressions import consume as consume_impression
 from .impressions import verify as verify_impression
 from .model_spaces import REC_MODELS, normalize_model
 from .page import compose_page
@@ -36,7 +45,9 @@ from .queries import normalize_filters
 from .service import RecommendationService
 from .text_query import by_text
 
-MAX_LIMIT = 100
+# Result-size ceiling. Env-configurable (CINE_REC_MAX_LIMIT) so a caller
+# with heavier pages can raise it without forking the module.
+MAX_LIMIT = env_int("CINE_REC_MAX_LIMIT", 100, lo=1, hi=10_000)
 DEFAULT_LIMIT = 30
 
 
@@ -160,6 +171,16 @@ def create_app(
             await svc.initialize(pool)
             app.state.service = svc
             app.state.owns_pool = True
+            if not (os.getenv("CINE_REC_IMPRESSION_SECRET") or "").strip():
+                from loguru import logger
+
+                logger.warning(
+                    "CINE_REC_IMPRESSION_SECRET is not set — impression "
+                    "tokens are signed with a random per-process secret: "
+                    "with more than one worker or replica, tokens minted by "
+                    "one process fail verification in another, and all "
+                    "tokens die on restart. Set a fixed secret in production."
+                )
         yield
         if app.state.owns_pool:
             await app.state.service.pool.close()
@@ -178,6 +199,11 @@ def create_app(
         app.add_middleware(
             CORSMiddleware,
             allow_origins=[o.strip() for o in cors.split(",") if o.strip()],
+            # The middleware defaults are GET-only with zero allowed
+            # headers — a browser preflight for POST /feedback (which
+            # always carries content-type) would be rejected 400.
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["Content-Type", "Authorization", "X-API-Key"],
         )
 
     @app.middleware("http")
@@ -188,7 +214,13 @@ def create_app(
         response = await call_next(request)
         elapsed_ms = (time.perf_counter() - started) * 1000
         response.headers["X-Process-Time-Ms"] = f"{elapsed_ms:.1f}"
-        metrics.observe_request(request.url.path, elapsed_ms)
+        # Label by route template, never the raw path: /for-user/42 and
+        # /for-user/43 are one series, and a scanner hitting random paths
+        # cannot mint unbounded label cardinality. scope["route"] is only
+        # populated once the router ran, i.e. after call_next returns.
+        route = request.scope.get("route")
+        metrics.observe_request(getattr(route, "path", None) or "unmatched",
+                                elapsed_ms)
         if response.status_code >= 500:
             from loguru import logger
 
@@ -210,11 +242,16 @@ def create_app(
 
     @app.get("/health")
     async def health(request: Request):
+        """Readiness probe: 200 only when the DB answers. A degraded
+        service reports 503 so container healthchecks and load balancers
+        actually stop routing to it — a 200-degraded body would make
+        every HEALTHCHECK pass forever."""
         try:
             await request.app.state.service.pool.fetchval("SELECT 1")
             return {"status": "ok", "db": True}
         except Exception:
-            return {"status": "degraded", "db": False}
+            return JSONResponse(
+                status_code=503, content={"status": "degraded", "db": False})
 
     @app.get("/similar")
     async def similar(
@@ -329,6 +366,12 @@ def create_app(
         svc: RecommendationService = request.app.state.service
         from . import user_stats
 
+        # One-time use: record_feedback is idempotent, apply_skip_decay
+        # is not — a replayed token must never re-nudge w_item.
+        if not await consume_impression(body.token, payload):
+            return {"status": "duplicate", "outcome": body.outcome,
+                    "user_id": user_id, "tmdb_id": body.tmdb_id}
+
         try:
             if body.outcome == "watch":
                 await user_stats.record_event(svc.pool, {
@@ -354,7 +397,7 @@ def create_app(
     @app.get("/for-user/{user_id}")
     async def for_user(
         request: Request,
-        user_id: int,
+        user_id: int = Path(..., ge=1),
         limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
         randomness: float = Query(0.0, ge=0.0, le=1.0),
         include_why: bool = False,
@@ -385,4 +428,4 @@ if __name__ == "__main__":  # python -m cine_rec_engine.serve
     import uvicorn
 
     uvicorn.run(app, host=os.getenv("CINE_REC_HOST", "0.0.0.0"),
-                port=int(os.getenv("CINE_REC_PORT", "8000")))
+                port=env_int("CINE_REC_PORT", 8000, lo=1, hi=65535))

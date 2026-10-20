@@ -1,0 +1,8 @@
+# Minimal by design: ruff is the repo's single linter (CI runs the same
+# command — `ruff check cine_rec_engine ingest tests benchmarks eval demo
+# examples`). Run `pre-commit autoupdate` to bump the rev.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff

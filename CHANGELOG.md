@@ -4,6 +4,54 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.13.1] — 2026-10-20
+
+### Fixed — reliability pass over the serving layer
+- **`/health` returns 503 when the DB is unreachable** (body unchanged:
+  `{"status":"degraded"}`). A 200-degraded made every Docker
+  HEALTHCHECK pass forever — the container was never marked unhealthy
+  during a DB outage. `/health` is now documented as a readiness probe.
+- **CORS preflight for POST works**: `CINE_REC_CORS_ORIGINS` previously
+  installed `CORSMiddleware` without `allow_methods`/`allow_headers`,
+  so every browser preflight for `POST /feedback` was rejected
+  (400 Disallowed CORS method/headers — Starlette defaults are GET-only).
+- **Prometheus labels use the route template** (`/for-user/{user_id}`),
+  not the raw path — a raw-path label minted one series per user id and
+  one per scanner probe, with no bound. Unmatched paths land on a single
+  `unmatched` series.
+- **Impression tokens are one-shot**: a replayed feedback token is now
+  answered with an idempotent `{"status":"duplicate"}` instead of
+  re-running side effects. `record_feedback` was already idempotent;
+  `apply_skip_decay` was not.
+- **Skip decay is floored** (`GREATEST(w_item * factor, floor)`,
+  `CINE_REC_SKIP_DECAY_FLOOR`, default 0.05) — the "bounded nudge,
+  never a bury" promise now holds even under token replay. 0 disables.
+- **Swallowed DB failures are visible**: the watched/rated/dislikes
+  exclusion reads log at WARNING (they used to return empty sets with a
+  DEBUG-only trace, quietly re-recommending watched titles).
+- **Empty cache results are hits**: the watched/rated sets and the page
+  row cache treated an empty result as a miss — users with no history
+  hit Postgres on every request, and empty rows were never cached.
+- **Malformed env vars fail at boot, named**: `env_float`/`env_int`
+  helpers raise with the variable name; `CINE_REC_SKIP_DECAY` is
+  range-checked at import (a factor of 1.5 used to pass import and blow
+  up inside `/feedback`). `CINE_REC_PORT` fails fast with a named error
+  instead of a raw `int()` traceback (module and `cine-rec serve`).
+- **TMDB API key can't reach the logs**: aiohttp exception strings embed
+  the full URL (query string included) — error logging and the returned
+  error surface are now stripped at `?`.
+- `/for-user/{user_id}` validates `ge=1` like every other id input.
+- Startup warns when `CINE_REC_IMPRESSION_SECRET` is unset (random
+  per-process secret — tokens fail across workers/restarts).
+
+### Changed
+- `CINE_REC_MAX_LIMIT` env (default 100) for the `limit` ceiling.
+- CI matrix and trove classifiers add Python 3.13; ruff `target-version`
+  matches `requires-python` (py310); `make lint` checks the same
+  directories as CI; CI carries a workflow-level `permissions: contents:
+  read`; dependabot (pip + actions) and a minimal pre-commit hook added;
+  SECURITY.md supported-version refreshed.
+
 ## [0.13.0] — 2026-10-11
 
 ### Added — blend tuning: fit the embedding mix from the same judgments

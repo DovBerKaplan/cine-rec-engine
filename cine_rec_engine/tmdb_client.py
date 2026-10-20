@@ -53,9 +53,13 @@ async def fetch_with_retry(
             backoff *= 2
 
         except Exception as e:
+            # aiohttp exception strings embed the full request URL, and
+            # the query string carries the api_key — it must never reach
+            # the logs (or the returned error surface)
+            safe = str(e).split("?", 1)[0]
             if attempt == max_retries - 1:
-                logger.error(f"API error: {e}")
-                return {"error": str(e)}
+                logger.error(f"API error: {safe}")
+                return {"error": safe}
             await asyncio.sleep(backoff)
             backoff *= 2
 

@@ -148,16 +148,17 @@ instantiate. Vars marked ⚙ are read once at process start.
 | `CINE_REC_AUTO_INIT` | off | `1` = apply the schema on serve boot, idempotent |
 | `CINE_REC_POOL_SIZE` | 20 | asyncpg pool `max_size` (small pools dominate cold latency) |
 | `CINE_REC_PORT` / `CINE_REC_HOST` | 8000 / 0.0.0.0 | for `cine-rec serve` and the Docker image |
+| `CINE_REC_MAX_LIMIT` | 100 | ceiling for the `limit` query param (`/similar`, `/by-text`, `/for-user`) |
 | ⚙ `CINE_REC_EMBEDDING` | `original` | embedding column/space (`CINE_REC_EMBEDDING=minilm` → `embedding_minilm`) |
 | ⚙ `CINE_REC_COSINE_BLEND` | — | blend several embedding columns (`col:weight,col:weight`) |
 | ⚙ `CINE_REC_SCORER` | heuristic | `learned` = fitted weights (bundled, or `CINE_REC_WEIGHTS`) |
 | ⚙ `CINE_REC_WEIGHTS` | bundled | path to your own fitted artifact (`eval/tune_weights.py`) |
 | `CINE_REC_ENCODER` | — | `module:function` providing `/by-text` embeddings |
 | `CINE_REC_REDIS_URL` | off | Redis result/history cache (falls back to in-process) |
-| `CINE_REC_IMPRESSION_SECRET` | random | persistent feedback tokens across restarts |
+| `CINE_REC_IMPRESSION_SECRET` | random | fixed secret for feedback tokens — **set it when running more than one worker/replica**: each process otherwise signs with its own random secret, so tokens minted by one worker fail in another (a startup warning fires while unset) |
 | `CINE_REC_CORS_ORIGINS` | off | comma-separated allow-list |
 | `TMDB_API_KEY` | — | behavioral-graph sync (`ingest/`, `tmdb_recs.py`) |
-| ⚙ `CINE_REC_USER_TILT_ALPHA` / `CINE_REC_EXPLORE_SHARE` / `CINE_REC_SKIP_DECAY` / `CINE_REC_USER_VECTOR_MAX_AGE_HOURS` | 0.15 / 0.12 / 0.9 / 24 | personalization tuning |
+| ⚙ `CINE_REC_USER_TILT_ALPHA` / `CINE_REC_EXPLORE_SHARE` / `CINE_REC_SKIP_DECAY` / `CINE_REC_SKIP_DECAY_FLOOR` / `CINE_REC_USER_VECTOR_MAX_AGE_HOURS` | 0.15 / 0.12 / 0.9 / 0.05 / 24 | personalization tuning (`SKIP_DECAY_FLOOR` = the lower bound repeated skips can never push `w_item` past) |
 
 ### Bring your own tables
 

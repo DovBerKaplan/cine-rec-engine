@@ -19,7 +19,7 @@ import asyncpg
 from loguru import logger
 
 from . import user_weights as uw
-from .config import SKIP_DECAY
+from .config import SKIP_DECAY, SKIP_DECAY_FLOOR
 from . import db
 
 EPISODE_THRESHOLD_RATIO = 0.50   # an episode counts as watched at ≥ 50%
@@ -451,14 +451,18 @@ async def apply_skip_decay(
     factor: float = SKIP_DECAY,
 ) -> bool:
     """One skip = a bounded nudge, never a bury (RFC §4): w_item *=
-    factor on titles the user has stats for. Returns whether a row was
-    touched (skipping an unseen title is recorded, not weighted)."""
+    factor on titles the user has stats for, floored at
+    SKIP_DECAY_FLOOR — repeated skips (or a replayed impression token)
+    walk it down the geometric ladder but can never reach zero. Returns
+    whether a row was touched (skipping an unseen title is recorded,
+    not weighted)."""
     if not 0.0 < factor < 1.0:
         raise ValueError(f"skip decay factor must be in (0, 1), got {factor}")
     async with pool.acquire() as conn:
         return await db.execute(conn,
-            """UPDATE {t_user_title_stats} SET w_item = w_item * $4
+            """UPDATE {t_user_title_stats}
+               SET w_item = GREATEST(w_item * $4, $5)
                WHERE user_id=$1 AND tmdb_id=$2 AND media_type=$3""",
-            user_id, tmdb_id, media_type, factor,
+            user_id, tmdb_id, media_type, factor, SKIP_DECAY_FLOOR,
         ) not in ("UPDATE 0", "UPDATE 0\n")
 

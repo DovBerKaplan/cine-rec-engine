@@ -17,6 +17,7 @@ import sys
 from typing import List, Optional
 
 from . import init_db, tables
+from .config import env_int
 
 
 def _dsn(args: argparse.Namespace) -> Optional[str]:
@@ -117,7 +118,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="run the HTTP API (uvicorn)")
     ps.add_argument("--host", default=os.getenv("CINE_REC_HOST", "0.0.0.0"))
     ps.add_argument("--port", type=int,
-                    default=int(os.getenv("CINE_REC_PORT", "8000")))
+                    default=env_int("CINE_REC_PORT", 8000, lo=1, hi=65535))
     ps.add_argument("--log-level", default="info")
     ps.set_defaults(fn=cmd_serve)
     return p

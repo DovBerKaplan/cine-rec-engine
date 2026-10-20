@@ -164,7 +164,10 @@ async def compose_page(
             except Exception:
                 pass
         val = await factory()
-        if cache is not None and val:
+        # `val is not None`: an EMPTY row is a valid cacheable result —
+        # `and val` would re-run the raw SQL on every request whenever a
+        # row legitimately comes back empty.
+        if cache is not None and val is not None:
             try:
                 await cache.set(key, val, ttl=600)
             except Exception:

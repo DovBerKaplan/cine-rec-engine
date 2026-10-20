@@ -4,6 +4,7 @@ Pure semantics + API contracts; DB-backed pieces are monkeypatched.
 """
 
 import asyncio
+import itertools
 
 import pytest
 from fastapi.testclient import TestClient
@@ -113,8 +114,14 @@ def fb_client(monkeypatch):
         yield c
 
 
+_token_n = itertools.count()
+
+
 def _token(user_id=7, ids=((111, "movie"), (222, "tv"))):
-    return issue({"u": user_id, "r": "because",
+    # the n nonce makes every token unique: tokens are one-shot now, and
+    # issue() is deterministic — the same payload minted in the same
+    # second yields the same string
+    return issue({"u": user_id, "r": "because", "n": next(_token_n),
                   "i": [[i, m] for i, m in ids]})
 
 
@@ -157,6 +164,51 @@ class TestFeedbackEndpoint:
         r = fb_client.post("/feedback", json={
             "token": _token(), "outcome": "love", "tmdb_id": 111})
         assert r.status_code == 422
+
+    def test_replayed_token_is_an_idempotent_duplicate(self, fb_client):
+        body = {"token": _token(), "outcome": "skip", "tmdb_id": 111}
+        first = fb_client.post("/feedback", json=body)
+        assert first.status_code == 200
+        assert first.json()["status"] == "recorded"
+        second = fb_client.post("/feedback", json=body)
+        assert second.status_code == 200
+        assert second.json()["status"] == "duplicate"
+        # side effects ran exactly once — a replay must not re-decay
+        kinds = [c[0] for c in fb_client.calls]
+        assert kinds == ["feedback", "decay"]
+
+
+class TestSkipDecayFloor:
+    """apply_skip_decay must floor the decay in SQL — the RFC §4
+    "never a bury" promise cannot rely on callers being well-behaved
+    (a replayed impression token used to re-multiply toward zero)."""
+
+    def test_sql_floors_the_decayed_weight(self, monkeypatch):
+        import cine_rec_engine.user_stats as us
+        from cine_rec_engine.config import SKIP_DECAY_FLOOR
+
+        captured = {}
+
+        async def fake_execute(conn, sql, *args):
+            captured["sql"] = sql
+            captured["args"] = args
+            return "UPDATE 1"
+
+        class _CM:
+            async def __aenter__(self):
+                return object()
+
+            async def __aexit__(self, *exc):
+                return False
+
+        class _Pool:
+            def acquire(self):
+                return _CM()
+
+        monkeypatch.setattr(us.db, "execute", fake_execute)
+        assert asyncio.run(us.apply_skip_decay(_Pool(), 7, 155, "movie"))
+        assert "GREATEST" in captured["sql"]
+        assert captured["args"][-1] == SKIP_DECAY_FLOOR
 
 
 # ---------------------------------------------------------------------------

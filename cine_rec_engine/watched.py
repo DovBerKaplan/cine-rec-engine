@@ -51,7 +51,10 @@ async def get_user_watched(pool, user_id: Optional[int]) -> WatchedSet:
     try:
         cache = await get_cache()
         cached = await cache.get(cache_key)
-        if cached:
+        # `is not None`: an EMPTY list is a valid cached result (a user
+        # with no history) — truthiness would re-hit the DB every request
+        # for exactly those users.
+        if cached is not None:
             # json lists load back as lists of [id, type] — tuples for use
             return {(int(i), str(t)) for i, t in cached}
     except Exception as e:
@@ -62,7 +65,10 @@ async def get_user_watched(pool, user_id: Optional[int]) -> WatchedSet:
         rows = await db.fetch(pool, USER_WATCHES_SQL, user_id)
         watched = {(int(r["tmdb_id"]), str(r["media_type"] or "")) for r in rows}
     except Exception as e:
-        logger.debug(f"watched DB read failed for {user_id}: {e}")
+        logger.warning(
+            f"watched DB read failed for {user_id} — excluding nothing: "
+            f"already-watched titles WILL appear in recommendations ({e})"
+        )
         return set()
 
     try:
@@ -91,7 +97,8 @@ async def get_user_rated(pool, user_id: Optional[int]) -> WatchedSet:
     try:
         cache = await get_cache()
         cached = await cache.get(cache_key)
-        if cached:
+        # `is not None` — same empty-result-is-valid rule as the watched set
+        if cached is not None:
             return {(int(i), str(t)) for i, t in cached}
     except Exception as e:
         logger.debug(f"rated cache read failed for {user_id}: {e}")
@@ -101,7 +108,10 @@ async def get_user_rated(pool, user_id: Optional[int]) -> WatchedSet:
         rows = await db.fetch(pool, _RATED_SQL, user_id)
         rated = {(int(r["tmdb_id"]), str(r["media_type"] or "")) for r in rows}
     except Exception as e:
-        logger.debug(f"rated DB read failed for {user_id}: {e}")
+        logger.warning(
+            f"rated DB read failed for {user_id} — excluding nothing: "
+            f"already-rated titles WILL appear in recommendations ({e})"
+        )
         return set()
 
     try:
@@ -229,5 +239,8 @@ async def get_user_dislikes(pool, user_id: Optional[int]) -> WatchedSet:
         rows = await db.fetch(pool, _DISLIKES_SQL, user_id)
         return {(int(r["tmdb_id"]), str(r["media_type"])) for r in rows}
     except Exception as e:
-        logger.debug(f"dislikes read failed for {user_id}: {e}")
+        logger.warning(
+            f"dislikes read failed for {user_id} — excluding nothing: "
+            f"disliked titles WILL appear in recommendations ({e})"
+        )
         return set()

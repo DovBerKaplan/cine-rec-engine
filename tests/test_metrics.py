@@ -64,3 +64,22 @@ def test_metrics_endpoint_serves_prometheus_text():
         r = client.get("/metrics")
     assert r.status_code == 200
     assert "cine_rec_cache_misses_total 1" in r.text
+
+
+def test_middleware_labels_by_route_template_not_raw_path():
+    """The serving middleware must key latency series on the ROUTE
+    TEMPLATE (/for-user/{user_id}), never the raw path — a raw-path label
+    mints one Prometheus series per user id (and one per scanner probe),
+    with no bound."""
+    from fastapi.testclient import TestClient
+
+    from cine_rec_engine.serve import create_app
+
+    app = create_app(service=object())  # /metrics + 404s never touch the engine
+    with TestClient(app) as client:
+        client.get("/metrics")
+        client.get("/definitely-not-a-route")
+    paths = metrics.snapshot()["requests"]
+    assert "/metrics" in paths
+    assert "unmatched" in paths
+    assert not any(p.startswith("/definitely-not-a-route") for p in paths)

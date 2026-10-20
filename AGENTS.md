@@ -59,7 +59,8 @@ our accuracy?* If yes, it stays out.
 
 ```bash
 pip install -e ".[dev]"          # or: make install
-pytest -q                        # 104 offline tests, no DB needed
+pytest -q                        # 299 offline tests, no DB needed
+                                 # (+6 live-DB integration: make test-integration)
 ruff check cine_rec_engine ingest tests benchmarks eval demo
 make build                       # wheel locally; releases publish on tag
                                  # push via .github/workflows/release.yml
