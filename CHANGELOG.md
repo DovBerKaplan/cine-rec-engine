@@ -4,6 +4,39 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.14.0] — 2026-10-20
+
+### Added — deployable service: versioned API, auth, image CI
+- **`/v1/*` canonical routes.** The five data routes now serve
+  `/v1/similar`, `/v1/page`, `/v1/by-text`, `POST /v1/feedback`,
+  `/v1/for-user/{user_id}` — the same handler objects as the bare
+  paths, so behavior cannot drift. The bare paths remain as deprecated
+  aliases (`Deprecation: true` + `X-Deprecated-Removal: 1.0` headers,
+  OpenAPI `deprecated` flag) until 1.0.
+- **API-key auth**: `CINE_REC_API_KEYS` (comma-separated) gates every
+  data route on both paths — `X-API-Key` or `Authorization: Bearer`,
+  constant-time compare. `/health` stays open for healthchecks. For
+  anything richer, `create_app(auth_dependency=...)` injects your own
+  FastAPI dependency. With neither configured the API stays open
+  (degrade never fail).
+- **docs/stability.md**: what counts as public API (HTTP, Python, CLI,
+  weights.json schema, env vars), the deprecation contract (≥2 minors
+  and never before 1.0), and the support window.
+- **CI `image` job**: builds the Docker image and smoke-tests it
+  end-to-end against a real Postgres — seeds the demo catalog, boots the
+  container with auth on, asserts 401 without a key, `/health`
+  readiness, `/v1/similar` recall, and a token-signed `/v1/feedback`
+  round-trip. This is the job that would have caught the
+  never-failing-healthcheck bug.
+- **Release wheel smoke**: the publish workflow now installs the built
+  wheel into a fresh venv and asserts the package data (weights.json,
+  sql/schema.sql) and the app factory before uploading — we publish
+  what we test, not the editable tree.
+
+### Breaking
+- None — the bare routes keep working via aliases; `create_app` only
+  grew an optional parameter.
+
 ## [0.13.1] — 2026-10-20
 
 ### Fixed — reliability pass over the serving layer

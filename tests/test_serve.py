@@ -9,6 +9,7 @@ Pinned behaviors:
 """
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 from cine_rec_engine.serve import create_app
@@ -275,3 +276,91 @@ class TestForUserValidation:
     def test_nonpositive_user_id_is_422(self, client):
         assert client.get("/for-user/0").status_code == 422
         assert client.get("/for-user/-5").status_code == 422
+
+
+class TestV1Aliases:
+    """The five data routes serve both /v1/* (canonical) and their bare
+    legacy paths (deprecated aliases until 1.0 — docs/stability.md)."""
+
+    def test_v1_similar_works(self, client):
+        r = client.get("/v1/similar", params={"seed": "155"})
+        assert r.status_code == 200
+        assert r.json()["count"] == 2
+
+    def test_v1_for_user_works(self, client):
+        r = client.get("/v1/for-user/42")
+        assert r.status_code == 200
+        assert r.json()["reason"] == "cold_start"
+
+    def test_legacy_paths_carry_deprecation_headers(self, client):
+        r = client.get("/similar", params={"seed": "155"})
+        assert r.headers.get("deprecation") == "true"
+        assert r.headers.get("x-deprecated-removal") == "1.0"
+
+    def test_v1_paths_have_no_deprecation_headers(self, client):
+        r = client.get("/v1/similar", params={"seed": "155"})
+        assert "deprecation" not in r.headers
+
+    def test_openapi_lists_both_paths_legacy_deprecated(self, client):
+        spec = client.get("/openapi.json").json()
+        for bare, v1 in (("/similar", "/v1/similar"),
+                         ("/feedback", "/v1/feedback"),
+                         ("/for-user/{user_id}", "/v1/for-user/{user_id}")):
+            assert bare in spec["paths"] and v1 in spec["paths"]
+            method = "post" if "feedback" in bare else "get"
+            assert spec["paths"][bare][method]["deprecated"] is True
+            assert "deprecated" not in spec["paths"][v1][method]
+
+
+class TestAuth:
+    """CINE_REC_API_KEYS (or an injected auth_dependency) gates every
+    data route on both paths; /health stays open for healthchecks; with
+    neither configured the API stays open (degrade never fail)."""
+
+    def _app(self, monkeypatch, keys="k1,k2"):
+        monkeypatch.setenv("CINE_REC_API_KEYS", keys)
+        return create_app(service=FakeService())
+
+    def test_missing_key_is_401_on_both_paths(self, monkeypatch):
+        with TestClient(self._app(monkeypatch)) as c:
+            assert c.get("/similar", params={"seed": "155"}).status_code == 401
+            assert c.get("/v1/similar",
+                         params={"seed": "155"}).status_code == 401
+
+    def test_x_api_key_accepted(self, monkeypatch):
+        with TestClient(self._app(monkeypatch)) as c:
+            r = c.get("/similar", params={"seed": "155"},
+                      headers={"X-API-Key": "k2"})
+            assert r.status_code == 200
+
+    def test_bearer_accepted_and_wrong_key_401(self, monkeypatch):
+        with TestClient(self._app(monkeypatch)) as c:
+            ok = c.get("/v1/similar", params={"seed": "155"},
+                       headers={"Authorization": "Bearer k1"})
+            assert ok.status_code == 200
+            bad = c.get("/similar", params={"seed": "155"},
+                        headers={"Authorization": "Bearer nope"})
+            assert bad.status_code == 401
+
+    def test_health_and_docs_stay_open(self, monkeypatch):
+        with TestClient(self._app(monkeypatch)) as c:
+            assert c.get("/health").status_code in (200, 503)
+
+    def test_unset_keys_mean_open_service(self, client):
+        assert client.get("/similar",
+                          params={"seed": "155"}).status_code == 200
+
+    def test_injected_auth_hook_applies_to_both_paths(self):
+        from fastapi import HTTPException
+
+        # NB: a hook parameter MUST be annotated with the real class —
+        # a bare `request` would be parsed as a query param and 422
+        # before the hook ever runs.
+        async def _deny(request: Request) -> None:
+            raise HTTPException(status_code=403, detail="hook says no")
+
+        app = create_app(service=FakeService(), auth_dependency=_deny)
+        with TestClient(app) as c:
+            assert c.get("/similar",
+                         params={"seed": "155"}).status_code == 403
+            assert c.get("/v1/for-user/42").status_code == 403

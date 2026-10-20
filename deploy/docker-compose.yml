@@ -22,6 +22,9 @@ services:
       CINE_REC_POOL_SIZE: "${CINE_REC_POOL_SIZE:-20}"
       # persistent impression tokens across restarts (feedback endpoint):
       CINE_REC_IMPRESSION_SECRET: "${CINE_REC_IMPRESSION_SECRET:-}"
+      # static API keys — without them the API is open (internal network
+      # / gateway assumed); /health stays reachable either way:
+      CINE_REC_API_KEYS: "${CINE_REC_API_KEYS:-}"
       # table-name remap — mount the file and uncomment:
       # CINE_REC_SCHEMA_MAP: /config/tables.json
       # CINE_REC_EMBEDDING: "${CINE_REC_EMBEDDING:-original}"

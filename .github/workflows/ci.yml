@@ -93,3 +93,92 @@ jobs:
         with:
           name: dist
           path: dist/
+
+  image:
+    # Build the Docker image and smoke it END-TO-END against a real
+    # Postgres: seed the bundled catalog from the checkout, boot the
+    # container (schema auto-init, auth on), then exercise /health,
+    # /v1/similar and /v1/feedback over HTTP. Catches packaging/runtime
+    # bugs the source-install jobs can't see — a healthcheck that can
+    # never fail, a file missing from the image, an env knob the
+    # container ignores.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: demo
+          POSTGRES_DB: demo
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U demo"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://demo:demo@localhost:5432/demo
+      CINE_REC_EMBEDDING: minilm
+      CINE_REC_IMPRESSION_SECRET: ci-image-smoke
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install (seeding runs the ingest path from the checkout)
+        run: pip install -e ".[pg]"
+      - name: Seed demo catalog
+        run: python demo/seed.py
+      - name: User-data schema
+        run: psql "$DATABASE_URL" -f docs/user_data.sql
+      - name: Build image
+        run: docker build -t cine-rec-engine:ci .
+      - name: Boot the container (host network reaches the service Postgres)
+        run: |
+          docker run -d --name engine --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e CINE_REC_EMBEDDING="$CINE_REC_EMBEDDING" \
+            -e CINE_REC_IMPRESSION_SECRET="$CINE_REC_IMPRESSION_SECRET" \
+            -e CINE_REC_API_KEYS=ci-key \
+            cine-rec-engine:ci
+          for i in $(seq 1 30); do
+            if curl -fsS localhost:8000/health >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS localhost:8000/health  # readiness: DB must answer
+      - name: HTTP smoke — 401 without a key, /v1/similar + /v1/feedback with one
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+
+          BASE, KEY = "http://localhost:8000", "ci-key"
+
+          def call(path, data=None, key=KEY):
+              req = urllib.request.Request(
+                  BASE + path,
+                  method="POST" if data is not None else "GET",
+                  headers={"X-API-Key": key, "Content-Type": "application/json"},
+                  data=json.dumps(data).encode() if data is not None else None,
+              )
+              with urllib.request.urlopen(req) as r:
+                  return r.status, json.loads(r.read() or b"{}")
+
+          try:
+              urllib.request.urlopen(BASE + "/v1/similar?seed=155:movie")
+              raise SystemExit("expected 401 without an API key")
+          except urllib.error.HTTPError as e:
+              assert e.code == 401, e.code
+
+          status, body = call("/v1/similar?seed=155:movie&limit=5")
+          assert status == 200 and len(body["results"]) >= 3, body
+          top = body["results"][0]
+
+          from cine_rec_engine.impressions import issue
+          token = issue({"u": 1, "r": "smoke",
+                         "i": [[top["tmdb_id"], top["media_type"]]]})
+          status, body = call("/v1/feedback",
+                              {"token": token, "outcome": "click",
+                               "tmdb_id": top["tmdb_id"]})
+          assert status == 200 and body["status"] == "recorded", body
+          print("image smoke ok:", top.get("title_en"))
+          PY

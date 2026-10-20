@@ -110,14 +110,23 @@ cd deploy && DATABASE_URL=postgresql://user:pw@host/db docker compose up -d
 ```
 
 ```bash
-curl 'localhost:8000/similar?seed=155:movie,1396:tv&limit=10&user_id=42&year_min=1995&genres=80'
-curl 'localhost:8000/for-user/42?include_why=true&limit=12&explore=0.15'
-curl 'localhost:8000/page?user_id=42&rows=top_picks,because:155,discover,hidden_gems'
-curl 'localhost:8000/by-text?q=like+Inception+but+darker'
-curl -X POST localhost:8000/feedback -d '{"token":"<impression>","outcome":"watch","tmdb_id":111}'
+curl 'localhost:8000/v1/similar?seed=155:movie,1396:tv&limit=10&user_id=42&year_min=1995&genres=80'
+curl 'localhost:8000/v1/for-user/42?include_why=true&limit=12&explore=0.15'
+curl 'localhost:8000/v1/page?user_id=42&rows=top_picks,because:155,discover,hidden_gems'
+curl 'localhost:8000/v1/by-text?q=like+Inception+but+darker'
+curl -X POST localhost:8000/v1/feedback -d '{"token":"<impression>","outcome":"watch","tmdb_id":111}'
 curl 'localhost:8000/health'
 curl 'localhost:8000/metrics'   # latency histogram, cache hit rate, channel coverage (Prometheus text)
 ```
+
+`/v1/*` are the canonical paths; the bare paths (`/similar`, …) still
+work as deprecated aliases (served with `Deprecation` headers) and will
+be removed in 1.0 — the full contract is in
+[docs/stability.md](docs/stability.md). The service ships without users
+or sessions: it is meant for an internal network or behind your own
+gateway, and `CINE_REC_API_KEYS` turns on static-key auth
+(`X-API-Key` or `Authorization: Bearer`) for every data route while
+`/health` stays open for healthchecks.
 
 `/similar` is item-to-item — `user_id` optionally filters watched
 titles, advances sagas, and gently tilts near-ties toward the user
@@ -157,6 +166,7 @@ instantiate. Vars marked ⚙ are read once at process start.
 | `CINE_REC_REDIS_URL` | off | Redis result/history cache (falls back to in-process) |
 | `CINE_REC_IMPRESSION_SECRET` | random | fixed secret for feedback tokens — **set it when running more than one worker/replica**: each process otherwise signs with its own random secret, so tokens minted by one worker fail in another (a startup warning fires while unset) |
 | `CINE_REC_CORS_ORIGINS` | off | comma-separated allow-list |
+| `CINE_REC_API_KEYS` | off | comma-separated API keys — when set, every data route (both `/v1/*` and the bare aliases) requires `X-API-Key` or `Authorization: Bearer`; `/health` stays open. For anything richer, inject your own FastAPI dependency via `create_app(auth_dependency=...)` |
 | `TMDB_API_KEY` | — | behavioral-graph sync (`ingest/`, `tmdb_recs.py`) |
 | ⚙ `CINE_REC_USER_TILT_ALPHA` / `CINE_REC_EXPLORE_SHARE` / `CINE_REC_SKIP_DECAY` / `CINE_REC_SKIP_DECAY_FLOOR` / `CINE_REC_USER_VECTOR_MAX_AGE_HOURS` | 0.15 / 0.12 / 0.9 / 0.05 / 24 | personalization tuning (`SKIP_DECAY_FLOOR` = the lower bound repeated skips can never push `w_item` past) |
 

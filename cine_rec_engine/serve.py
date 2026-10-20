@@ -24,13 +24,14 @@ already-initialized RecommendationService for tests and embedding.
 
 from __future__ import annotations
 
+import hmac
 import os
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import List, Literal, Optional, Tuple, Union
+from typing import Callable, List, Literal, Optional, Tuple, Union
 
-from fastapi import FastAPI, HTTPException, Path, Query, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -49,6 +50,12 @@ from .text_query import by_text
 # with heavier pages can raise it without forking the module.
 MAX_LIMIT = env_int("CINE_REC_MAX_LIMIT", 100, lo=1, hi=10_000)
 DEFAULT_LIMIT = 30
+
+# Bare paths that duplicate a /v1/ route — served as deprecated aliases
+# until 1.0 (docs/stability.md).
+_DEPRECATED_PATHS = frozenset({
+    "/similar", "/page", "/by-text", "/feedback", "/for-user/{user_id}",
+})
 
 
 class FeedbackBody(BaseModel):
@@ -129,9 +136,14 @@ def _validate_model(model: Optional[str]) -> Optional[str]:
 def create_app(
     service: Optional[RecommendationService] = None,
     dsn: Optional[str] = None,
+    auth_dependency: Optional[Callable] = None,
 ) -> FastAPI:
     """Build the API app. `service` injects an initialized engine (tests);
-    otherwise a pool is created from DATABASE_URL on startup."""
+    otherwise a pool is created from DATABASE_URL on startup.
+    `auth_dependency` injects a FastAPI dependency (e.g. your own
+    principal extraction) that gates every data route — without it,
+    CINE_REC_API_KEYS (comma-separated) enables built-in API-key auth;
+    with neither set the API is open (degrade never fail)."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -192,6 +204,27 @@ def create_app(
         description=__doc__,
     )
 
+    # -- auth: env-driven API keys, or a caller-injected dependency ----
+    # (unset + no hook = open service, same on/off idiom as CORS).
+    api_keys = [k.strip() for k in (os.getenv("CINE_REC_API_KEYS") or "")
+                .split(",") if k.strip()]
+    if auth_dependency is None and api_keys:
+
+        async def _env_api_key_auth(request: Request) -> None:
+            supplied = request.headers.get("X-API-Key", "")
+            if not supplied:
+                header = request.headers.get("Authorization", "")
+                if header.lower().startswith("bearer "):
+                    supplied = header[7:].strip()
+            if not supplied or not any(
+                    hmac.compare_digest(supplied, k) for k in api_keys):
+                raise HTTPException(
+                    status_code=401, detail="invalid or missing API key",
+                    headers={"WWW-Authenticate": 'ApiKey realm="cine-rec"'})
+
+        auth_dependency = _env_api_key_auth
+    auth_deps = [Depends(auth_dependency)] if auth_dependency is not None else None
+
     cors = os.getenv("CINE_REC_CORS_ORIGINS", "").strip()
     if cors:
         from fastapi.middleware.cors import CORSMiddleware
@@ -219,8 +252,12 @@ def create_app(
         # cannot mint unbounded label cardinality. scope["route"] is only
         # populated once the router ran, i.e. after call_next returns.
         route = request.scope.get("route")
-        metrics.observe_request(getattr(route, "path", None) or "unmatched",
-                                elapsed_ms)
+        route_path = getattr(route, "path", "")
+        metrics.observe_request(route_path or "unmatched", elapsed_ms)
+        if route_path in _DEPRECATED_PATHS:
+            # Legacy alias of a /v1 route — kept until 1.0 (docs/stability.md)
+            response.headers["Deprecation"] = "true"
+            response.headers["X-Deprecated-Removal"] = "1.0"
         if response.status_code >= 500:
             from loguru import logger
 
@@ -230,7 +267,7 @@ def create_app(
             )
         return response
 
-    @app.get("/metrics")
+    @app.get("/metrics", dependencies=auth_deps)
     async def metrics_endpoint():
         """Serving metrics (RFC M3): per-path latency histogram, cache
         hit rate, recall-channel coverage. Prometheus text format —
@@ -253,7 +290,6 @@ def create_app(
             return JSONResponse(
                 status_code=503, content={"status": "degraded", "db": False})
 
-    @app.get("/similar")
     async def similar(
         request: Request,
         seed: str = Query(..., description="e.g. 155 or 155:movie,1396:tv"),
@@ -294,7 +330,6 @@ def create_app(
         )
         return {"results": results, "count": len(results)}
 
-    @app.get("/page")
     async def page(
         request: Request,
         user_id: Optional[int] = Query(None, ge=1),
@@ -321,7 +356,6 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-    @app.get("/by-text")
     async def by_text_endpoint(
         request: Request,
         q: str = Query(..., min_length=1, max_length=500),
@@ -344,7 +378,6 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-    @app.post("/feedback")
     async def feedback(request: Request, body: FeedbackBody):
         """Outcome ingestion (RFC §4): verify the impression, map the
         outcome onto the existing §D/§J machinery — no trainer, no
@@ -394,7 +427,6 @@ def create_app(
         return {"status": "recorded", "outcome": body.outcome,
                 "user_id": user_id, "tmdb_id": body.tmdb_id}
 
-    @app.get("/for-user/{user_id}")
     async def for_user(
         request: Request,
         user_id: int = Path(..., ge=1),
@@ -417,6 +449,22 @@ def create_app(
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    # -- route registration: /v1/* is canonical, the bare paths are ----
+    # deprecated aliases that keep every existing integrator working
+    # until 1.0 (docs/stability.md). The SAME handler objects serve
+    # both, so behavior and signatures cannot drift between them.
+    for path, endpoint, methods in (
+        ("/similar", similar, ["GET"]),
+        ("/page", page, ["GET"]),
+        ("/by-text", by_text_endpoint, ["GET"]),
+        ("/feedback", feedback, ["POST"]),
+        ("/for-user/{user_id}", for_user, ["GET"]),
+    ):
+        app.add_api_route(path, endpoint, methods=methods, deprecated=True,
+                          dependencies=auth_deps)
+        app.add_api_route(f"/v1{path}", endpoint, methods=methods,
+                          dependencies=auth_deps)
 
     return app
 

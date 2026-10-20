@@ -49,6 +49,23 @@ jobs:
           test "$TAG" = "$PKG"
       - name: Build sdist + wheel
         run: python -m build
+      - name: Smoke the built wheel (we publish what we test)
+        run: |
+          python -m venv /tmp/wheelvenv
+          /tmp/wheelvenv/bin/pip install dist/*.whl[serve]
+          /tmp/wheelvenv/bin/python - <<'PY'
+          import pathlib
+          import cine_rec_engine
+          from cine_rec_engine import serve
+
+          pkg = pathlib.Path(cine_rec_engine.__file__).parent
+          assert (pkg / "weights.json").exists(), "weights.json missing from the wheel"
+          assert (pkg / "sql" / "schema.sql").exists(), "sql/schema.sql missing from the wheel"
+          app = serve.create_app(service=object())
+          paths = {getattr(r, "path", "") for r in app.routes}
+          assert {"/health", "/similar", "/v1/similar"} <= paths, sorted(paths)
+          print("wheel smoke ok:", cine_rec_engine.__version__)
+          PY
       - name: Distributions
         run: ls -l dist/
       - name: Publish to PyPI
