@@ -4,9 +4,37 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.15.0] — 2026-10-21
 
-### Added
+### Added — external proof, typed package, docs site
+- **Public MovieLens benchmark** (`eval/build_ml_bench.py`,
+  `eval/ml_judgments.jsonl`): 150 seeds / 2.25M pairs of collaborative
+  ground truth derived deterministically from MovieLens ratings
+  (loved-cohort agreement — independent of this engine's tuning), a
+  catalog builder that runs against your own TMDB key, and two new
+  eval baselines (`popularity`, `keywords`) alongside tmdb_sim and
+  minilm_cosine. Full repro in the docs site's benchmark page.
+- **Quantitative why**: `/v1/for-user?include_why=1` also returns
+  `why_scores` (per-feature weight×value contributions), and
+  `/v1/similar?why=1` attaches the same explanation. Contributions
+  expose only published-weights arithmetic.
+- **Typed package**: `py.typed` ships in the wheel; `mypy` passes over
+  the package + ingest (CI `typecheck` job, `make typecheck`). Not
+  full-strict yet.
+- **Property tests** (hypothesis): score bounds, no-NaN on partial
+  input, order independence, and fast-path == full-path parity on
+  RANDOM pairs (complementing the fixed golden vectors).
+- **Docs site** — https://dovberkaplan.github.io/cine-rec-engine/ :
+  mkdocs-material via Pages Actions — architecture (recall → scoring →
+  rerank), interactive HTTP API reference (OpenAPI), data contract,
+  personalization, benchmark, stability policy. The browser demo is
+  preserved under `/demo/`.
+
+### Fixed
+- `db.execute`'s `*args` annotation was `Sequence[Any]` (every scalar
+  bind was a type error); several Optional-narrowing fixes mypy
+  surfaced across loader/page/tmdb_recs.
+
 - **Public MovieLens benchmark** (`eval/build_ml_bench.py`,
   `eval/ml_judgments.jsonl`, `eval/BENCHMARK.md`): 150 seeds / 2.25M
   pairs of collaborative ground truth derived deterministically from
