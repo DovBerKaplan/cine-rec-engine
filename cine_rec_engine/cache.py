@@ -89,7 +89,7 @@ async def get_cache() -> Any:
         url = os.getenv("CINE_REC_REDIS_URL")
         if url:
             try:
-                import redis.asyncio as aioredis  # type: ignore
+                import redis.asyncio as aioredis
 
                 _client = aioredis.from_url(
                     url, decode_responses=True, socket_timeout=2,

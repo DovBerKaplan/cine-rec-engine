@@ -181,6 +181,7 @@ async def compose_page(
                 user_context=user_ctx)
             return out["results"]
         if spec.kind == "because":
+            assert spec.seed is not None  # parser rejects because: without a seed
             sid, mt = spec.seed
             seeds: list = [(sid, mt)] if mt else [sid]
             return await service.find_similar(
@@ -210,8 +211,10 @@ async def compose_page(
             key = f"page:row:discover:u={user_id}:n={row_limit}"
             return await _cached(key, _discover)
         key = f"page:row:trend:g={spec.genre_id}:n={row_limit}:fl={flt_fp}"
+        gid = spec.genre_id
+        assert gid is not None  # parser rejects trending: without a genre
         return await _cached(key, lambda: generate_trending_genre(
-            service.pool, spec.genre_id, row_limit, filters))
+            service.pool, gid, row_limit, filters))
 
     gathered = await asyncio.gather(
         *(_run(s) for s in specs), return_exceptions=True)

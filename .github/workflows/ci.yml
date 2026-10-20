@@ -94,6 +94,18 @@ jobs:
           name: dist
           path: dist/
 
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: mypy
+        run: mypy
+
   image:
     # Build the Docker image and smoke it END-TO-END against a real
     # Postgres: seed the bundled catalog from the checkout, boot the

@@ -1,4 +1,4 @@
-.PHONY: install test test-integration lint build clean
+.PHONY: install test test-integration lint typecheck build clean
 
 # prefer the project venv when present (make runs without activation)
 PY := $(shell test -x .venv/bin/python && echo .venv/bin/python || echo python3)
@@ -14,6 +14,9 @@ test-integration:  ## throwaway pgvector container + the live CI-class suite
 
 lint:
 	$(PY) -m ruff check cine_rec_engine ingest tests benchmarks eval demo examples
+
+typecheck:       ## mypy over the package + ingest
+	$(PY) -m mypy
 
 build:          ## sdist + wheel
 	$(PY) -m build

@@ -29,7 +29,7 @@ import json
 import math
 import os
 import random
-from typing import Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import asyncpg
 from loguru import logger
@@ -607,7 +607,7 @@ class RecommendationService:
         seed. Re-derives the feature vector post-hoc (vs the first seed
         only — an approximation by design, same as the /for-user path);
         contributions are published-weights arithmetic only."""
-        empty = {"why": {}, "why_scores": {}}
+        empty: dict = {"why": {}, "why_scores": {}}
         if not results:
             return empty
         try:
@@ -863,7 +863,8 @@ class RecommendationService:
                                 result, user_id, model_key, context=tilt_ctx)
                     # Balance FIRST, then noise on the final list (see step 9)
                     if limit is not None:
-                        if explore_share > 0 and tilt_ctx.get("affinities"):
+                        if user_id is not None and explore_share > 0 \
+                                and tilt_ctx.get("affinities"):
                             result = await self._apply_exploration(
                                 result, user_id, movie_ratio, limit,
                                 explore_share, tilt_ctx)
@@ -913,7 +914,9 @@ class RecommendationService:
         # 1b. Seed cinematic structure tags (narrative/pacing/emotional_arc)
         # — powers narrative_match + the mood features. Missing → None.
         try:
-            async with self.pool.acquire() as conn:
+            pool = self.pool
+            assert pool is not None  # initialize() ran — caller contract
+            async with pool.acquire() as conn:
                 narr_rows = await db.fetch(conn,
                     """
                     SELECT media_id, narrative_complexity, pacing, emotional_arc
@@ -949,7 +952,7 @@ class RecommendationService:
         #    KNN over overview embeddings, locally synced TMDB behavioral
         #    recommendations ("people also liked"), and the seed director's
         #    other works (auteur DNA). Non-classic failures degrade silently.
-        channel_coros: list[tuple[str, object]] = []
+        channel_coros: list[tuple[str, Any]] = []
         # Both KNN channels share the same embedding column in every
         # configuration, so when the fine-tuned channel is enabled ONE
         # query per seed (at its looser vote floor) covers both result
@@ -992,7 +995,7 @@ class RecommendationService:
                 ("director", generate_director_candidates(self.pool, s["id"], s["media_type"]))
             )
         all_results = await asyncio.gather(
-            *(coro for _, coro in channel_coros), return_exceptions=True
+            *[coro for _, coro in channel_coros], return_exceptions=True
         )
 
         seed_id_set = set(tmdb_ids)
@@ -1117,13 +1120,15 @@ class RecommendationService:
             weighted_scores: list[float] = []
             for (seed, w), sp in zip(zip(seed_infos, weights), seed_profiles):
                 overview_sim = seed_sim_by_seed.get(seed["id"], {}).get(cid, 0.0)
-                s = _score_pair_fast(
+                # `score`, not `s`: `s` is a seed dict in the channel loop
+                # above — one name, one type keeps checkers honest.
+                score = _score_pair_fast(
                     sp, cp, cand, cand_data, cand_genres_set,
                     overview_sim, w_list,
                 )
-                if s > 0:
-                    seed_score_map[seed["id"]] = s
-                    weighted_scores.append(s * w)
+                if score > 0:
+                    seed_score_map[seed["id"]] = score
+                    weighted_scores.append(score * w)
 
             if not weighted_scores:
                 continue
@@ -1271,7 +1276,7 @@ class RecommendationService:
             results = await self._apply_user_filters(
                 results, merged, set(tmdb_ids),
             )
-            tilt_ctx: dict = {}
+            tilt_ctx = {}
             if user_id is not None:
                 results = await self._apply_user_tilt(
                     results, user_id, model_key, context=tilt_ctx)

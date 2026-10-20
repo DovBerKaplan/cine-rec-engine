@@ -42,6 +42,8 @@ dev = [
     "ruff>=0.5",
     "httpx>=0.27",             # fastapi TestClient
     "pgvector>=0.3",           # offline regression pins use real Vector objects
+    "hypothesis>=6.100",       # property tests (tests/test_properties.py)
+    "mypy>=1.11",              # make typecheck / CI typecheck job
 ]
 bench = [                      # MovieLens benchmark: embeddings for the
     "sentence-transformers>=2.7",  # minilm_cosine baseline (catalog --embed)
@@ -58,7 +60,18 @@ Issues = "https://github.com/DovBerKaplan/cine-rec-engine/issues"
 include = ["cine_rec_engine*", "ingest*"]
 
 [tool.setuptools.package-data]
-cine_rec_engine = ["weights.json", "sql/*.sql"]
+cine_rec_engine = ["weights.json", "sql/*.sql", "py.typed"]
+
+[tool.mypy]
+# Not full-strict yet: the goal is a clean, meaningful pass today
+# (runtime deps are untyped; the core is annotated) with strictness
+# ratcheting later.
+python_version = "3.10"
+files = ["cine_rec_engine", "ingest"]
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
 
 [tool.ruff]
 line-length = 100

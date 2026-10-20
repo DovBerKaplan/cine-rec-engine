@@ -38,7 +38,7 @@ async def cmd_init(args: argparse.Namespace) -> int:
         result = await init_db.apply_schema(conn, full=not args.catalog_only)
     finally:
         await conn.close()
-    print(f"catalog schema: applied ({dsn.split('@')[-1]})")
+    print(f"catalog schema: applied ({(dsn or '?').split('@')[-1]})")
     if result["user_layer"]:
         print("user layer: applied (events, stats, vectors)")
     elif result["user_layer_error"]:
@@ -57,7 +57,7 @@ async def cmd_check(args: argparse.Namespace) -> int:
     conn = await asyncpg.connect(dsn)
     try:
         await conn.fetchval("SELECT 1")
-        print(f"connect: ok ({dsn.split('@')[-1]})")
+        print(f"connect: ok ({(dsn or '?').split('@')[-1]})")
         mapped = tables.active_map()
         print(f"table map: {len(mapped)} remapped"
               + (f" — {', '.join(f'{k}->{v}' for k, v in sorted(mapped.items()))}"

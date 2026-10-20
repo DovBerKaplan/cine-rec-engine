@@ -43,7 +43,7 @@ async def fetch_with_retry(
                     return {"error": f"HTTP {response.status}"}
 
                 response.raise_for_status()
-                return await response.json()  # type: ignore[no-any-return]
+                return await response.json()
 
         except asyncio.TimeoutError:
             logger.warning(f"Timeout (attempt {attempt + 1}/{max_retries})")

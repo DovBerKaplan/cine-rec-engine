@@ -47,7 +47,7 @@ async def apply_schema(conn, full: bool = True) -> dict:
     The catalog part is the hard requirement; the user layer needs the
     pgvector extension and degrades with a loud warning when absent —
     find_similar keeps working, personalization does not."""
-    out = {"catalog": False, "user_layer": False, "user_layer_error": None}
+    out: dict = {"catalog": False, "user_layer": False, "user_layer_error": None}
     await conn.execute(_read_sql("schema.sql"))
     out["catalog"] = True
     if full:

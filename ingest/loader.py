@@ -6,7 +6,7 @@ import asyncio
 import os
 from dataclasses import dataclass
 from datetime import date
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 import aiohttp
 import asyncpg
@@ -101,7 +101,7 @@ def append_to_response(medium: str) -> str:
     return ",".join(parts)
 
 
-def should_ingest(payload: dict, min_popularity: float = 0.0,
+def should_ingest(payload: Optional[dict], min_popularity: float = 0.0,
                   include_adult: bool = False) -> bool:
     """Post-fetch gate shared by bootstrap and refresh (spec filters)."""
     if payload is None or payload.get("success") is False:
@@ -221,6 +221,8 @@ async def _sync_bridge(conn, table: str, media_col: str, media_id: int,
     else:
         await db.execute(conn, f"DELETE FROM {table} WHERE {media_col} = $1", media_id)
     if rows:
+        # the non-default upsert path always passes insert_sql with rows
+        assert insert_sql is not None
         await db.executemany(conn, insert_sql, rows)
 
 
@@ -450,6 +452,7 @@ class TmdbIngest:
                 else:
                     self.stats.failed += 1
                 return False
+            assert payload is not None  # should_ingest(True) implies a payload
             await self._upsert_title(payload, medium)
             self.stats.ingested += 1
             if is_complete(payload):
@@ -468,7 +471,7 @@ class TmdbIngest:
 
     async def bootstrap(
         self,
-        entries: "asyncio.AsyncIterator | object",
+        entries: Any,  # async-iterable of (id, medium) — duck-typed by design
         workers: int = 8,
         skip_existing: bool = True,
     ) -> IngestStats:

@@ -591,9 +591,16 @@ async def semantic_overview_similarity_batch(
                 cid for m in col_maps for (_s, cid) in m if _s == sid
             }
             for cid in cand_ids_seen:
-                pair_sims = [m.get((sid, cid)) for m in col_maps]
-                if any(s is None for s in pair_sims):
-                    continue  # candidate lacks one of the seed's columns
+                pair_sims: list[float] = []
+                missing = False
+                for m in col_maps:
+                    v = m.get((sid, cid))
+                    if v is None:
+                        missing = True  # candidate lacks one of the seed's columns
+                        break
+                    pair_sims.append(v)
+                if missing:
+                    continue
                 per_cand[cid] = sum(
                     col_weights[c] * s
                     for c, s in zip(active_cols, pair_sims)

@@ -302,5 +302,5 @@ async def ensure_seeds_synced(
             logger.info(f"tmdb_recs: on-demand synced {synced}/{len(todo)} seeds")
         return synced
     finally:
-        if owns_session:
+        if owns_session and session is not None:
             await session.close()

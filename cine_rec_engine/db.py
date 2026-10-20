@@ -9,7 +9,7 @@ sites work whether or not a table map is active.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any
 
 from . import tables
 
@@ -36,6 +36,6 @@ async def fetchval(db: Any, sql: str, *args: Any) -> Any:
     return await db.fetchval(tables.resolve(sql), *args)
 
 
-async def execute(db: Any, sql: str, *args: Sequence[Any]) -> str:
+async def execute(db: Any, sql: str, *args: Any) -> str:
     """await db.execute(...) with logical-name resolution."""
     return await db.execute(tables.resolve(sql), *args)

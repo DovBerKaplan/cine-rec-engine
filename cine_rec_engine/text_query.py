@@ -26,7 +26,7 @@ from loguru import logger
 VIRTUAL_SEED_ID = 0  # recall excludes seed ids; TMDB ids are all > 0,
 # so the virtual seed never collides with a real title
 
-_encoder_cache = {}
+_encoder_cache: dict = {}
 
 
 def load_encoder():
