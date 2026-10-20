@@ -77,7 +77,8 @@ make build                       # wheel locally; releases publish on tag
 
 ## Skills
 
-Deeper guides live in `.zcode/skills/` (any agent can read them):
+Deeper guides live in `.agents/skills/` (the cross-agent standard —
+readable by ZCode, Claude Code, Codex, Cursor alike):
 - `cine-rec-engine-guide` — how the engine works end to end
 - `cine-rec-db-guide` — schemas, layers, spinning up a DB
 - `cine-rec-release` — versioning, changelog, PyPI, privacy checklist
