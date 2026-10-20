@@ -12,3 +12,8 @@ htmlcov/
 .env
 *.log
 .DS_Store
+
+# MovieLens benchmark local artifacts (public judgments are committed; the raw zip and local packs are not)
+ml-latest-small*
+ml-25m*
+eval/.mlbench/

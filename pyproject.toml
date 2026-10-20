@@ -43,6 +43,9 @@ dev = [
     "httpx>=0.27",             # fastapi TestClient
     "pgvector>=0.3",           # offline regression pins use real Vector objects
 ]
+bench = [                      # MovieLens benchmark: embeddings for the
+    "sentence-transformers>=2.7",  # minilm_cosine baseline (catalog --embed)
+]
 
 [project.scripts]
 cine-rec = "cine_rec_engine.cli:main"

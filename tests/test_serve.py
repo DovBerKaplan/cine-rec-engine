@@ -30,6 +30,12 @@ class FakeService:
         self.pool = pool or FakePool()
         self.similar_calls = []
         self.user_calls = []
+        self.explain_calls = []
+
+    async def explain_results(self, results, seed):
+        self.explain_calls.append((results, seed))
+        return {"why": {"111": ["same director"]},
+                "why_scores": {"111": {"director_match": 3.0}}}
 
     async def find_similar(self, seeds, **kwargs):
         self.similar_calls.append((seeds, kwargs))
@@ -276,6 +282,37 @@ class TestForUserValidation:
     def test_nonpositive_user_id_is_422(self, client):
         assert client.get("/for-user/0").status_code == 422
         assert client.get("/for-user/-5").status_code == 422
+
+
+class TestSimilarWhy:
+    def test_why_param_attaches_labels_and_scores(self, client):
+        r = client.get("/similar", params={"seed": "155:movie", "why": "1"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["why"] == {"111": ["same director"]}
+        assert body["why_scores"] == {"111": {"director_match": 3.0}}
+        results, seed = client.service.explain_calls[-1]
+        assert seed == (155, "movie") and len(results) == 2
+
+    def test_bare_seed_key_takes_media_type_from_results(self, client):
+        client.get("/similar", params={"seed": "155", "why": "1"})
+        _, seed = client.service.explain_calls[-1]
+        assert seed == (155, "movie")
+
+    def test_why_off_by_default(self, client):
+        body = client.get("/similar", params={"seed": "155"}).json()
+        assert "why" not in body and "why_scores" not in body
+
+    def test_explain_failure_never_fails_the_request(self):
+        class Boom(FakeService):
+            async def explain_results(self, results, seed):
+                raise RuntimeError("no enrichment for you")
+
+        app = create_app(service=Boom())
+        with TestClient(app) as c:
+            r = c.get("/similar", params={"seed": "155:movie", "why": "1"})
+        assert r.status_code == 200
+        assert "why" not in r.json()
 
 
 class TestV1Aliases:

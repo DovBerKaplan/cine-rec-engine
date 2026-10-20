@@ -2,9 +2,11 @@
 coverage@10, novelty@10).
 
 Runs against the demo catalog (any DB with the split schema). Methods:
-  tmdb_sim   — TMDB's own /recommendations graph (rank-decayed)
-  cosine     — character-bigram cosine between seed and candidate overviews
-  engine     — this repo's scorer (recall channels + 22/28-feature weights)
+  tmdb_sim      — TMDB's own /recommendations graph (rank-decayed)
+  minilm_cosine — plain MiniLM-384 dot product on overviews
+  popularity    — vote_count ranking (the perennial baseline)
+  keywords      — keyword-set Jaccard vs the seed
+  engine        — this repo's scorer (recall channels + 22/28-feature weights)
 
 Beyond-accuracy columns (RFC M2): coverage@10 = distinct titles surfacing
 in any top-10 / pool size (a method returning the same block every time
@@ -53,6 +55,15 @@ async def run(dsn: str, judgments_path: str | None = None) -> dict:
     overview = {(r["id"], r["media_type"]): (r["title"] or r["name"], r["overview"] or "") for r in rows_raw}
     votes = {(r["id"], r["media_type"]): max(1, r["votes"] or 0) for r in rows_raw}
     total_votes = sum(votes.values()) or 1
+    kw_rows = await pool.fetch(
+        """SELECT movie_id AS mid, 'movie'::text AS mt, keyword_id
+           FROM tmdb_movie_keywords
+           UNION ALL
+           SELECT tv_id AS mid, 'tv'::text AS mt, keyword_id
+           FROM tmdb_tv_keywords""")
+    keywords: dict = {}
+    for r in kw_rows:
+        keywords.setdefault((r["mid"], r["mt"]), set()).add(r["keyword_id"])
     def _vec(v):
         if v is None:
             return None
@@ -72,7 +83,8 @@ async def run(dsn: str, judgments_path: str | None = None) -> dict:
 
     stats = {m: {"pair_ok": 0, "pair_n": 0, "ndcg": [],
                  "cov": set(), "nov": []}
-             for m in ("tmdb_sim", "minilm_cosine", "engine")}
+             for m in ("tmdb_sim", "minilm_cosine", "popularity",
+                       "keywords", "engine")}
 
     for j in judgments:
         seed_id, seed_type = j["seed"]
@@ -107,10 +119,20 @@ async def run(dsn: str, judgments_path: str | None = None) -> dict:
                 return 0.0
             return dot(e1, e2)  # MiniLM vectors are L2-normalized
 
+        seed_kw = keywords.get((seed_id, seed_type), set())
+
+        def kw_jaccard(cand):
+            ck = keywords.get(cand, set())
+            if not seed_kw or not ck:
+                return 0.0
+            return len(seed_kw & ck) / len(seed_kw | ck)
+
         scores = {
             "engine": eng,
             "tmdb_sim": tmdb,
             "minilm_cosine": {c: cos(c) for c in all_ids},
+            "popularity": votes,  # constant ranking — the baseline to beat
+            "keywords": {c: kw_jaccard(c) for c in all_ids},
         }
 
         for method, table in scores.items():
@@ -157,7 +179,7 @@ def main() -> None:
     print("| method | pairwise acc. | NDCG@10 | coverage@10 | novelty@10 |")
     print("|---|---|---|---|---|")
     engine = {}
-    for m in ("tmdb_sim", "minilm_cosine", "engine"):
+    for m in ("tmdb_sim", "minilm_cosine", "popularity", "keywords", "engine"):
         s = stats[m]
         acc = s["pair_ok"] / s["pair_n"] if s["pair_n"] else 0.0
         nd = sum(s["ndcg"]) / len(s["ndcg"]) if s["ndcg"] else 0.0

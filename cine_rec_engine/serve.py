@@ -295,6 +295,10 @@ def create_app(
         seed: str = Query(..., description="e.g. 155 or 155:movie,1396:tv"),
         limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
         randomness: float = Query(0.0, ge=0.0, le=1.0),
+        why: bool = Query(
+            False,
+            description="attach per-title why labels + numeric feature "
+                        "contributions (re-derived vs the first seed)"),
         allow_cross_media: bool = False,
         media_type: Optional[str] = Query(None, pattern="^(movie|tv)$"),
         user_id: Optional[int] = Query(None, ge=1),
@@ -328,7 +332,21 @@ def create_app(
             filters=req_filters,
             explore=explore,
         )
-        return {"results": results, "count": len(results)}
+        payload = {"results": results, "count": len(results)}
+        if why and results:
+            first = seeds[0]
+            seed_key = first if isinstance(first, tuple) else (
+                first, results[0].get("media_type"))
+            try:
+                explained = await svc.explain_results(results, seed_key)
+                payload["why"] = explained["why"]
+                payload["why_scores"] = explained["why_scores"]
+            except Exception as e:
+                # explanation is additive — it must never fail a request
+                from loguru import logger
+
+                logger.debug(f"explain_results failed for {seed_key}: {e}")
+        return payload
 
     async def page(
         request: Request,

@@ -17,6 +17,7 @@ from cine_rec_engine.letterboxd import (
 )
 from cine_rec_engine.service import (
     FEATURE_NAMES,
+    explain_contributions,
     explain_features,
     recommendation_plan,
 )
@@ -79,6 +80,21 @@ class TestExplainFeatures:
         vec[FEATURE_NAMES.index("shared_collection")] = 1.0
         why = explain_features(vec, self.W)
         assert why == ["TMDB behavior graph", "same saga"]  # 13.7 > 2.5
+
+    def test_contributions_keyed_by_feature_name(self):
+        scores = explain_contributions(self._vec_with("composer_match"), self.W)
+        assert scores == {"composer_match": 5.5}
+
+    def test_contributions_share_selection_with_labels(self):
+        vec = self._vec_with("tmdb_rec_decay")
+        vec[FEATURE_NAMES.index("shared_collection")] = 1.0
+        scores = explain_contributions(vec, self.W)
+        # same picks, same order as the label path — just keyed by name
+        assert list(scores) == ["tmdb_rec_decay", "shared_collection"]
+        assert scores["tmdb_rec_decay"] == 13.7
+        assert explain_contributions(
+            self._vec_with("audience_compatibility"), self.W) == {}
+        assert explain_contributions([0.0] * len(FEATURE_NAMES), self.W) == {}
 
 
 class TestDislikeHardFilter:

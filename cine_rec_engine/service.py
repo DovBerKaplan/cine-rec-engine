@@ -171,6 +171,21 @@ def explain_features(vec, weights, top=3, with_weights=False):
     return [label for label, _score in picked]
 
 
+def explain_contributions(vec, weights, top=3):
+    """Machine-readable WHY: {feature name: weight×value} for the same
+    top non-boring picks explain_features labels — the numbers the
+    label-only path computes and drops. Pure published-weights
+    arithmetic: exposes nothing beyond weights.json."""
+    contrib = sorted(
+        ((weights.get(name, 0.0) * val, name)
+         for name, val in zip(FEATURE_NAMES, vec)),
+        reverse=True,
+    )
+    picked = [(name, score) for score, name in contrib
+              if score > 0 and name not in _BORING_FEATURES][:top]
+    return {name: round(score, 4) for name, score in picked}
+
+
 class RecommendationService:
     """Generates movie/series recommendations from local PostgreSQL data.
 
@@ -485,7 +500,6 @@ class RecommendationService:
         request; unknown/absent → the default space.
         """
         from .model_spaces import column_for, normalize_model
-        from .queries import enrich_candidates_batch
         from .user_vector import ensure_user_vector, top_weighted_seeds
 
         # One model space for the whole request: the user vector is
@@ -554,20 +568,11 @@ class RecommendationService:
         )
 
         why: dict = {}
+        why_scores: dict = {}
         if include_why and results:
-            enriched = await enrich_candidates_batch(
-                self.pool, [r["tmdb_id"] for r in results]
-            )
-            top_seed = await self._seed_info_for(seeds[0])
-            if top_seed:
-                for r in results:
-                    cand = dict(enriched.get(r["tmdb_id"], {}))
-                    cand.setdefault("id", r["tmdb_id"])
-                    for k, v in r.items():
-                        cand.setdefault(k, v)
-                    vec = feature_vector(
-                        cand, cand, cand.get("genres", []), top_seed)
-                    why[str(r["tmdb_id"])] = explain_features(vec, ACTIVE_WEIGHTS)
+            explained = await self.explain_results(results, seeds[0])
+            why = explained["why"]
+            why_scores = explained["why_scores"]
 
         logger.debug(
             f"recommend user={user_id}: mode={mode} seeds="
@@ -581,6 +586,7 @@ class RecommendationService:
             "seeds": [(i, m, round(w, 3)) for i, m, w in seeds[:10]],
             "vector_used": vector_used,
             "why": why,
+            "why_scores": why_scores,
         }
 
     async def _seed_info_for(self, seed: tuple) -> Optional[dict]:
@@ -594,6 +600,37 @@ class RecommendationService:
         except Exception as e:
             logger.debug(f"seed info fetch failed for {seed}: {e}")
         return None
+
+    async def explain_results(self, results: list, seed: tuple) -> dict:
+        """{"why": labels, "why_scores": {feature: contribution}} for an
+        already-computed result list against ONE (id, media_type[, w])
+        seed. Re-derives the feature vector post-hoc (vs the first seed
+        only — an approximation by design, same as the /for-user path);
+        contributions are published-weights arithmetic only."""
+        empty = {"why": {}, "why_scores": {}}
+        if not results:
+            return empty
+        try:
+            enriched = await enrich_candidates_batch(
+                self.pool, [r["tmdb_id"] for r in results])
+            top_seed = await self._seed_info_for(seed)
+            if not top_seed:
+                return empty
+        except Exception as e:
+            logger.debug(f"explain enrichment failed for seed {seed}: {e}")
+            return empty
+        why: dict = {}
+        why_scores: dict = {}
+        for r in results:
+            cand = dict(enriched.get(r["tmdb_id"], {}))
+            cand.setdefault("id", r["tmdb_id"])
+            for k, v in r.items():
+                cand.setdefault(k, v)
+            vec = feature_vector(cand, cand, cand.get("genres", []), top_seed)
+            key = str(r["tmdb_id"])
+            why[key] = explain_features(vec, ACTIVE_WEIGHTS)
+            why_scores[key] = explain_contributions(vec, ACTIVE_WEIGHTS)
+        return {"why": why, "why_scores": why_scores}
 
     async def find_similar(
         self,

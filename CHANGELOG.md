@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Public MovieLens benchmark** (`eval/build_ml_bench.py`,
+  `eval/ml_judgments.jsonl`, `eval/BENCHMARK.md`): 150 seeds / 2.25M
+  pairs of collaborative ground truth derived deterministically from
+  MovieLens ratings (loved-cohort agreement), plus two new eval
+  baselines — `popularity` (vote_count) and `keywords` (Jaccard) —
+  alongside tmdb_sim and minilm_cosine. Judgments carry ids/labels
+  only; the catalog builder runs against your own TMDB key.
+- **Quantitative why**: `/for-user?include_why=1` now also returns
+  `why_scores` ({feature: weight×contribution} per title), and
+  `/similar?why=1` attaches the same explanation (re-derived vs the
+  first seed). `RecommendationService.explain_results()` is the shared
+  path; contributions are published-weights arithmetic only.
+
 ## [0.14.0] — 2026-10-20
 
 ### Added — deployable service: versioned API, auth, image CI
