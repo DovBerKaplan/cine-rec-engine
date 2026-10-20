@@ -16,7 +16,7 @@ lint:
 	$(PY) -m ruff check cine_rec_engine ingest tests benchmarks eval demo examples
 
 build:          ## sdist + wheel
-	python -m build
+	$(PY) -m build
 
 clean:
 	rm -rf dist build *.egg-info .pytest_cache .ruff_cache

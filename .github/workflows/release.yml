@@ -52,7 +52,10 @@ jobs:
       - name: Smoke the built wheel (we publish what we test)
         run: |
           python -m venv /tmp/wheelvenv
-          /tmp/wheelvenv/bin/pip install dist/*.whl[serve]
+          # expand the glob separately — "dist/*.whl[serve]" as one word is
+          # a glob that matches nothing and pip gets the literal string
+          WHEEL=$(ls dist/*.whl | head -1)
+          /tmp/wheelvenv/bin/pip install "$WHEEL[serve]"
           /tmp/wheelvenv/bin/python - <<'PY'
           import pathlib
           import cine_rec_engine
