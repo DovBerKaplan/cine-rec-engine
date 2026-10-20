@@ -43,7 +43,40 @@ python eval/eval.py --dsn postgresql://demo:demo@localhost:5432/mlbench \
 
 Methods: `engine`, `tmdb_sim` (TMDB's own recommendations graph),
 `minilm_cosine` (overview embeddings), `popularity` (vote_count),
-`keywords` (keyword-set Jaccard).
+`keywords` (keyword-set Jaccard). The scoring run needs
+`CINE_REC_EMBEDDING=minilm` so the engine reads the benchmark's
+embedding column.
+
+## Results (2026-10-21, catalog of 3,636 titles)
+
+| method | pairwise acc. | NDCG@10 | coverage@10 | novelty@10 |
+|---|---|---|---|---|
+| tmdb_sim | 0.02 | 0.06 | 0.18 | 11.4 |
+| minilm_cosine | 0.60 | 0.03 | 0.28 | 12.1 |
+| popularity | **0.96** | **0.16** | 0.00 | 8.5 |
+| keywords | 0.33 | 0.03 | 0.27 | 11.8 |
+| engine | 0.45 | 0.05 | 0.26 | 12.1 |
+
+How to read this — the ground truth is **mass agreement**: movies the
+seed's loving cohort also loved, vs. movies that cohort disliked.
+
+- **Popularity wins by construction.** Cohort-agreement picks famous
+  titles (every good/bad id here passes a 500-vote floor), so ranking
+  by vote_count is nearly the answer key. Its coverage@10 of 0.00 is
+  the tell: the *same* ten titles for every seed — precisely the
+  block-repeat failure mode list diversity exists to avoid.
+- **TMDB's own graph scores 0.02** — below random: famous-but-disliked
+  titles sit in its "people also liked" head, so it actively prefers
+  the bad side.
+- **The engine measures a different thing.** It optimizes taste
+  similarity (auteur signals, keywords, plot structure) with diversity
+  reranking — its home ground is the taste-judgment eval in the README,
+  where the single-signal baselines win their own construction instead.
+  Pure plot-cosine (0.60) aligns with mass agreement better than the
+  engine's taste mix; that is a real property of content-based taste
+  ranking, reported as-is.
+- NDCG@10 discriminates weakly here (10 goods in a 3,636-title pool —
+  even an oracle caps low); pairwise and coverage carry the signal.
 
 ## Attribution
 

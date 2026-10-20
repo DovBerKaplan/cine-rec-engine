@@ -245,6 +245,34 @@ generated consensus, not human taste. Bring your own judgments file —
 the harness is in the repo. The same gates run on a laptop via
 `make test-integration` (throwaway pgvector + the live CI-class suite).
 
+### The external benchmark: MovieLens ground truth
+
+For a check that owes nothing to this repo's own rules, there is a
+public, fully reproducible benchmark over
+[MovieLens](https://grouplens.org/datasets/movielens/) ratings
+(`eval/ml_judgments.jsonl` — 150 seeds, 2.25M pairs; derivation and
+one-command repro in [docs/benchmark.md](docs/benchmark.md)), scored on
+a 3,636-title catalog bootstrapped from the benchmark universe:
+
+| method | pairwise acc. | NDCG@10 | coverage@10 |
+|---|---|---|---|
+| TMDB similar (behavioral graph) | 0.02 | 0.06 | 0.18 |
+| MiniLM cosine over overviews | 0.60 | 0.03 | 0.28 |
+| popularity (vote_count) | **0.96** | **0.16** | 0.00 |
+| keywords Jaccard | 0.33 | 0.03 | 0.27 |
+| **this engine** | 0.45 | 0.05 | 0.26 |
+
+Read it honestly: the ground truth here is *mass agreement* (movies
+the seed's lovers loved vs. disliked), and **popularity dominates that
+by construction** — note its coverage 0.00: the same block every seed,
+exactly the failure mode list diversity exists to avoid. TMDB's own
+graph actively ranks famous-but-disliked titles (0.02). The engine
+sits between: it optimizes *taste similarity* (auteur signals,
+keywords, plot — the demo-eval table above is its home ground), not
+mass agreement, and it refuses to trade list diversity for accuracy.
+Two different questions, two different winners — both tables are
+published, and neither is hidden.
+
 ## Feature highlights
 
 - **Multi-seed blending** — one title or a thousand; per-seed weights;

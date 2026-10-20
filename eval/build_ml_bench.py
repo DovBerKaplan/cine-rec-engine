@@ -150,21 +150,23 @@ async def _catalog(args) -> None:
 
         from cine_rec_engine import db, tables
 
-        await register_vector(pool)  # type: ignore[arg-type]
         from sentence_transformers import SentenceTransformer
 
         model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
         async with pool.acquire() as conn:
+            await register_vector(conn)  # vector codec is per-connection
             rows = await db.fetch(conn, "SELECT id, title, overview "
                                         "FROM {t_tmdb_movies}")
-        texts = [f"{r['title']}. {r['overview'] or ''}" for r in rows]
-        vecs = model.encode(texts, batch_size=64, show_progress_bar=True,
-                            normalize_embeddings=True)
-        table = tables.name("tmdb_movies")
-        async with pool.acquire() as conn:
-            await db.execute(conn,
-                             f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS "
-                             f"embedding_minilm vector(384)")
+            texts = [f"{r['title']}. {r['overview'] or ''}" for r in rows]
+            vecs = model.encode(texts, batch_size=64, show_progress_bar=True,
+                                normalize_embeddings=True)
+            # eval reads BOTH fact tables in one UNION — the empty tv
+            # table needs the column too or the fetch itself fails
+            for table in (tables.name("tmdb_movies"), tables.name("tmdb_tv")):
+                await db.execute(conn,
+                                 f"ALTER TABLE {table} ADD COLUMN IF NOT "
+                                 f"EXISTS embedding_minilm vector(384)")
+            table = tables.name("tmdb_movies")
             for r, v in zip(rows, vecs):
                 await db.execute(conn,
                                  f"UPDATE {table} SET embedding_minilm = $1 "

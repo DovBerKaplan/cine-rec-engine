@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.15.1] — 2026-10-21
+
+### Added — the MovieLens benchmark, measured and published
+- The external benchmark ran end to end (catalog of 3,636 titles
+  bootstrapped from the benchmark universe + MiniLM embeddings) and the
+  results are published in the README and docs/benchmark.md — including
+  the honest reading: on MASS-AGREEMENT ground truth popularity wins by
+  construction (pairwise 0.96, coverage 0.00), TMDB's own graph ranks
+  famous-but-disliked titles (0.02), and the engine (0.45) optimizes
+  taste similarity, not mass agreement. Two different questions, two
+  different winners — both tables published.
+- `eval/build_ml_bench.py` fixes along the way: the vector codec is
+  per-connection (register on the writing connection), and the tv fact
+  table gets the embedding column too (eval fetches both in one UNION).
+
+### Fixed
+- docs deployment switched to publishing the built site to the gh-pages
+  branch — works with the repo's existing Pages settings, no manual
+  cutover needed.
+
 ## [0.15.0] — 2026-10-21
 
 ### Added — external proof, typed package, docs site
