@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://dovberkaplan.github.io/cine-rec-engine/</loc>
+         <lastmod>2026-10-20</lastmod>
+    </url>
+    <url>
+         <loc>https://dovberkaplan.github.io/cine-rec-engine/api/</loc>
+         <lastmod>2026-10-20</lastmod>
+    </url>
+    <url>
+         <loc>https://dovberkaplan.github.io/cine-rec-engine/architecture/</loc>
+         <lastmod>2026-10-20</lastmod>
+    </url>
+    <url>
+         <loc>https://dovberkaplan.github.io/cine-rec-engine/benchmark/</loc>
+         <lastmod>2026-10-20</lastmod>
+    </url>
+    <url>
+         <loc>https://dovberkaplan.github.io/cine-rec-engine/data/</loc>
+         <lastmod>2026-10-20</lastmod>
+    </url>
+    <url>
+         <loc>https://dovberkaplan.github.io/cine-rec-engine/personalization/</loc>
+         <lastmod>2026-10-20</lastmod>
+    </url>
+    <url>
+         <loc>https://dovberkaplan.github.io/cine-rec-engine/rfc-next-evolution/</loc>
+         <lastmod>2026-10-20</lastmod>
+    </url>
+    <url>
+         <loc>https://dovberkaplan.github.io/cine-rec-engine/stability/</loc>
+         <lastmod>2026-10-20</lastmod>
+    </url>
+</urlset>

@@ -1,0 +1,1604 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "cine-rec-engine",
+  "description": "Standalone HTTP serving \u2014 the plug-and-play API.\n\n    pip install \"cine-rec-engine[serve]\"\n    DATABASE_URL=postgresql://user:pw@localhost/db         uvicorn cine_rec_engine.serve:app --port 8000\n\n    GET /health                     DB readiness \u2014 503 when degraded, so an\n                                    orchestrator healthcheck can actually fail\n    GET /metrics                    latency histogram, cache hit rate,\n                                    recall-channel coverage (Prometheus text)\n    GET /similar?seed=155           item-to-item (optionally user-filtered)\n    GET /similar?seed=155:movie,1396:tv&user_id=42&model=e5e\n    GET /page?user_id=42&rows=...   composed rows (top_picks, because:<id>,\n                                    hidden_gems, trending:<gid>, discover)\n    GET /by-text?q=space%20western  natural-language cold start\n    POST /feedback                  one click/watch/skip/dislike outcome for\n                                    a served title (impression-token gated)\n    GET /for-user/42?include_why=1  the personalized row\n\nZero config beyond DATABASE_URL: the engine degrades every optional\nchannel, and user vectors rebuild on demand. The app factory accepts an\nalready-initialized RecommendationService for tests and embedding.\n",
+  "version": "0.14.0"
+ },
+ "paths": {
+  "/metrics": {
+   "get": {
+    "summary": "Metrics Endpoint",
+    "description": "Serving metrics (RFC M3): per-path latency histogram, cache\nhit rate, recall-channel coverage. Prometheus text format \u2014\nscrape-ready; no dependencies, no external pushes.",
+    "operationId": "metrics_endpoint_metrics_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/health": {
+   "get": {
+    "summary": "Health",
+    "description": "Readiness probe: 200 only when the DB answers. A degraded\nservice reports 503 so container healthchecks and load balancers\nactually stop routing to it \u2014 a 200-degraded body would make\nevery HEALTHCHECK pass forever.",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/similar": {
+   "get": {
+    "summary": "Similar",
+    "operationId": "similar_similar_get",
+    "deprecated": true,
+    "parameters": [
+     {
+      "name": "seed",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "description": "e.g. 155 or 155:movie,1396:tv",
+       "title": "Seed"
+      },
+      "description": "e.g. 155 or 155:movie,1396:tv"
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 30,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "randomness",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.0,
+       "minimum": 0.0,
+       "default": 0.0,
+       "title": "Randomness"
+      }
+     },
+     {
+      "name": "why",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "description": "attach per-title why labels + numeric feature contributions (re-derived vs the first seed)",
+       "default": false,
+       "title": "Why"
+      },
+      "description": "attach per-title why labels + numeric feature contributions (re-derived vs the first seed)"
+     },
+     {
+      "name": "allow_cross_media",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Allow Cross Media"
+      }
+     },
+     {
+      "name": "media_type",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "pattern": "^(movie|tv)$"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Media Type"
+      }
+     },
+     {
+      "name": "user_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "model",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "REC_MODELS key",
+       "title": "Model"
+      },
+      "description": "REC_MODELS key"
+     },
+     {
+      "name": "explore",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 0.5,
+         "minimum": 0.0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "exploration budget share; 0 disables",
+       "title": "Explore"
+      },
+      "description": "exploration budget share; 0 disables"
+     },
+     {
+      "name": "year_min",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Min"
+      }
+     },
+     {
+      "name": "year_max",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Max"
+      }
+     },
+     {
+      "name": "genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "pinned genre ids, comma-separated",
+       "title": "Genres"
+      },
+      "description": "pinned genre ids, comma-separated"
+     },
+     {
+      "name": "exclude_genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "excluded genre ids",
+       "title": "Exclude Genres"
+      },
+      "description": "excluded genre ids"
+     },
+     {
+      "name": "max_runtime",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 1440,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "minutes; movies only",
+       "title": "Max Runtime"
+      },
+      "description": "minutes; movies only"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/similar": {
+   "get": {
+    "summary": "Similar",
+    "operationId": "similar_v1_similar_get",
+    "parameters": [
+     {
+      "name": "seed",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "description": "e.g. 155 or 155:movie,1396:tv",
+       "title": "Seed"
+      },
+      "description": "e.g. 155 or 155:movie,1396:tv"
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 30,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "randomness",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.0,
+       "minimum": 0.0,
+       "default": 0.0,
+       "title": "Randomness"
+      }
+     },
+     {
+      "name": "why",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "description": "attach per-title why labels + numeric feature contributions (re-derived vs the first seed)",
+       "default": false,
+       "title": "Why"
+      },
+      "description": "attach per-title why labels + numeric feature contributions (re-derived vs the first seed)"
+     },
+     {
+      "name": "allow_cross_media",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Allow Cross Media"
+      }
+     },
+     {
+      "name": "media_type",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "pattern": "^(movie|tv)$"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Media Type"
+      }
+     },
+     {
+      "name": "user_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "model",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "REC_MODELS key",
+       "title": "Model"
+      },
+      "description": "REC_MODELS key"
+     },
+     {
+      "name": "explore",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 0.5,
+         "minimum": 0.0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "exploration budget share; 0 disables",
+       "title": "Explore"
+      },
+      "description": "exploration budget share; 0 disables"
+     },
+     {
+      "name": "year_min",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Min"
+      }
+     },
+     {
+      "name": "year_max",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Max"
+      }
+     },
+     {
+      "name": "genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "pinned genre ids, comma-separated",
+       "title": "Genres"
+      },
+      "description": "pinned genre ids, comma-separated"
+     },
+     {
+      "name": "exclude_genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "excluded genre ids",
+       "title": "Exclude Genres"
+      },
+      "description": "excluded genre ids"
+     },
+     {
+      "name": "max_runtime",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 1440,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "minutes; movies only",
+       "title": "Max Runtime"
+      },
+      "description": "minutes; movies only"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/page": {
+   "get": {
+    "summary": "Page",
+    "operationId": "page_page_get",
+    "deprecated": true,
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "rows",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "description": "top_picks,because:155:movie,hidden_gems,trending:80,discover",
+       "default": "top_picks",
+       "title": "Rows"
+      },
+      "description": "top_picks,because:155:movie,hidden_gems,trending:80,discover"
+     },
+     {
+      "name": "row_limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 30,
+       "minimum": 1,
+       "default": 12,
+       "title": "Row Limit"
+      }
+     },
+     {
+      "name": "explore",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 0.5,
+         "minimum": 0.0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Explore"
+      }
+     },
+     {
+      "name": "year_min",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Min"
+      }
+     },
+     {
+      "name": "year_max",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Max"
+      }
+     },
+     {
+      "name": "genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Genres"
+      }
+     },
+     {
+      "name": "exclude_genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Exclude Genres"
+      }
+     },
+     {
+      "name": "max_runtime",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 1440,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Max Runtime"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/page": {
+   "get": {
+    "summary": "Page",
+    "operationId": "page_v1_page_get",
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "rows",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "description": "top_picks,because:155:movie,hidden_gems,trending:80,discover",
+       "default": "top_picks",
+       "title": "Rows"
+      },
+      "description": "top_picks,because:155:movie,hidden_gems,trending:80,discover"
+     },
+     {
+      "name": "row_limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 30,
+       "minimum": 1,
+       "default": 12,
+       "title": "Row Limit"
+      }
+     },
+     {
+      "name": "explore",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 0.5,
+         "minimum": 0.0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Explore"
+      }
+     },
+     {
+      "name": "year_min",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Min"
+      }
+     },
+     {
+      "name": "year_max",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Max"
+      }
+     },
+     {
+      "name": "genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Genres"
+      }
+     },
+     {
+      "name": "exclude_genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Exclude Genres"
+      }
+     },
+     {
+      "name": "max_runtime",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 1440,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Max Runtime"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/by-text": {
+   "get": {
+    "summary": "By Text Endpoint",
+    "operationId": "by_text_endpoint_by_text_get",
+    "deprecated": true,
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 500,
+       "title": "Q"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 30,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "randomness",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.0,
+       "minimum": 0.0,
+       "default": 0.0,
+       "title": "Randomness"
+      }
+     },
+     {
+      "name": "explore",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 0.5,
+         "minimum": 0.0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Explore"
+      }
+     },
+     {
+      "name": "year_min",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Min"
+      }
+     },
+     {
+      "name": "year_max",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Max"
+      }
+     },
+     {
+      "name": "genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Genres"
+      }
+     },
+     {
+      "name": "exclude_genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Exclude Genres"
+      }
+     },
+     {
+      "name": "max_runtime",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 1440,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Max Runtime"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/by-text": {
+   "get": {
+    "summary": "By Text Endpoint",
+    "operationId": "by_text_endpoint_v1_by_text_get",
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 500,
+       "title": "Q"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 30,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "randomness",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.0,
+       "minimum": 0.0,
+       "default": 0.0,
+       "title": "Randomness"
+      }
+     },
+     {
+      "name": "explore",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 0.5,
+         "minimum": 0.0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Explore"
+      }
+     },
+     {
+      "name": "year_min",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Min"
+      }
+     },
+     {
+      "name": "year_max",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 2100,
+         "minimum": 1900
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Year Max"
+      }
+     },
+     {
+      "name": "genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Genres"
+      }
+     },
+     {
+      "name": "exclude_genres",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Exclude Genres"
+      }
+     },
+     {
+      "name": "max_runtime",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 1440,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Max Runtime"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/feedback": {
+   "post": {
+    "summary": "Feedback",
+    "description": "Outcome ingestion (RFC \u00a74): verify the impression, map the\noutcome onto the existing \u00a7D/\u00a7J machinery \u2014 no trainer, no\nexternal queue; w_i adjusts transactionally.",
+    "operationId": "feedback_feedback_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FeedbackBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "deprecated": true
+   }
+  },
+  "/v1/feedback": {
+   "post": {
+    "summary": "Feedback",
+    "description": "Outcome ingestion (RFC \u00a74): verify the impression, map the\noutcome onto the existing \u00a7D/\u00a7J machinery \u2014 no trainer, no\nexternal queue; w_i adjusts transactionally.",
+    "operationId": "feedback_v1_feedback_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FeedbackBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/for-user/{user_id}": {
+   "get": {
+    "summary": "For User",
+    "operationId": "for_user_for_user__user_id__get",
+    "deprecated": true,
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 30,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "randomness",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.0,
+       "minimum": 0.0,
+       "default": 0.0,
+       "title": "Randomness"
+      }
+     },
+     {
+      "name": "include_why",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Include Why"
+      }
+     },
+     {
+      "name": "explore",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 0.5,
+         "minimum": 0.0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Explore"
+      }
+     },
+     {
+      "name": "model",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "REC_MODELS key",
+       "title": "Model"
+      },
+      "description": "REC_MODELS key"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/v1/for-user/{user_id}": {
+   "get": {
+    "summary": "For User",
+    "operationId": "for_user_v1_for_user__user_id__get",
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "User Id"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 30,
+       "title": "Limit"
+      }
+     },
+     {
+      "name": "randomness",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 1.0,
+       "minimum": 0.0,
+       "default": 0.0,
+       "title": "Randomness"
+      }
+     },
+     {
+      "name": "include_why",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Include Why"
+      }
+     },
+     {
+      "name": "explore",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 0.5,
+         "minimum": 0.0
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Explore"
+      }
+     },
+     {
+      "name": "model",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "REC_MODELS key",
+       "title": "Model"
+      },
+      "description": "REC_MODELS key"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "FeedbackBody": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "title": "Token"
+     },
+     "outcome": {
+      "type": "string",
+      "enum": [
+       "click",
+       "watch",
+       "skip",
+       "dislike"
+      ],
+      "title": "Outcome"
+     },
+     "tmdb_id": {
+      "type": "integer",
+      "title": "Tmdb Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "token",
+     "outcome",
+     "tmdb_id"
+    ],
+    "title": "FeedbackBody",
+    "description": "POST /feedback \u2014 one outcome for one served title (RFC \u00a74)."
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  }
+ }
+}
