@@ -230,17 +230,43 @@ _DISLIKES_SQL = """
     WHERE user_id = $1 AND kind = 'dislike'
 """
 
+_DISLIKES_CACHE_PREFIX = "dislikes:"
+
 
 async def get_user_dislikes(pool, user_id: Optional[int]) -> WatchedSet:
-    """Explicit dislikes — hard-filtered from every recommendation (§F.2)."""
+    """Explicit dislikes — hard-filtered from every recommendation (§F.2).
+
+    15-min cache with the same semantics as watched/rated: an empty set
+    is a valid cached result, and a feedback event during the TTL window
+    becomes visible within it (same freshness contract the other
+    per-user sets already publish).
+    """
     if user_id is None or pool is None:
         return set()
+
+    cache_key = f"{_DISLIKES_CACHE_PREFIX}{user_id}"
+    try:
+        cache = await get_cache()
+        cached = await cache.get(cache_key)
+        # `is not None` — same empty-result-is-valid rule as the watched set
+        if cached is not None:
+            return {(int(i), str(t)) for i, t in cached}
+    except Exception as e:
+        logger.debug(f"dislikes cache read failed for {user_id}: {e}")
+
     try:
         rows = await db.fetch(pool, _DISLIKES_SQL, user_id)
-        return {(int(r["tmdb_id"]), str(r["media_type"])) for r in rows}
+        dislikes = {(int(r["tmdb_id"]), str(r["media_type"])) for r in rows}
     except Exception as e:
         logger.warning(
             f"dislikes read failed for {user_id} — excluding nothing: "
             f"disliked titles WILL appear in recommendations ({e})"
         )
         return set()
+
+    try:
+        cache = await get_cache()
+        await cache.set(cache_key, sorted(dislikes), ttl=CACHE_TTL)
+    except Exception:
+        pass
+    return dislikes

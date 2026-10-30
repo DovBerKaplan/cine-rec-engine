@@ -202,3 +202,26 @@ class TestDegradation:
 async def test_empty_results_stay_empty(seed_ids):
     rec = _service(_SagaPool())
     assert await rec._apply_user_filters([], set(), seed_ids) == []
+
+
+class TestPrefetchedBlocked:
+    async def test_blocked_param_skips_internal_fetch(self):
+        # the request path prefetches the block set alongside the cache
+        # read — passing it in must suppress the extra query entirely
+        rec = _service(_SagaPool())
+        out = await rec._apply_user_filters(
+            [_res(10), _res(11)], set(), seed_ids={10},
+            blocked={10, 12},
+        )
+        assert [r["tmdb_id"] for r in out] == [11]
+        assert rec.pool.calls == []  # no queries issued
+
+    async def test_failed_prefetch_falls_back_to_internal(self):
+        # a failed prefetch (None) recomputes internally — same degrade
+        pool = _SagaPool(blocked_rows=[{"id": 12}])
+        rec = _service(pool)
+        out = await rec._apply_user_filters(
+            [_res(10), _res(11)], set(), seed_ids={10}, blocked=None,
+        )
+        assert [r["tmdb_id"] for r in out] == [11]
+        assert pool.calls  # the internal fetch ran

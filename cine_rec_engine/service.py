@@ -237,11 +237,43 @@ class RecommendationService:
                 "Call await recommendation_service.initialize(pool) first."
             )
 
+    async def _seed_saga_blocked(self, seed_ids: set) -> Optional[set]:
+        """The seeds plus every member of their collections — a seed's
+        whole saga is persona non grata (see _apply_user_filters).
+
+        Standalone (vs. inline in the filter pass) so it can be prefetched
+        concurrently with the cache read / recall: it depends only on the
+        seed ids, never on the result list. Returns None on fetch failure
+        so the caller falls back to computing it inside the pass, which
+        degrades exactly the same way.
+        """
+        if not seed_ids:
+            return set()
+        try:
+            rows = await db.fetch(self.pool,
+                """
+                SELECT DISTINCT m2.id
+                FROM {t_tmdb_movies} m2
+                WHERE m2.collection_id > 0
+                  AND m2.collection_id IN (
+                    SELECT s.collection_id FROM {t_tmdb_movies} s
+                    WHERE s.id = ANY($1::bigint[])
+                      AND s.collection_id > 0
+                )
+                """,
+                sorted(seed_ids),
+            )
+            return set(seed_ids) | {row["id"] for row in rows}
+        except Exception as e:
+            logger.debug(f"seed-saga block fetch failed: {e}")
+            return None
+
     async def _apply_user_filters(
         self,
         results: List[dict],
         exclude: Optional[set],
         seed_ids: Optional[set] = None,
+        blocked: Optional[set] = None,
     ) -> List[dict]:
         """Per-user post-processing: watched filtering + saga advancement
         + final seed guard.
@@ -275,25 +307,12 @@ class RecommendationService:
         # tv rows carry a NULL collection_id, so only movie seeds can
         # contribute). Driven seed-first so it runs on the pkey + the
         # collection index instead of a catalog-wide join over the view.
-        blocked: set = set(seeds)
-        if seeds:
-            try:
-                rows = await db.fetch(self.pool,
-                    """
-                    SELECT DISTINCT m2.id
-                    FROM {t_tmdb_movies} m2
-                    WHERE m2.collection_id > 0
-                      AND m2.collection_id IN (
-                        SELECT s.collection_id FROM {t_tmdb_movies} s
-                        WHERE s.id = ANY($1::bigint[])
-                          AND s.collection_id > 0
-                    )
-                    """,
-                    sorted(seeds),
-                )
-                blocked |= {row["id"] for row in rows}
-            except Exception as e:
-                logger.debug(f"seed-saga block fetch failed: {e}")
+        # `blocked` arrives prefetched from the request path when the
+        # caller had the seed ids before the results existed.
+        if blocked is None:
+            blocked = set(seeds)
+            if seeds:
+                blocked = await self._seed_saga_blocked(seeds) or set(seeds)
 
         # Collect saga ids first; plain filter when there are none.
         coll_ids = sorted(
@@ -508,12 +527,26 @@ class RecommendationService:
         # another is a dimension mismatch, not a soft error.
         model_key = normalize_model(vector_space)
 
-        weighted = await top_weighted_seeds(self.pool, user_id, limit=20)
-        watchlist_rows = await db.fetch(self.pool,
-            """SELECT f.tmdb_id, f.media_type FROM {t_user_feedback} f
-               WHERE f.user_id = $1 AND f.kind = 'watchlist'
-               ORDER BY f.created_at DESC LIMIT 10""",
-            user_id,
+        # The three request inputs (seeds, watchlist, user vector) are
+        # independent small reads — fetch them concurrently; wall time
+        # is the max of the three instead of their sum. The vector's
+        # failures stay local (None), matching the previous degrade.
+        async def _uvec_or_none():
+            try:
+                return await ensure_user_vector(self.pool, user_id, model_key)
+            except Exception as e:
+                logger.debug(f"user-vector recall skipped for {user_id}: {e}")
+                return None
+
+        weighted, watchlist_rows, uvec = await asyncio.gather(
+            top_weighted_seeds(self.pool, user_id, limit=20),
+            db.fetch(self.pool,
+                """SELECT f.tmdb_id, f.media_type FROM {t_user_feedback} f
+                   WHERE f.user_id = $1 AND f.kind = 'watchlist'
+                   ORDER BY f.created_at DESC LIMIT 10""",
+                user_id,
+            ),
+            _uvec_or_none(),
         )
         watchlist = [(r["tmdb_id"], r["media_type"], 1.0) for r in watchlist_rows]
         mode, seeds = recommendation_plan(weighted, watchlist)
@@ -527,27 +560,29 @@ class RecommendationService:
 
         extra_factory = None
         vector_used = False
-        try:
-            # Absent or stale (>USER_VECTOR_MAX_AGE_HOURS) vectors are
-            # rebuilt inline — the channel works with no cron configured.
-            uvec = await ensure_user_vector(self.pool, user_id, model_key)
-            if uvec:
-                # The ANN query runs lazily INSIDE find_similar: a cache
-                # hit never needs the rows, so it is skipped entirely —
-                # but the cache key still records that the channel was
-                # armed (xc=f60), keeping hits stable across requests.
-                uvec_column = column_for(model_key)
+        if uvec:
+            # The ANN query runs lazily INSIDE find_similar: a cache
+            # hit never needs the rows, so it is skipped entirely —
+            # but the cache key still records that the channel was
+            # armed (xc=f60), keeping hits stable across requests.
+            uvec_column = column_for(model_key)
 
-                async def _uvec_ann() -> List[dict]:
-                    return await generate_user_vector_candidates(
-                        self.pool, uvec, limit=60,
-                        emb_column=uvec_column,
-                    )
+            async def _uvec_ann() -> List[dict]:
+                return await generate_user_vector_candidates(
+                    self.pool, uvec, limit=60,
+                    emb_column=uvec_column,
+                )
 
-                extra_factory = _uvec_ann
-                vector_used = True
-        except Exception as e:
-            logger.debug(f"user-vector recall skipped for {user_id}: {e}")
+            extra_factory = _uvec_ann
+            vector_used = True
+
+        # Thread the vector through the context: the tilt pass inside
+        # find_similar reuses it instead of re-probing (a page does the
+        # same via context["uvec"] across its rows).
+        if user_context is None:
+            user_context = {}
+        if uvec:
+            user_context["uvec"] = uvec
 
         results = await self.find_similar(
             [(tmdb_id, mt) for tmdb_id, mt, _w in seeds],  # composite key!
@@ -812,6 +847,22 @@ class RecommendationService:
             f":fl={filters_fingerprint(session_filters)}"
             f":v=3"  # cache format version — bump on any result-shape change
         )
+        # Per-user prefetch: the exclusion set and the seed-saga block
+        # set depend only on the request, never on the result list —
+        # start them alongside the cache read (and, on a miss, the
+        # recall fan-out) so the post-processing pass awaits background
+        # work instead of serializing two query chains after it. Both
+        # coroutines degrade internally (they never raise), so a task
+        # abandoned by an error elsewhere in the hit branch cannot leak
+        # an unretrieved exception.
+        prefetch: dict = {}
+        if exclude is not None:
+            if (user_context or {}).get("exclusions") is None:
+                prefetch["merged"] = asyncio.ensure_future(
+                    self._merged_exclusions(exclude, user_id))
+            prefetch["blocked"] = asyncio.ensure_future(
+                self._seed_saga_blocked(set(tmdb_ids)))
+
         cache = await _get_cache()
         if cache:
             try:
@@ -848,15 +899,18 @@ class RecommendationService:
                     # an EMPTY watch set is still a user context — a
                     # truthiness check here would skip the seed guard
                     # entirely for users with no history.
-                    tilt_ctx: dict = {}
+                    tilt_ctx = user_context if isinstance(user_context, dict) else {}
                     if exclude is not None:
                         merged = (user_context or {}).get("exclusions")
-                        if merged is None:
-                            merged = await self._merged_exclusions(exclude, user_id)
+                        if merged is None and "merged" in prefetch:
+                            merged = await prefetch["merged"]
                         elif exclude:
                             merged = set(merged) | set(exclude)
+                        blocked = (
+                            await prefetch["blocked"]
+                            if "blocked" in prefetch else None)
                         result = await self._apply_user_filters(
-                            result, merged, set(tmdb_ids),
+                            result, merged, set(tmdb_ids), blocked=blocked,
                         )
                         if user_id is not None:
                             result = await self._apply_user_tilt(
@@ -1269,14 +1323,17 @@ class RecommendationService:
         # (benchmark/eval calls) to keep comparisons stable.
         if exclude is not None:  # empty set = real user with no history yet
             merged = (user_context or {}).get("exclusions")
-            if merged is None:
-                merged = await self._merged_exclusions(exclude, user_id)
+            if merged is None and "merged" in prefetch:
+                merged = await prefetch["merged"]
             elif exclude:
                 merged = set(merged) | set(exclude)
+            blocked = (
+                await prefetch["blocked"]
+                if "blocked" in prefetch else None)
             results = await self._apply_user_filters(
-                results, merged, set(tmdb_ids),
+                results, merged, set(tmdb_ids), blocked=blocked,
             )
-            tilt_ctx = {}
+            tilt_ctx = user_context if isinstance(user_context, dict) else {}
             if user_id is not None:
                 results = await self._apply_user_tilt(
                     results, user_id, model_key, context=tilt_ctx)

@@ -47,3 +47,27 @@ def test_empty_rated_set_is_a_cache_hit(monkeypatch):
     cache.store["rated:7"] = []
     _patch(monkeypatch, cache)
     assert asyncio.run(watched.get_user_rated(object(), 7)) == set()
+
+
+def test_empty_dislikes_set_is_a_cache_hit(monkeypatch):
+    cache = FakeCache()
+    cache.store["dislikes:7"] = []  # no dislikes — valid, cached
+    _patch(monkeypatch, cache)
+    assert asyncio.run(watched.get_user_dislikes(object(), 7)) == set()
+
+
+def test_dislikes_cache_write_back(monkeypatch):
+    cache = FakeCache()
+
+    class Pool:
+        async def fetch(self, sql, *args):
+            return [{"tmdb_id": 475557, "media_type": "movie"}]
+
+    async def _get_cache():
+        return cache
+
+    monkeypatch.setattr(watched, "get_cache", _get_cache)
+    out = asyncio.run(watched.get_user_dislikes(Pool(), 7))
+    assert out == {(475557, "movie")}
+    # the fake cache skips the real JSON round-trip, so pairs stay tuples
+    assert cache.store["dislikes:7"] == [(475557, "movie")]
