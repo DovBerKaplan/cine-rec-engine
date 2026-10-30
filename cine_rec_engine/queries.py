@@ -1665,3 +1665,100 @@ async def generate_director_candidates(
             by_id[c["id"]] = c
     ranked = sorted(by_id.values(), key=lambda x: x["popularity"], reverse=True)
     return ranked[:limit]
+
+
+async def generate_director_candidates_batch(
+    pool: asyncpg.Pool,
+    seeds: List[tuple],
+    limit: int = 15,
+) -> List[List[dict]]:
+    """Per-seed auteur works in ONE query (the batched form of
+    generate_director_candidates).
+
+    Each seed's auteur set, own-title exclusion, and vote floor stay
+    per-seed: seeds, floors, and seed identity travel as parallel unnest
+    arrays and the works group by (seed, title), so the per-seed result
+    lists (rank order, via tags, caps) are identical to N individual
+    calls. The Python-side dedup/rank/cap runs per seed unchanged.
+
+    Returns one candidate list per input seed, in input order. Any
+    failure other than the missing-table degrade propagates — the
+    caller falls back to the per-seed channel.
+    """
+    out: List[List[dict]] = [[] for _ in seeds]
+    if not seeds:
+        return out
+    try:
+        async with pool.acquire() as conn:
+            rows = await db.fetch(conn,
+                """
+                WITH seeds AS (
+                    SELECT * FROM unnest($1::bigint[], $2::text[], $3::int[])
+                        WITH ORDINALITY AS s(media_id, media_type, vote_floor, seed_ordinal)
+                ),
+                seed_auteurs AS (
+                    SELECT s.seed_ordinal, s.media_id, s.media_type, c.person_id
+                    FROM seeds s
+                    JOIN {t_tmdb_crew} c
+                      ON (c.media_id, c.media_type) = (s.media_id, s.media_type)
+                    WHERE c.job IN ('Director', 'Creator', 'Writer')
+                ),
+                works AS (
+                    SELECT sa.seed_ordinal, sa.media_id AS seed_media_id,
+                           sa.media_type AS seed_media_type, m.id, m.title, m.title_en,
+                           m.media_type, m.overview, m.overview_en,
+                           m.vote_average::float, m.vote_count::int, m.popularity::float,
+                           m.poster_path, m.collection_id,
+                           EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int AS release_year,
+                           BOOL_OR(c.job IN ('Director', 'Creator')) AS via_director,
+                           ARRAY(
+                               SELECT g.name FROM {t_tmdb_genres} g
+                               JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
+                               WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
+                           ) as genres
+                    FROM seed_auteurs sa
+                    JOIN {t_tmdb_crew} c
+                      ON c.person_id = sa.person_id
+                     AND c.job IN ('Director', 'Creator', 'Writer')
+                    JOIN {t_tmdb_media} m
+                      ON (m.id, m.media_type) = (c.media_id, c.media_type)
+                    WHERE NOT (m.id = sa.media_id AND m.media_type = sa.media_type)
+                      AND m.vote_average >= 5.5
+                      AND m.vote_count >= (
+                          SELECT s2.vote_floor FROM seeds s2
+                          WHERE s2.seed_ordinal = sa.seed_ordinal)
+                    GROUP BY sa.seed_ordinal, sa.media_id, sa.media_type,
+                             m.id, m.title, m.title_en, m.media_type, m.overview,
+                             m.overview_en, m.vote_average, m.vote_count, m.popularity,
+                             m.poster_path, m.collection_id,
+                             EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))
+                    ORDER BY sa.seed_ordinal, m.id, m.popularity DESC
+                )
+                SELECT * FROM works
+                """,
+                [s[0] for s in seeds],
+                [s[1] for s in seeds],
+                [_vote_floor(s[1]) for s in seeds],
+            )
+    except asyncpg.UndefinedTableError:
+        return out
+
+    rows_by_seed: dict = {}
+    for r in rows:
+        c = dict(r)
+        ordinal = c.pop("seed_ordinal") - 1
+        c.pop("seed_media_id"), c.pop("seed_media_type")
+        c["via"] = "director" if c.pop("via_director") else "writer"
+        rows_by_seed.setdefault(ordinal, []).append(c)
+
+    result: List[List[dict]] = []
+    for i in range(len(seeds)):
+        per = rows_by_seed.get(i, [])
+        by_id: dict = {}
+        for c in per:
+            prev = by_id.get(c["id"])
+            if prev is None or c["popularity"] > prev["popularity"]:
+                by_id[c["id"]] = c
+        ranked = sorted(by_id.values(), key=lambda x: x["popularity"], reverse=True)
+        result.append(ranked[:limit])
+    return result

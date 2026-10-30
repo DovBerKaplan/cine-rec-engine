@@ -171,7 +171,7 @@ def _install_probes():
     import cine_rec_engine.scoring as SC
     for n in ("generate_candidates", "generate_knn_candidates",
               "generate_tmdb_rec_candidates", "generate_tmdb_rec_candidates_batch",
-              "generate_director_candidates", "generate_user_vector_candidates",
+              "generate_director_candidates", "generate_director_candidates_batch", "generate_user_vector_candidates",
               "enrich_candidates_batch", "get_movie_info_batch"):
         if hasattr(Q, n):
             _wrap_async(Q, n, key="q:" + n)
@@ -182,7 +182,7 @@ def _install_probes():
     # service.py imported some names before our patch — rebind there too
     for n in ("generate_candidates", "generate_knn_candidates",
               "generate_tmdb_rec_candidates", "generate_tmdb_rec_candidates_batch",
-              "generate_director_candidates", "enrich_candidates_batch",
+              "generate_director_candidates", "generate_director_candidates_batch", "enrich_candidates_batch",
               "get_movie_info_batch", "semantic_overview_similarity",
               "semantic_overview_similarity_batch",
               "generate_user_vector_candidates"):

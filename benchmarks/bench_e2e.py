@@ -99,7 +99,7 @@ async def main():
     from cine_rec_engine import RecommendationService
     del Q
     for n in ("generate_candidates", "generate_tmdb_rec_candidates", "generate_tmdb_rec_candidates_batch",
-              "generate_director_candidates", "generate_knn_candidates",
+              "generate_director_candidates", "generate_director_candidates_batch", "generate_knn_candidates",
               "generate_knn_finetuned_candidates", "enrich_candidates_batch",
               "get_movie_info_batch", "semantic_overview_similarity"):
         if hasattr(S, n): _wrap(S, n)

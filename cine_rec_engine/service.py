@@ -63,6 +63,7 @@ from .queries import (
     filters_fingerprint,
     generate_candidates,
     generate_director_candidates,
+    generate_director_candidates_batch,
     generate_knn_candidates,
     generate_tmdb_rec_candidates,
     generate_tmdb_rec_candidates_batch,
@@ -1038,11 +1039,29 @@ class RecommendationService:
                       for s in seed_infos],
                     return_exceptions=True)
 
-        all_results = await asyncio.gather(
+        async def _director_channel() -> List[List[dict]]:
+            """Same contract for the auteur channel: one query for all
+            seeds, per-seed fallback when the batch fails."""
+            try:
+                return await generate_director_candidates_batch(
+                    self.pool,
+                    [(s["id"], s["media_type"]) for s in seed_infos],
+                )
+            except Exception as e:
+                logger.debug(
+                    f"Recommendation: director batch failed, retrying per seed: {e}")
+                return await asyncio.gather(
+                    *[generate_director_candidates(self.pool, s["id"], s["media_type"])
+                      for s in seed_infos],
+                    return_exceptions=True)
+
+        genre_task = asyncio.ensure_future(asyncio.gather(
             *[generate_candidates(
                 self.pool, s["id"], s["genres"], s["media_type"],
                 limit=60, allow_cross_media=allow_cross_media,
             ) for s in seed_infos],
+            return_exceptions=True))
+        knn_task = asyncio.ensure_future(asyncio.gather(
             *[generate_knn_candidates(
                 self.pool, s["id"], s["media_type"],
                 limit=KNN_CANDIDATES_PER_SEED,
@@ -1050,26 +1069,34 @@ class RecommendationService:
                 emb_column=emb_column,
                 vote_floor=100 if knn_ft_enabled else None,
             ) for s in seed_infos],
-            _tmdb_recs_channel(),
-            *[generate_director_candidates(self.pool, s["id"], s["media_type"])
-              for s in seed_infos],
-            return_exceptions=True,
-        )
-        genre_results = all_results[0:n_seeds]
-        knn_results = all_results[n_seeds:2 * n_seeds]
-        tmdb_batch = all_results[2 * n_seeds]
-        director_results = all_results[2 * n_seeds + 1:3 * n_seeds + 1]
-
-        # channel_rows[channel_index][seed_index] — per-seed channels
-        # arrive as per-seed lists; the TMDB batch arrives as ONE
-        # per-seed-indexed list (or one Exception, expanded so every
-        # seed degrades individually)
-        channel_rows: list = [
+            return_exceptions=True))
+        tmdb_task = asyncio.ensure_future(_tmdb_recs_channel())
+        director_task = asyncio.ensure_future(_director_channel())
+        (
             genre_results,
             knn_results,
-            ([tmdb_batch[i] for i in range(n_seeds)]
-             if isinstance(tmdb_batch, list) else [tmdb_batch] * n_seeds),
-            director_results,
+            tmdb_batch,
+            director_batch,
+        ) = await asyncio.gather(
+            genre_task, knn_task, tmdb_task, director_task,
+            return_exceptions=True)
+
+        def _per_seed(res, n: int) -> list:
+            """A channel's per-seed result list; a stray Exception for
+            the whole channel (cancellation) degrades every seed at
+            once — the inner gathers otherwise never raise."""
+            if isinstance(res, list):
+                return res
+            return [res] * n
+
+        # channel_rows[channel_index][seed_index] — batched channels
+        # arrive as ONE per-seed-indexed list (or an Exception expanded
+        # so every seed degrades individually)
+        channel_rows: list = [
+            _per_seed(genre_results, n_seeds),
+            _per_seed(knn_results, n_seeds),
+            _per_seed(tmdb_batch, n_seeds),
+            _per_seed(director_batch, n_seeds),
         ]
         channel_names = ("genre", "KNN", "TMDB-recs", "director")
 
