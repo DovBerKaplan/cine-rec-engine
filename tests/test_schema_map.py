@@ -220,3 +220,72 @@ class TestIngestLayer:
         assert cast_table(False) == "tmdb_tv_cast"
         assert crew_table(False) == "tmdb_tv_crew"
         assert kw_table(True) == "tmdb_movie_keywords"
+
+
+@pytest.fixture()
+def knn_enabled(monkeypatch):
+    """Vector-recall channels: codec registered as a no-op, latch clean."""
+    from cine_rec_engine import queries
+
+    async def _noop_register(conn):
+        return None
+
+    monkeypatch.setattr("pgvector.asyncpg.register_vector", _noop_register)
+    queries._KNN_DISABLED.discard("default")
+    yield
+    queries._KNN_DISABLED.discard("default")
+
+
+class TestVectorRecall:
+    """The ANN recall templates mix {t_*} placeholders with an {emb}
+    column name — they must reach the database resolved, not raise
+    KeyError mid-.format (the failure that silently killed both the
+    user-vector and discovery channels in 0.11.0–0.15.1)."""
+
+    async def test_user_vector_recall_executes_resolved_sql(self, knn_enabled):
+        from cine_rec_engine import queries
+
+        conn = RecordingConn(rows=[])
+        pool = RecordingPool(conn)
+        out = await queries.generate_user_vector_candidates(pool, [0.1, 0.2], limit=5)
+        assert out == []
+        sql = all_sql(conn)
+        assert "{t_" not in sql and "{emb}" not in sql
+        assert "FROM tmdb_movies" in sql
+        assert "FROM tmdb_tv" in sql
+        assert "<=>" in sql  # cosine ANN operator with the emb column inlined
+
+    async def test_user_vector_recall_follows_table_map(self, knn_enabled, mapped):
+        from cine_rec_engine import queries
+
+        conn = RecordingConn(rows=[])
+        pool = RecordingPool(conn)
+        await queries.generate_user_vector_candidates(pool, [0.1], limit=5)
+        sql = all_sql(conn)
+        assert "FROM app_movies" in sql
+        assert "FROM app_tv" in sql
+
+    async def test_discovery_recall_executes_resolved_sql(self, knn_enabled):
+        from cine_rec_engine import queries
+
+        conn = RecordingConn(rows=[])
+        pool = RecordingPool(conn)
+        out = await queries.generate_discovery_candidates(pool, [0.1], [], limit=5)
+        assert out == []
+        sql = all_sql(conn)
+        assert "{t_" not in sql and "{emb}" not in sql
+        assert "FROM tmdb_movies" in sql
+        assert "FROM tmdb_tv" in sql
+
+    async def test_discovery_recall_follows_table_map(self, knn_enabled, mapped):
+        from cine_rec_engine import queries
+
+        conn = RecordingConn(rows=[])
+        pool = RecordingPool(conn)
+        await queries.generate_discovery_candidates(pool, [0.1], [28], limit=5)
+        sql = all_sql(conn)
+        assert "FROM app_movies" in sql
+        # genre-map tables aren't in this MAP — identity resolution still
+        # must produce runnable SQL (no {t_*} braces left behind)
+        assert "tmdb_movie_genres_map" in sql
+        assert "tmdb_tv_genres_map" in sql

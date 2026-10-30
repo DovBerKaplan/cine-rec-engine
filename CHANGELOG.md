@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.15.2] — 2026-10-30
+
+### Fixed — two vector-recall channels were silently dead since 0.11.0
+- The user-vector ANN recall (`generate_user_vector_candidates`) and
+  the discovery row recall (`generate_discovery_candidates`) formatted
+  their SQL templates with `.format(emb=...)` over strings that also
+  contain `{t_*}` table-map placeholders — `str.format` raised
+  `KeyError` before the query ever ran. The user-vector channel
+  degraded to nothing on every install (while `vector_used: True` was
+  still reported, since the flag is set before the recall executes);
+  the discovery row returned `[]` via its broad except. Both now
+  resolve the table placeholders first (`tables.resolve`) and then
+  substitute the embedding column.
+- New regression coverage: SQL-text tests through a recording pool
+  (canonical + remapped table names), a live-DB assertion that both
+  channels actually recall rows, and the first offline test suite for
+  `_apply_user_filters` (saga advancement, seed-saga blocking,
+  swap-collision dedup, degradation) — previously pinned only by
+  live smoke runs.
+
 ## [0.15.1] — 2026-10-21
 
 ### Added — the MovieLens benchmark, measured and published

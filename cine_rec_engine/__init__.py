@@ -2,5 +2,5 @@
 
 from .service import RecommendationService
 
-__version__ = "0.15.1"
+__version__ = "0.15.2"
 __all__ = ["RecommendationService", "__version__"]

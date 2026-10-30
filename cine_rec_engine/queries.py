@@ -918,7 +918,11 @@ async def generate_user_vector_candidates(
             except Exception:
                 return []
             rows = await db.fetch(conn,
-                _USER_VECTOR_RECALL.format(emb=col), user_vector, limit
+                # resolve() swaps only {t_*} placeholders, leaving {emb}
+                # for this .format — calling .format on the raw template
+                # raises KeyError on the first {t_*} field instead.
+                tables.resolve(_USER_VECTOR_RECALL).format(emb=col),
+                user_vector, limit,
             )
     except (_asyncpg.UndefinedColumnError, _asyncpg.UndefinedObjectError,
             _asyncpg.UndefinedTableError):
@@ -1271,7 +1275,7 @@ async def generate_discovery_candidates(
             except Exception:
                 return []
             rows = await db.fetch(conn,
-                _DISCOVERY_RECALL.format(emb=col),
+                tables.resolve(_DISCOVERY_RECALL).format(emb=col),
                 user_vector, sorted(set(exclude_genre_ids)) or [0], limit,
             )
     except (_asyncpg.UndefinedColumnError, _asyncpg.UndefinedObjectError,

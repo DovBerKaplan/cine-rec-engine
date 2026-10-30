@@ -92,6 +92,21 @@ async def test_personalization_end_to_end(integration_env):
     out2 = await svc.recommend_for_user(u, limit=12)
     assert out2["results"] and out2["vector_used"] is True
 
+    # vector_used is set BEFORE the ANN runs, so the flag alone can lie
+    # (the channel was silently dead through 0.15.1): prove the recall
+    # itself returns rows for this user's stored vector, and that the
+    # discovery row recalls at all, against the live DB.
+    from cine_rec_engine import queries as live_queries
+    from cine_rec_engine import user_vector as live_uv
+
+    vec = await live_uv.load_user_vector(pool, u)
+    assert vec, "no stored user vector for the personalization user"
+    ann = await live_queries.generate_user_vector_candidates(pool, vec, limit=10)
+    assert ann and ann[0]["via"] == "uvec", "user-vector ANN recalled nothing"
+    discovery = await live_queries.generate_discovery_candidates(
+        pool, vec, exclude_genre_ids=[], limit=10)
+    assert discovery, "discovery recall returned nothing"
+
 
 async def test_user_tilt(integration_env):
     """The item-to-item tilt (M2): user context boosts, never buries,
