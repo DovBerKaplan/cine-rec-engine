@@ -156,6 +156,7 @@ instantiate. Vars marked ⚙ are read once at process start.
 | `CINE_REC_TABLE_<NAME>` | off | per-table override, e.g. `CINE_REC_TABLE_TMDB_MEDIA=app_media` (wins over the file) |
 | `CINE_REC_AUTO_INIT` | off | `1` = apply the schema on serve boot, idempotent |
 | `CINE_REC_POOL_SIZE` | 20 | asyncpg pool `max_size` (small pools dominate cold latency) |
+| ⚙ `CINE_REC_USER_SEEDS` | 20 | how many top-weighted titles drive `recommend_for_user` (lower = faster cold requests, leaner lists) |
 | `CINE_REC_PORT` / `CINE_REC_HOST` | 8000 / 0.0.0.0 | for `cine-rec serve` and the Docker image |
 | `CINE_REC_MAX_LIMIT` | 100 | ceiling for the `limit` query param (`/similar`, `/by-text`, `/for-user`) |
 | ⚙ `CINE_REC_EMBEDDING` | `original` | embedding column/space (`CINE_REC_EMBEDDING=minilm` → `embedding_minilm`) |
@@ -393,23 +394,25 @@ tests/              offline unit tests (no DB needed)
 ## Performance
 
 Measured on the synthetic 25k-title benchmark (`benchmarks/bench_e2e.py`,
-PostgreSQL 16, 2-core container): **cold single-seed ≈ 45 ms · warm
-(cache) 0.4 ms · 5-seed 322 ms**. The scorer runs ~37k (seed, candidate)
+PostgreSQL 16, 2-core container): **cold single-seed ≈ 37 ms · warm
+(cache) 0.3 ms · 5-seed ≈ 81 ms**. The scorer runs ~37k (seed, candidate)
 pairs/second/core with outputs within 1 float ULP of the reference
 implementation (golden-vector tests). `benchmarks/bench_scoring.py`
 reproduces the hot-loop number without any database.
 
 Personalized rows (`recommend_for_user`, 15–18 weighted seeds, same
-catalog, `benchmarks/bench_personalization.py`): **first request ≈ 1.2 s**
-(includes the inline vector rebuild; once per freshness window) ·
-**repeat request ≈ 0.2–0.3 s** (result cache hit; the ANN query is
-skipped when the list is cached; ~9 small per-user queries remain —
-seeds, freshness probe, watched/dislike exclusions, saga filters) ·
-**cold, other users ≈ 0.9 s median**. A cold request fires ~4 recall
-queries per seed (the two KNN channels share one query; semantic
-similarity is one batched cross-join for all seeds) — size the
-connection pool `max_size ≥ 20` or the queue dominates: at
-`max_size=10` cold requests measured ~3× slower than at 25. The vector
+catalog plus embeddings + HNSW, `benchmarks/bench_personalization.py`):
+**first request ≈ 0.5 s** (includes the inline vector rebuild; once per
+freshness window) · **repeat request ≈ 60–75 ms** (result-cache hit;
+the ANN query is skipped when the list is cached — what remains is a
+handful of small per-user reads, seeds/watchlist/freshness
+probe/exclusions/saga filters, prefetched in parallel with the cache
+read) · **cold, other users ≈ 0.3 s median**. On a cold request the
+genre and KNN channels fire per seed while the TMDB-recs and auteur
+channels run as ONE batched query per channel for all seeds (per-seed
+rank order and caps preserved exactly) — size the connection pool
+`max_size ≥ 20` or the queue dominates: at `max_size=10` cold requests
+measured ~3× slower than at 25. The vector
 recalls are ANN-indexed (hnsw/ivfflat on your embedding column); without
 an index they degrade to a table scan but still work. Keep the
 `tmdb_movies_collection_idx` partial index from `docs/schema.sql` in

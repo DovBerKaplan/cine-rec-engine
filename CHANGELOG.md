@@ -4,6 +4,46 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.16.0] — 2026-10-30
+
+### Changed — the per-user request path runs its reads in parallel
+- `recommend_for_user` serialized ~7 DB round-trips per request; the
+  seeds/watchlist/user-vector reads now run in one gather, the
+  exclusion set and the seed-saga block set are prefetched alongside
+  the cache read (and the recall fan-out on a miss), the tilt pass
+  reuses the probed vector instead of re-probing, and explicit
+  dislikes get the same 15-min cache as watched/rated sets instead of
+  a DB query on every request.
+- The TMDB-recs and auteur recall channels run as ONE batched query
+  per channel for all seeds (per-seed rank order, caps, and via tags
+  preserved exactly — verified row-identical against the per-seed
+  forms on the live 25k benchmark catalog; a batch failure falls back
+  to the per-seed channel). A request now takes 1 pool slot per
+  batched channel instead of one per seed. The genre and KNN channels
+  stay per-seed on purpose: their cost is per-seed ANN/scan CPU, which
+  one serial batched query cannot beat on the documented 2-core setup
+  (measured before deciding).
+- New `CINE_REC_USER_SEEDS` (default 20 — unchanged behavior): how
+  many top-weighted titles drive `recommend_for_user`.
+
+### Fixed — the benchmarks were not measuring what they claimed
+- `bench_e2e` seeded tv rows with ids overlapping the movies while
+  only movies got genre/crew/rec bridges — a bare-id seed resolved to
+  a bridge-less tv row and every channel recalled nothing, so the
+  published single-seed numbers measured an empty pipeline. Tv ids no
+  longer overlap; the benchmark now returns real results (n=30/60).
+- `bench_personalization` seeded only the split recommendations table
+  while the engine reads the unified one — the TMDB-recs channel
+  benchmarked empty. The seeder populates both.
+
+### Performance — re-measured on the documented 2-core container
+- find_similar: cold single-seed ≈ 37 ms · warm 0.3 ms · 5-seed
+  ≈ 81 ms (was 45/0.4/322 with the empty-recall bug).
+- recommend_for_user: first request ≈ 0.5 s (includes the inline
+  vector rebuild) · repeat ≈ 60–75 ms (cache hit) · other-users cold
+  median ≈ 0.3 s (was 1.2 s / 0.2–0.3 s / 0.9 s — the previous numbers
+  also predate the now-live user-vector ANN and discovery channels).
+
 ## [0.15.2] — 2026-10-30
 
 ### Fixed — two vector-recall channels were silently dead since 0.11.0

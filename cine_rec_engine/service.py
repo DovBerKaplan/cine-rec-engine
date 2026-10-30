@@ -54,6 +54,7 @@ from .config import (
     POP_ACTION_SIM_FLOOR,
     TMDB_REC_BONUS,
     EXPLORE_SHARE,
+    USER_SEEDS,
     USER_TILT_ALPHA,
     WRITER_BONUS,
 )
@@ -541,7 +542,7 @@ class RecommendationService:
                 return None
 
         weighted, watchlist_rows, uvec = await asyncio.gather(
-            top_weighted_seeds(self.pool, user_id, limit=20),
+            top_weighted_seeds(self.pool, user_id, limit=USER_SEEDS),
             db.fetch(self.pool,
                 """SELECT f.tmdb_id, f.media_type FROM {t_user_feedback} f
                    WHERE f.user_id = $1 AND f.kind = 'watchlist'

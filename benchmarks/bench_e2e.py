@@ -6,8 +6,8 @@ recs, then measures cold/warm/multi-seed latency. Leaves nothing behind.
 
     python benchmarks/bench_e2e.py --dsn postgresql://user:pw@host/db
 
-Numbers below are from a 2-core container against PostgreSQL 16 (2026-09):
-cold single-seed median ≈ 45ms · warm (cache) 0.4ms · 5-seed 322ms
+Numbers below are from a 2-core container against PostgreSQL 16 (2026-10):
+cold single-seed median ≈ 37ms · warm (cache) 0.3ms · 5-seed ≈ 81ms
 """
 
 import asyncio, os, random, sys, time
@@ -45,8 +45,13 @@ async def seed(pool):
                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)""", rows)
         # 5k tv
         rows = []
+        # tv ids deliberately do NOT overlap the movie ids: a bare-id
+        # lookup is ambiguous where both media share an id, and this
+        # bench seeds bridges only for movies — overlapping ids made
+        # every seed resolve to a bridge-less tv row and the recall
+        # measured empty.
         for i in range(1, 5001):
-            rows.append((i, f"Show {i}", f"overview show {i} drama", "en",
+            rows.append((20000 + i, f"Show {i}", f"overview show {i} drama", "en",
                          date(1990 + i % 36, 1, 1), "Ended", False, 3,
                          6.0 + (i % 35) / 10, 50 + i % 8000,
                          1.0 + i % 80, f"/p{i}.jpg", f"/b{i}.jpg", None))

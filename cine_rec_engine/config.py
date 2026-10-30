@@ -266,6 +266,15 @@ USER_VECTOR_MAX_AGE_HOURS = float(
 )
 
 
+# How many of a user's top-weighted titles drive recommend_for_user.
+# More seeds widen taste coverage but multiply the per-seed recall and
+# scoring work on cold requests; fewer lean the list toward the user's
+# dominant tastes. The default matches the historical behavior (no
+# artificial cap beyond find_similar's MAX_SEEDS).
+USER_SEEDS = env_int("CINE_REC_USER_SEEDS", 20, lo=1, hi=20)
+
+
+
 # Item-to-item user tilt: with a user context present, candidates whose
 # scores sit within a hair of each other break ties toward the user's
 # taste — a boost-only, multiplicative affinity term capped at this
