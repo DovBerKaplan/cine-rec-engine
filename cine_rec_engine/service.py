@@ -29,7 +29,7 @@ import json
 import math
 import os
 import random
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import asyncpg
 from loguru import logger
@@ -65,6 +65,7 @@ from .queries import (
     generate_director_candidates,
     generate_knn_candidates,
     generate_tmdb_rec_candidates,
+    generate_tmdb_rec_candidates_batch,
     generate_user_vector_candidates,
     genre_names_for_ids,
     get_movie_info_batch,
@@ -1006,7 +1007,12 @@ class RecommendationService:
         #    KNN over overview embeddings, locally synced TMDB behavioral
         #    recommendations ("people also liked"), and the seed director's
         #    other works (auteur DNA). Non-classic failures degrade silently.
-        channel_coros: list[tuple[str, Any]] = []
+        #    Channels with a batched form run ONE query for all seeds; the
+        #    merge below walks a seed-major x channel-minor matrix in the
+        #    fixed channel order, so dedup winners, via tags, and the KNN
+        #    similarity harvest stay identical to the per-seed fan-out no
+        #    matter which channels batch.
+        n_seeds = len(seed_infos)
         # Both KNN channels share the same embedding column in every
         # configuration, so when the fine-tuned channel is enabled ONE
         # query per seed (at its looser vote floor) covers both result
@@ -1014,43 +1020,58 @@ class RecommendationService:
         # Gated by ENABLE_KNN_FINETUNED (default true) for instant revert
         # to the two-channel form.
         knn_ft_enabled = os.getenv("ENABLE_KNN_FINETUNED", "true").lower() != "false"
-        for s in seed_infos:
-            channel_coros.append(
-                (
-                    "genre",
-                    generate_candidates(
-                        self.pool,
-                        s["id"],
-                        s["genres"],
-                        s["media_type"],
-                        limit=60,
-                        allow_cross_media=allow_cross_media,
-                    ),
+
+        async def _tmdb_recs_channel() -> List[List[dict]]:
+            """One query for every seed's TMDB recs, or the per-seed
+            channel when the batch fails (each seed then degrades
+            alone, exactly like the pre-batch fan-out)."""
+            try:
+                return await generate_tmdb_rec_candidates_batch(
+                    self.pool,
+                    [(s["id"], s["media_type"]) for s in seed_infos],
                 )
-            )
-            channel_coros.append(
-                (
-                    "KNN",
-                    generate_knn_candidates(
-                        self.pool,
-                        s["id"],
-                        s["media_type"],
-                        limit=KNN_CANDIDATES_PER_SEED,
-                        allow_cross_media=allow_cross_media,
-                        emb_column=emb_column,
-                        vote_floor=100 if knn_ft_enabled else None,
-                    ),
-                )
-            )
-            channel_coros.append(
-                ("TMDB-recs", generate_tmdb_rec_candidates(self.pool, s["id"], s["media_type"]))
-            )
-            channel_coros.append(
-                ("director", generate_director_candidates(self.pool, s["id"], s["media_type"]))
-            )
+            except Exception as e:
+                logger.debug(
+                    f"Recommendation: TMDB-recs batch failed, retrying per seed: {e}")
+                return await asyncio.gather(
+                    *[generate_tmdb_rec_candidates(self.pool, s["id"], s["media_type"])
+                      for s in seed_infos],
+                    return_exceptions=True)
+
         all_results = await asyncio.gather(
-            *[coro for _, coro in channel_coros], return_exceptions=True
+            *[generate_candidates(
+                self.pool, s["id"], s["genres"], s["media_type"],
+                limit=60, allow_cross_media=allow_cross_media,
+            ) for s in seed_infos],
+            *[generate_knn_candidates(
+                self.pool, s["id"], s["media_type"],
+                limit=KNN_CANDIDATES_PER_SEED,
+                allow_cross_media=allow_cross_media,
+                emb_column=emb_column,
+                vote_floor=100 if knn_ft_enabled else None,
+            ) for s in seed_infos],
+            _tmdb_recs_channel(),
+            *[generate_director_candidates(self.pool, s["id"], s["media_type"])
+              for s in seed_infos],
+            return_exceptions=True,
         )
+        genre_results = all_results[0:n_seeds]
+        knn_results = all_results[n_seeds:2 * n_seeds]
+        tmdb_batch = all_results[2 * n_seeds]
+        director_results = all_results[2 * n_seeds + 1:3 * n_seeds + 1]
+
+        # channel_rows[channel_index][seed_index] — per-seed channels
+        # arrive as per-seed lists; the TMDB batch arrives as ONE
+        # per-seed-indexed list (or one Exception, expanded so every
+        # seed degrades individually)
+        channel_rows: list = [
+            genre_results,
+            knn_results,
+            ([tmdb_batch[i] for i in range(n_seeds)]
+             if isinstance(tmdb_batch, list) else [tmdb_batch] * n_seeds),
+            director_results,
+        ]
+        channel_names = ("genre", "KNN", "TMDB-recs", "director")
 
         seed_id_set = set(tmdb_ids)
         seen_ids: set[int] = set()
@@ -1058,27 +1079,24 @@ class RecommendationService:
         # Seed-indexed semantic similarities harvested from the KNN results —
         # the ranking query already computed the cosine, no need to redo it.
         knn_sim_by_seed: dict[int, dict[int, float]] = {}
-        # Each seed owns a contiguous slice of channel_coros (4 channels)
-        # Channel count includes the optional fine-tuned KNN channel when enabled
-        n_channels = len(channel_coros) // max(len(seed_infos), 1)
-        for i, res in enumerate(all_results):
-            seed = seed_infos[i // n_channels]
-            channel = channel_coros[i][0]
-            if isinstance(res, BaseException):
-                logger.debug(
-                    f"Recommendation: {channel} recall failed for seed {seed['id']}: {res}"
-                )
-                _metrics.observe_channel(channel, 0)
-                continue
-            _metrics.observe_channel(channel, len(res))
-            if channel == "KNN" and res:
-                sims = {c["id"]: c["knn_similarity"] for c in res if c.get("knn_similarity")}
-                if sims:
-                    knn_sim_by_seed[seed["id"]] = sims
-            for c in res:
-                if c["id"] not in seen_ids and c["id"] not in seed_id_set:
-                    seen_ids.add(c["id"])
-                    candidates.append(c)
+        for si, seed in enumerate(seed_infos):
+            for channel, rows_per_seed in zip(channel_names, channel_rows):
+                res = rows_per_seed[si]
+                if isinstance(res, BaseException):
+                    logger.debug(
+                        f"Recommendation: {channel} recall failed for seed {seed['id']}: {res}"
+                    )
+                    _metrics.observe_channel(channel, 0)
+                    continue
+                _metrics.observe_channel(channel, len(res))
+                if channel == "KNN" and res:
+                    sims = {c["id"]: c["knn_similarity"] for c in res if c.get("knn_similarity")}
+                    if sims:
+                        knn_sim_by_seed[seed["id"]] = sims
+                for c in res:
+                    if c["id"] not in seen_ids and c["id"] not in seed_id_set:
+                        seen_ids.add(c["id"])
+                        candidates.append(c)
 
         if not candidates:
             logger.debug(f"Recommendation: no candidates for {tmdb_ids}")

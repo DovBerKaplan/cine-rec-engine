@@ -1504,6 +1504,92 @@ async def generate_tmdb_rec_candidates(
     return candidates
 
 
+async def generate_tmdb_rec_candidates_batch(
+    pool: asyncpg.Pool,
+    seeds: List[tuple],
+    limit: int = 20,
+) -> List[List[dict]]:
+    """Per-seed TMDB-recs in ONE query (the batched form of
+    generate_tmdb_rec_candidates).
+
+    The per-seed top-k is preserved exactly: a row_number() over the
+    seed partition keeps each seed's rank order and LIMIT, so the
+    per-seed result lists are identical to N individual calls.
+
+    Returns one candidate list per input seed, in input order (same row
+    shape as generate_tmdb_rec_candidates). Any failure degrades to
+    empty lists — the caller falls back to the per-seed channel.
+    """
+    out: List[List[dict]] = [[] for _ in seeds]
+    if not seeds:
+        return out
+    try:
+        async with pool.acquire() as conn:
+            rows = await db.fetch(conn,
+                """
+                WITH seeds AS (
+                    SELECT * FROM unnest($1::bigint[], $2::text[])
+                        AS s(media_id, media_type)
+                ),
+                ranked AS (
+                    SELECT r.media_id, r.media_type,
+                           r.rec_media_id, r.rec_media_type, r.rank,
+                           row_number() OVER (
+                               PARTITION BY r.media_id, r.media_type
+                               ORDER BY r.rank
+                           ) AS rn
+                    FROM {t_tmdb_recommendations} r
+                    JOIN seeds s
+                      ON (r.media_id, r.media_type) = (s.media_id, s.media_type)
+                )
+                SELECT
+                    m.id,
+                    m.title,
+                    m.title_en,
+                    m.media_type,
+                    m.overview,
+                    m.overview_en,
+                    m.vote_average::float,
+                    m.vote_count::int,
+                    m.popularity::float,
+                    m.poster_path,
+                    m.collection_id,
+                    EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int AS release_year,
+                    rk.rank AS tmdb_rank,
+                    rk.media_id AS _seed_id,
+                    rk.media_type AS _seed_media_type,
+                    ARRAY(
+                        SELECT g.name
+                        FROM {t_tmdb_genres} g
+                        JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
+                        WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
+                    ) as genres
+                FROM ranked rk
+                JOIN {t_tmdb_media} m
+                  ON (m.id, m.media_type) = (rk.rec_media_id, rk.rec_media_type)
+                WHERE rk.rn <= $3
+                ORDER BY rk.media_id, rk.media_type, rk.rank
+                """,
+                [s[0] for s in seeds],
+                [s[1] for s in seeds],
+                limit,
+            )
+    except asyncpg.UndefinedTableError:
+        # the documented degrade (table not synced) — per-seed form
+        # returns [] for the same condition. Anything else propagates
+        # so the caller can retry the per-seed channel instead of
+        # silently recalling nothing for every seed at once.
+        return out
+
+    by_seed: dict = {}
+    for r in rows:
+        c = dict(r)
+        seed_key = (c.pop("_seed_id"), c.pop("_seed_media_type"))
+        c["via"] = "tmdb"
+        by_seed.setdefault(seed_key, []).append(c)
+    return [by_seed.get((s[0], s[1]), []) for s in seeds]
+
+
 # ---------------------------------------------------------------------------
 # Director recall — "more from the same filmmaker"
 # ---------------------------------------------------------------------------

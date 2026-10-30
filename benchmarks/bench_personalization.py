@@ -105,6 +105,15 @@ async def seed_catalog(pool):
         await c.executemany(
             "INSERT INTO tmdb_movie_recommendations (movie_id, rec_movie_id, rank, popularity)"
             " VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING", recs)
+        # the engine reads the unified recommendations table — populate
+        # it from the split one or the TMDB-recs channel recalls nothing
+        # and the benchmark under-reports that channel's cost
+        await c.execute(
+            """INSERT INTO tmdb_recommendations
+                   (media_id, media_type, rec_media_id, rec_media_type, rank, popularity)
+               SELECT movie_id, 'movie', rec_movie_id, 'movie', rank, popularity
+               FROM tmdb_movie_recommendations
+               ON CONFLICT DO NOTHING""")
         # embeddings for the default space — KNN + user-vector channels ON
         await c.execute(f"ALTER TABLE tmdb_movies ADD COLUMN embedding vector({DIM})")
         await c.execute(f"ALTER TABLE tmdb_tv ADD COLUMN embedding vector({DIM})")
@@ -161,7 +170,7 @@ def _install_probes():
 
     import cine_rec_engine.scoring as SC
     for n in ("generate_candidates", "generate_knn_candidates",
-              "generate_tmdb_rec_candidates",
+              "generate_tmdb_rec_candidates", "generate_tmdb_rec_candidates_batch",
               "generate_director_candidates", "generate_user_vector_candidates",
               "enrich_candidates_batch", "get_movie_info_batch"):
         if hasattr(Q, n):
@@ -172,7 +181,7 @@ def _install_probes():
                     key="q:semantic_overview_similarity_batch")
     # service.py imported some names before our patch — rebind there too
     for n in ("generate_candidates", "generate_knn_candidates",
-              "generate_tmdb_rec_candidates",
+              "generate_tmdb_rec_candidates", "generate_tmdb_rec_candidates_batch",
               "generate_director_candidates", "enrich_candidates_batch",
               "get_movie_info_batch", "semantic_overview_similarity",
               "semantic_overview_similarity_batch",
