@@ -24,6 +24,8 @@ jobs:
           # the extension installs only on >= 3.12 (sum() semantics)
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.91.1
       - name: Build extension
         run: cargo build --release --features pyo3 --manifest-path rust/scoring/Cargo.toml
       - name: Install package
