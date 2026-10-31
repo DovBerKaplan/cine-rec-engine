@@ -55,15 +55,23 @@ fn opt_i64(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Option<i64>> {
     match dict_get(obj, key)? {
         None => Ok(None),
         Some(v) if v.is_none() => Ok(None),
-        // int-shaped is the norm; a float year/count truncates toward
-        // zero exactly like Python's int() (JSON rows occasionally
-        // carry floats). Exotic types raise — the per-call fallback
-        // in _scoring_accel covers them.
+        // ints are the norm. An INTEGRAL float (15000.0) converts
+        // exactly; a NON-integral float raises instead of truncating —
+        // Python keeps the raw value (`entity.get(...) or 0`) and
+        // compares it directly, so silent truncation would diverge
+        // (e.g. vote_count=15000.5 vs the >15000 threshold). The
+        // per-call fallback in _scoring_accel covers such rows.
         Some(v) => {
             if let Ok(i) = v.extract::<i64>() {
                 Ok(Some(i))
             } else if let Ok(f) = v.extract::<f64>() {
-                Ok(Some(f as i64))
+                if f.fract() == 0.0 && f.is_finite() {
+                    Ok(Some(f as i64))
+                } else {
+                    Err(PyTypeError::new_err(format!(
+                        "{key} is a non-integral float; refusing to truncate"
+                    )))
+                }
             } else {
                 Err(PyTypeError::new_err(format!("{key} must be a number")))
             }
@@ -83,13 +91,24 @@ fn opt_f64(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Option<f64>> {
     }
 }
 
+/// Per-item lenient list conversion (the reviewer's alternative to
+/// origin-preserving profiles): items that cannot convert are SKIPPED,
+/// never fatal. Python's `set()` semantics make this exact for the
+/// ways these lists are used — a non-string never equals a canonical
+/// genre/keyword/company string, and a non-int never equals a person
+/// id, so dropping them cannot change any intersection. The only
+/// theoretical divergence (the SAME exotic object on both sides)
+/// cannot cross entities. This keeps `entity_profile` from raising on
+/// embedder-shaped rows, which in turn keeps mixed profile pairs from
+/// ever forming (see score_pair_fast).
 fn str_list(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Vec<String>> {
     match dict_get(obj, key)? {
         None => Ok(Vec::new()),
         Some(v) if v.is_none() => Ok(Vec::new()),
-        Some(v) => v
-            .extract::<Vec<String>>()
-            .map_err(|_| PyTypeError::new_err(format!("{key} must be a list of strings"))),
+        Some(v) => Ok(v
+            .try_iter()?
+            .filter_map(|item| item.ok()?.extract::<String>().ok())
+            .collect()),
     }
 }
 
@@ -97,36 +116,62 @@ fn i64_list(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Vec<i64>> {
     match dict_get(obj, key)? {
         None => Ok(Vec::new()),
         Some(v) if v.is_none() => Ok(Vec::new()),
-        Some(v) => v
-            .extract::<Vec<i64>>()
-            .map_err(|_| PyTypeError::new_err(format!("{key} must be a list of ints"))),
+        // ints convert; INTEGRAL floats (2.0) equal their int in
+        // Python's set semantics so they convert too; non-integral
+        // floats are skipped (they could only match the identical
+        // value on the other side — cross-entity impossible)
+        Some(v) => Ok(v
+            .try_iter()?
+            .filter_map(|item| {
+                let item = item.ok()?;
+                if let Ok(i) = item.extract::<i64>() {
+                    return Some(i);
+                }
+                let f = item.extract::<f64>().ok()?;
+                (f.is_finite() && f.fract() == 0.0).then_some(f as i64)
+            })
+            .collect()),
     }
 }
 
 /// cast_list members are actor NAMES in the recall rows and person ids
-/// in some older shapes — accept both, per item.
+/// in some older shapes — accept both, per item (same skip-don't-fail
+/// leniency as the other list converters).
 fn cast_key_list(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Vec<CastKey>> {
     match dict_get(obj, key)? {
         None => Ok(Vec::new()),
         Some(v) if v.is_none() => Ok(Vec::new()),
+        Some(v) => Ok(v
+            .try_iter()?
+            .filter_map(|item| {
+                let item = item.ok()?;
+                if let Ok(id) = item.extract::<i64>() {
+                    Some(CastKey::Id(id))
+                } else {
+                    item.extract::<String>().ok().map(CastKey::Name)
+                }
+            })
+            .collect()),
+    }
+}
+
+/// A non-string TRUTHY `via` (e.g. True, 1): gate-exempt like any
+/// truthy value in Python, but never equal to a channel name — a
+/// sentinel string nobody can spell in a real row models exactly that.
+const NON_STRING_VIA: &str = "\u{0}non-string-via\u{0}";
+
+fn opt_via(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Option<String>> {
+    match dict_get(obj, key)? {
+        None => Ok(None),
+        Some(v) if v.is_none() => Ok(None),
         Some(v) => {
-            let items = v
-                .extract::<Vec<Bound<'_, PyAny>>>()
-                .map_err(|_| PyTypeError::new_err(format!("{key} must be a list")))?;
-            items
-                .iter()
-                .map(|item| {
-                    if let Ok(id) = item.extract::<i64>() {
-                        Ok(CastKey::Id(id))
-                    } else if let Ok(name) = item.extract::<String>() {
-                        Ok(CastKey::Name(name))
-                    } else {
-                        Err(PyTypeError::new_err(format!(
-                            "{key} items must be ints or strings"
-                        )))
-                    }
-                })
-                .collect()
+            if let Ok(s) = v.extract::<String>() {
+                Ok(Some(s))
+            } else if v.is_truthy()? {
+                Ok(Some(NON_STRING_VIA.to_string()))
+            } else {
+                Ok(None)
+            }
         }
     }
 }
@@ -162,7 +207,7 @@ pub fn py_to_entity(obj: &Bound<'_, PyAny>) -> PyResult<Entity> {
             Some(v) if v.is_none() => false,
             Some(v) => v.is_truthy()?,
         },
-        via: opt_string(obj, "via")?,
+        via: opt_via(obj, "via")?,
         tmdb_rank: opt_i64(obj, "tmdb_rank")?,
         narrative: opt_string(obj, "narrative")?,
         pacing: opt_string(obj, "pacing")?,
@@ -282,21 +327,15 @@ impl PairScorer {
             Some(v) if !v.is_none() => v.extract::<String>().ok(),
             _ => None,
         };
-        let cgs: Option<HashSet<String>> = match cand_genres_set {
-            // no identity cache here: the hot loop is multi-threaded
-            // (warm path) and a shared cache both races and mis-hits on
-            // recycled addresses — measured gain was ~5%, not worth it
-            // non-string items never intersect the canonical genre
-            // strings in Python either — skip them. No identity cache:
-            // callers may run multi-threaded, and a shared cache both
-            // races and mis-hits on recycled addresses (~5% measured).
-            Some(s) => Some(
-                s.iter()
-                    .filter_map(|item| item.extract::<String>().ok())
-                    .collect::<HashSet<String>>(),
-            ),
-            None => None,
-        };
+        // non-string items never intersect the canonical genre strings
+        // in Python either — skip them. No identity cache: callers may
+        // run multi-threaded, and a shared cache both races and
+        // mis-hits on recycled addresses (~5% measured, not worth it).
+        let cgs: Option<HashSet<String>> = cand_genres_set.map(|s| {
+            s.iter()
+                .filter_map(|item| item.extract::<String>().ok())
+                .collect::<HashSet<String>>()
+        });
         let sp = sp.inner.clone();
         let cp = cp.inner.clone();
         let w = self.w.clone();

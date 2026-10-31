@@ -40,6 +40,7 @@ itself is single-threaded today).
 
 from __future__ import annotations
 
+import os
 import sys
 from typing import Any, Callable, Optional
 
@@ -48,11 +49,86 @@ from typing import Any, Callable, Optional
 # differ from the pure path in the last ULP and must not install.
 _MIN_PY = (3, 12)
 
-# A healthy extension is ~850 KB; a truncated one (interrupted copy,
-# full disk) can SIGBUS the process at import, below any except. This
-# floor skips obviously-broken files early — not a substitute for the
-# CINE_REC_SCORING_RS=0 escape hatch.
+# A truncated extension can SIGBUS the process at import, below any
+# except. On ELF (Linux) the load segments and section-header table
+# are validated against the actual file size — exact for any build
+# size, catching even a one-byte truncation. Other object formats
+# (macOS/Windows) fall back to a conservative size floor. Neither is
+# a substitute for the CINE_REC_SCORING_RS=0 escape hatch.
 _MIN_SO_BYTES = 400_000
+
+
+def _elf_looks_intact(path: str) -> bool:
+    """All PT_LOAD segments and the section-header table fit in the
+    file (validated against a byte-level truncation sweep by the
+    phase-2 review). False for anything not obviously ELF."""
+    import struct
+
+    try:
+        size = os.path.getsize(path)
+        with open(path, "rb") as f:
+            head = f.read(64)
+            if len(head) < 64 or head[:4] != b"\x7fELF":
+                return True  # not ELF — caller applies the size floor
+            is64 = head[4] == 2
+            little = head[5] == 1
+            end = "<" if little else ">"
+            if is64:
+                (e_phoff,) = struct.unpack_from(end + "Q", head, 32)
+                (e_shoff,) = struct.unpack_from(end + "Q", head, 40)
+                e_phentsize, e_phnum = struct.unpack_from(end + "HH", head, 54)
+                e_shentsize, e_shnum = struct.unpack_from(end + "HH", head, 58)
+            else:
+                (e_phoff,) = struct.unpack_from(end + "I", head, 28)
+                (e_shoff,) = struct.unpack_from(end + "I", head, 32)
+                e_phentsize, e_phnum = struct.unpack_from(end + "HH", head, 42)
+                e_shentsize, e_shnum = struct.unpack_from(end + "HH", head, 46)
+            # program headers themselves must fit
+            if e_phoff + e_phentsize * e_phnum > size:
+                return False
+            if e_shoff + e_shentsize * e_shnum > size:
+                return False
+            # every PT_LOAD segment's file image must fit
+            f.seek(e_phoff)
+            ph = f.read(e_phentsize * e_phnum)
+            for i in range(e_phnum):
+                entry = ph[i * e_phentsize : (i + 1) * e_phentsize]
+                if len(entry) < e_phentsize:
+                    return False
+                p_type = struct.unpack_from(end + "I", entry, 0)[0]
+                if p_type != 1:  # PT_LOAD
+                    continue
+                if is64:
+                    # Phdr64: type, flags, offset, vaddr, paddr, filesz
+                    p_offset, _v, _p, p_filesz = struct.unpack_from(end + "QQQQ", entry, 8)
+                else:
+                    # Phdr32: type, offset, vaddr, paddr, filesz
+                    p_offset, _v, _p, p_filesz = struct.unpack_from(end + "IIII", entry, 4)
+                if p_offset + p_filesz > size:
+                    return False
+            return True
+    except OSError:
+        return True  # let the import attempt decide
+
+
+def _extension_file_problem(path: str) -> Optional[str]:
+    """Why the extension file must not be imported (None = go ahead):
+    ELF files are validated structurally (exact for any truncation);
+    other object formats get the conservative size floor."""
+    try:
+        if not os.path.isfile(path):
+            return None  # not a plain file (e.g. in a wheel) — import decides
+        with open(path, "rb") as f:
+            magic = f.read(4)
+        if magic == b"\x7fELF":
+            if not _elf_looks_intact(path):
+                return f"extension file is truncated/corrupt: {path}"
+            return None
+        if os.path.getsize(path) < _MIN_SO_BYTES:
+            return f"extension file looks truncated: {path}"
+        return None
+    except OSError:
+        return None  # unreadable — let the import attempt decide
 
 
 def _extension_path() -> Optional[str]:
@@ -80,16 +156,9 @@ def install(ns: dict[str, Any]) -> str:
 
     origin = _extension_path()
     if origin:
-        import os
-
-        try:
-            if os.path.getsize(origin) < _MIN_SO_BYTES:
-                return (
-                    "python-fallback (extension file looks truncated: "
-                    f"{origin}); set CINE_REC_SCORING_RS=0 to silence"
-                )
-        except OSError:
-            pass  # stat failed — let the import try (and fail) normally
+        problem = _extension_file_problem(origin)
+        if problem:
+            return f"python-fallback ({problem}); set CINE_REC_SCORING_RS=0 to silence"
 
     from . import _scoring_rs as rs
 
@@ -123,8 +192,9 @@ def install(ns: dict[str, Any]) -> str:
     ):
         try:
             return rs.entity_profile(entity, entity_data, genres_override)
-        except TypeError:
-            # exotic field types — this call only, pure Python
+        except (TypeError, ValueError, OverflowError):
+            # exotic field types or unconvertible string data
+            # (lone surrogates) — this call only, pure Python
             return py_entity_profile(entity, entity_data, genres_override)
 
     def score_pair_fast(
@@ -160,7 +230,7 @@ def install(ns: dict[str, Any]) -> str:
     ) -> list:
         try:
             return vec_scorer.feature_vector(cand, cand_data, cand_genres, seed, overview_sim)
-        except TypeError:
+        except (TypeError, ValueError, OverflowError):
             return py_feature_vector(cand, cand_data, cand_genres, seed, overview_sim)
 
     ns["_entity_profile"] = entity_profile

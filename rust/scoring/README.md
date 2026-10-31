@@ -143,13 +143,21 @@ A/B decision deliberately left for the release gate.
   became Neumaier-compensated there, and the port replicates THAT
   fold; on 3.10/3.11 it would differ from the pure path in the last
   ULP and stays off (`python-fallback`).
-* A locatable extension file below ~400 KB is skipped as truncated —
-  a cut-off `.so` can SIGBUS the process at import, below any Python
-  `except`. The guaranteed escape hatch stays `CINE_REC_SCORING_RS=0`.
-* Per-call fallback: conversion errors on exotic field types degrade
+* A locatable extension file is structurally validated BEFORE the
+  import: on ELF, every PT_LOAD segment and the section-header table
+  must fit the file (exact for any build size — catches a one-byte
+  truncation; validated against a byte-level sweep by the review).
+  Non-ELF object formats fall back to a size floor. A cut-off `.so`
+  can SIGBUS the process at import, below any Python `except`; the
+  guaranteed escape hatch stays `CINE_REC_SCORING_RS=0`.
+* Per-call fallback: conversion errors on exotic field types
+  (TypeError/ValueError/OverflowError — e.g. lone surrogates) degrade
   THAT call to pure Python; profile pairs dispatch by kind (dict =
   pure, opaque = Rust), and a MIXED pair raises loudly rather than
-  guessing.
-* Known-open (phase 8, per the port plan): CI does not yet build the
-  extension, so the bridge tests skip there; a cargo job in the CI
-  matrix is part of the packaging phase.
+  guessing. List conversions are per-item LENIENT (a non-string never
+  equals a canonical string in Python either), which removes the
+  mixed-pair scenario at its source for embedder-shaped rows; a
+  non-string truthy `via` is gate-exempt but matches no channel.
+* CI builds the extension and runs the bridge/differential tests
+  (`.github/workflows/rust-scoring.yml`, Python 3.12); the plain CI
+  matrix keeps proving the pure-wheel path without it.

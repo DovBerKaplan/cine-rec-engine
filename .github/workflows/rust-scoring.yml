@@ -1,0 +1,40 @@
+name: rust-scoring
+
+# The compiled scoring extension: build it and run the bridge/differential
+# tests against it. Without this job the extension-dependent tests
+# (tests/test_scoring_rs_bridge.py, incl. the differential fuzz) skip
+# everywhere — the pure wheel must keep passing WITHOUT the extension,
+# and this job proves the accelerated path in the same commit.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # the extension installs only on >= 3.12 (sum() semantics)
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build extension
+        run: cargo build --release --features pyo3 --manifest-path rust/scoring/Cargo.toml
+      - name: Install package
+        run: pip install -e ".[dev,serve]"
+      - name: Place extension
+        run: cp rust/scoring/target/release/libcine_rec_scoring.so cine_rec_engine/_scoring_rs.so
+      - name: Rust unit + parity tests
+        run: cargo test --manifest-path rust/scoring/Cargo.toml
+      - name: Bridge + full suite (Rust active)
+        run: pytest -q
+      - name: Full suite (forced pure)
+        run: pytest -q
+        env:
+          CINE_REC_SCORING_RS: "0"
