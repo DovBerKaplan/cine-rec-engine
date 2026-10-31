@@ -223,13 +223,120 @@ def test_bridge_matches_python_on_edges(label, cand, seed):
 
 
 @pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
-def test_bridge_rejects_empty_entity_data_loudly():
-    """Python treats an empty entity_data dict inconsistently (falsy
-    for narrative fields, not-None for the enriched source); the
-    bridge refuses it instead of silently diverging."""
-    seed = {"id": 1, "media_type": "movie", "genres": ["Drama"]}
-    with pytest.raises(TypeError):
-        S._entity_profile(seed, {}, genres_override=seed["genres"])
+def test_bridge_empty_entity_data_matches_python():
+    """`enriched.get(cid, {})` — an EMPTY entity_data dict is the
+    regular production input for every non-enriched candidate (the
+    user-vector ANN extras attach after enrichment). Python semantics:
+    enriched-source fields read the empty dict (features zero),
+    narrative/pacing/emotional-arc fall back to the ENTITY. The bridge
+    must reproduce that exactly — this was the phase-2 blocker."""
+    cand = {
+        "id": 2, "media_type": "movie", "genres": ["Drama", "Thriller"],
+        "keywords": ["dream"], "cast_ids": [7],
+        "director_ids": [3], "writer_ids": [], "composer_ids": [], "dp_ids": [],
+        "companies": [], "networks": [],
+        "original_language": "en", "overview": "A story", "overview_en": None,
+        "release_year": 1999, "vote_average": 7.5, "vote_count": 900,
+        "collection_id": 55, "adult": False, "via": None,
+        "narrative": "linear", "pacing": "contemplative",
+        "emotional_arc": ["tense"],
+    }
+    seed = {
+        "id": 100, "media_type": "movie", "genres": ["Drama"],
+        "keywords": ["dream"], "cast_ids": [7], "director_ids": [3],
+        "writer_ids": [], "composer_ids": [], "dp_ids": [], "companies": [],
+        "networks": [], "original_language": "en",
+        "overview": "Another story", "overview_en": None,
+        "release_year": 2001, "vote_average": 8.0, "vote_count": 800,
+        "collection_id": 55, "adult": False, "via": None,
+        "narrative": "linear", "pacing": "contemplative",
+        "emotional_arc": ["tense"],
+    }
+    w = list(S.HEURISTIC_WEIGHTS.values())
+
+    for data in ({}, cand):  # the {} production shape AND the identity shape
+        vec_rs = S.feature_vector(cand, data, cand["genres"], seed)
+        vec_py = S._py_feature_vector(cand, data, cand["genres"], seed)
+        assert all(_bits(a) == _bits(b) for a, b in zip(vec_rs, vec_py)), data
+
+        sp = S._entity_profile(seed, None)
+        cp = S._entity_profile(cand, data, genres_override=cand["genres"])
+        sp_py = S._py_entity_profile(seed, None)
+        cp_py = S._py_entity_profile(cand, data, genres_override=cand["genres"])
+        fast_rs = S._score_pair_fast(sp, cp, cand, data, set(cand["genres"]), 0.0, w)
+        fast_py = S._py_score_pair_fast(sp_py, cp_py, cand, data, set(cand["genres"]), 0.0, w)
+        assert _ulp(fast_rs, fast_py) <= 1, (data, fast_rs, fast_py)
+
+
+@pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
+def test_bridge_cand_data_differs_from_cand():
+    """The production shape where cand_data is a DIFFERENT (enriched)
+    row: director-name fallback, collection fallback, via and
+    tmdb_rank read from cand while enrichment comes from the data."""
+    cand = {
+        "id": 3, "media_type": "movie", "genres": ["Action"],
+        "keywords": [], "cast_ids": [], "director_ids": [], "writer_ids": [],
+        "composer_ids": [], "dp_ids": [], "companies": [], "networks": [],
+        "original_language": None, "overview": None, "overview_en": None,
+        "release_year": 2010, "vote_average": 6.0, "vote_count": 50,
+        "collection_id": 9, "adult": False, "via": "tmdb", "tmdb_rank": 2,
+    }
+    data = {
+        "id": 3, "keywords": ["gritty", "conspiracy"], "cast_ids": [1, 2, 3],
+        "director_ids": [42], "writer_ids": [], "composer_ids": [9], "dp_ids": [],
+        "companies": ["Co"], "networks": [], "original_language": "en",
+        "overview": "enriched overview", "overview_en": "enriched overview",
+        "collection_id": 0,  # falsy in Python -> falls back to cand's 9
+        "narrative": None, "pacing": "", "emotional_arc": None,
+    }
+    seed = {
+        "id": 200, "media_type": "tv", "genres": ["Action", "Crime"],
+        "keywords": ["conspiracy"], "cast_ids": [3, 4], "director_ids": [42],
+        "writer_ids": [], "composer_ids": [], "dp_ids": [], "companies": [],
+        "networks": ["NT"], "original_language": "en",
+        "overview": "seed overview", "overview_en": None,
+        "release_year": 2015, "vote_average": 7.0, "vote_count": 3000,
+        "collection_id": 9, "adult": False, "via": None,
+        "director": "Some Name",
+    }
+    data["director"] = "Some Name"  # name fallback via cand_data
+    w = list(S.HEURISTIC_WEIGHTS.values())
+
+    vec_rs = S.feature_vector(cand, data, cand["genres"], seed)
+    vec_py = S._py_feature_vector(cand, data, cand["genres"], seed)
+    assert all(_bits(a) == _bits(b) for a, b in zip(vec_rs, vec_py))
+
+    sp = S._entity_profile(seed, None)
+    cp = S._entity_profile(cand, data, genres_override=cand["genres"])
+    sp_py = S._py_entity_profile(seed, None)
+    cp_py = S._py_entity_profile(cand, data, genres_override=cand["genres"])
+    fast_rs = S._score_pair_fast(sp, cp, cand, data, set(cand["genres"]), 0.0, w)
+    fast_py = S._py_score_pair_fast(sp_py, cp_py, cand, data, set(cand["genres"]), 0.0, w)
+    assert _ulp(fast_rs, fast_py) <= 1
+
+
+@pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
+def test_bridge_pacing_and_collection_truthiness():
+    """pacing='' is falsy (no pacing match); collection_id=0 is falsy
+    (no shared collection, and data's 0 falls back to cand's)."""
+    base = {
+        "id": 1, "media_type": "movie", "genres": ["Drama"], "keywords": [],
+        "cast_ids": [], "director_ids": [], "writer_ids": [], "composer_ids": [],
+        "dp_ids": [], "companies": [], "networks": [],
+        "original_language": None, "overview": None, "overview_en": None,
+        "release_year": 2000, "vote_average": 7.0, "vote_count": 100,
+        "collection_id": None, "adult": False, "via": None,
+    }
+    cand = dict(base, id=2, pacing="", collection_id=0)
+    seed = dict(base, id=300, pacing="", collection_id=0)
+    vec_rs = S.feature_vector(cand, cand, cand["genres"], seed)
+    vec_py = S._py_feature_vector(cand, cand, cand["genres"], seed)
+    assert all(_bits(a) == _bits(b) for a, b in zip(vec_rs, vec_py))
+    # pacing match must NOT fire for empty strings (slot 25 == 0.0)
+    name_i = S.FEATURE_NAMES.index("pacing_match")
+    assert vec_rs[name_i] == 0.0
+    name_i = S.FEATURE_NAMES.index("shared_collection")
+    assert vec_rs[name_i] == 0.0
 
 
 @pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
@@ -285,3 +392,96 @@ def test_python_fallback_aliases_are_the_real_implementations():
     assert len(vec) == 28
     golden = json.loads((FIXTURES / "goldens_enriched.json").read_text())
     assert all(_bits(a) == _bits(b) for a, b in zip(vec, golden[0]["vec"]))
+
+
+# ── M-7: differential fuzz over the production-shaped input space ──
+# Recipe from the phase-2 review: cand ≠ cand_data, overview_sim ≠ 0,
+# empty data dicts, empty strings, falsy zeros — everything the frozen
+# goldens (which always pass cand_data == cand, overview_sim = 0) do
+# not reach.
+
+_VIA = [None, "", "knn", "tmdb", "director", "writer", "text"]
+_GENRES = ["Drama", "Action", "מותחן", "Animation", "War", ""]
+_ARCS = [None, [], ["feel-good"], ["Feel-Good  "], ["dark", "Tense"], ["x"]]
+
+
+@pytest.fixture(scope="module")
+def _fuzz_entities():
+    import random
+
+    rng = random.Random(20261031)  # deterministic corpus
+    rows = []
+    for i in range(60):
+        rows.append(
+            {
+                "id": 1000 + i,
+                "media_type": rng.choice(["movie", "tv"]),
+                "genres": rng.sample(_GENRES, k=rng.randint(0, 3)),
+                "keywords": rng.sample(
+                    ["dream", "gritty", "conspiracy", "time loop", "parody"], k=rng.randint(0, 3)
+                ),
+                "cast_ids": rng.sample(range(50), k=rng.randint(0, 5)),
+                "director_ids": rng.sample(range(20), k=rng.randint(0, 2)),
+                "writer_ids": rng.sample(range(20), k=rng.randint(0, 2)),
+                "composer_ids": rng.sample(range(20), k=rng.randint(0, 1)),
+                "dp_ids": rng.sample(range(20), k=rng.randint(0, 1)),
+                "companies": rng.sample(["Co", "Studio"], k=rng.randint(0, 2)),
+                "networks": rng.sample(["NT", "NT2"], k=rng.randint(0, 2)),
+                "original_language": rng.choice([None, "en", "ja", ""]),
+                "overview": rng.choice([None, "", "A detective story", "סיפור על גשם"]),
+                "overview_en": rng.choice([None, "", "English text"]),
+                "release_year": rng.choice([None, 0, 1960, 1999, 2020]),
+                "vote_average": rng.choice([None, 0.0, 5.5, 7.2, 9.0]),
+                "vote_count": rng.choice([None, 0, 100, 20000]),
+                "collection_id": rng.choice([None, 0, 7, 300]),
+                "adult": rng.choice([False, True]),
+                "via": rng.choice(_VIA),
+                "tmdb_rank": rng.choice([None, 0, 1, 4]),
+                "narrative": rng.choice([None, "", "linear", "anthology"]),
+                "pacing": rng.choice([None, "", "contemplative", "propulsive"]),
+                "emotional_arc": rng.choice(_ARCS),
+                "director": rng.choice([None, "", "Some Name"]),
+            }
+        )
+    return rows
+
+
+@pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
+def test_differential_fuzz_rust_vs_python(_fuzz_entities):
+    """Every (cand, data, seed) shape in the corpus, both feature_vector
+    and the fast score: Rust must equal pure Python to the contract
+    (bit-exact vec, <=1 ULP score)."""
+    import random
+
+    rng = random.Random(7)
+    rows = _fuzz_entities
+    w = list(S.HEURISTIC_WEIGHTS.values())
+    checked = 0
+    for cand in rows:
+        for seed in rng.sample(rows, 6):
+            for data in (cand, {}, dict(cand, id=cand["id"], cast_ids=[], keywords=[])):
+                overview_sim = rng.choice([0.0, rng.random(), 1.0])
+                vec_rs = S.feature_vector(cand, data, cand.get("genres", []), seed, overview_sim)
+                vec_py = S._py_feature_vector(
+                    cand, data, cand.get("genres", []), seed, overview_sim
+                )
+                assert len(vec_rs) == 28
+                for i, (a, b) in enumerate(zip(vec_rs, vec_py)):
+                    assert _bits(a) == _bits(b), (
+                        f"vec slot {i} ({S.FEATURE_NAMES[i]}) cand={cand['id']} "
+                        f"seed={seed['id']} data={'{}' if data == {} else 'row'} "
+                        f"sim={overview_sim:.3f}: {a!r} vs {b!r}"
+                    )
+                sp = S._entity_profile(seed, None)
+                cp = S._entity_profile(cand, data, genres_override=cand.get("genres"))
+                sp_py = S._py_entity_profile(seed, None)
+                cp_py = S._py_entity_profile(cand, data, genres_override=cand.get("genres"))
+                cgs = set(cand.get("genres", [])) or None
+                fast_rs = S._score_pair_fast(sp, cp, cand, data, cgs, 0.0, w)
+                fast_py = S._py_score_pair_fast(sp_py, cp_py, cand, data, cgs, 0.0, w)
+                assert _ulp(fast_rs, fast_py) <= 1, (
+                    f"score cand={cand['id']} seed={seed['id']} "
+                    f"data={'{}' if data == {} else 'row'}: {fast_rs!r} vs {fast_py!r}"
+                )
+                checked += 1
+    assert checked > 500  # a differential test that checked nothing is a bug

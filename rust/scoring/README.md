@@ -114,9 +114,14 @@ environment the goldens were captured in (no `REC_ENSEMBLE_CONFIG` /
    (`real.rs::py_sum`), or slot 27 lands 1 ULP off.
 3. **Python truthiness is part of the contract**: `via=""` is NOT a
    gate exemption, `tmdb_rank=0` reads as rank 1, year 0 reads as
-   missing, empty genre sets read as `None`. Two of these were caught
-   by the live Python suite (hypothesis + gate-exemption tests), not
-   by the goldens — run the full suite against the extension.
+   missing, empty genre sets read as `None`, `pacing=""` scores no
+   pacing match, `collection_id=0` is falsy everywhere (including the
+   `data or cand` fallback), and an EMPTY `entity_data` dict — the
+   regular production input for non-enriched candidates — reads empty
+   for the enriched-source fields but falls back to the entity for
+   narrative/pacing/emotional-arc. Several of these were caught by the
+   live Python suite and the phase-2 differential fuzz, not by the
+   goldens — run the full suite against the extension.
 4. **The recall SQL's `cast_list` is actor NAMES**, `cast_ids` is ids;
    Python `set()` keeps them distinct — hence `CastKey::Id | Name`.
 
@@ -131,3 +136,20 @@ The remaining per-pair cost is dominated by the Python↔Rust boundary
 (wrapper dispatch, per-pair genre-set conversion); batching the
 per-candidate scoring into one call is the natural next lever — an
 A/B decision deliberately left for the release gate.
+
+### Deployment guards (phase-2 review round 2)
+
+* The extension installs ONLY on CPython >= 3.12 — `sum()` over floats
+  became Neumaier-compensated there, and the port replicates THAT
+  fold; on 3.10/3.11 it would differ from the pure path in the last
+  ULP and stays off (`python-fallback`).
+* A locatable extension file below ~400 KB is skipped as truncated —
+  a cut-off `.so` can SIGBUS the process at import, below any Python
+  `except`. The guaranteed escape hatch stays `CINE_REC_SCORING_RS=0`.
+* Per-call fallback: conversion errors on exotic field types degrade
+  THAT call to pure Python; profile pairs dispatch by kind (dict =
+  pure, opaque = Rust), and a MIXED pair raises loudly rather than
+  guessing.
+* Known-open (phase 8, per the port plan): CI does not yet build the
+  extension, so the bridge tests skip there; a cargo job in the CI
+  matrix is part of the packaging phase.

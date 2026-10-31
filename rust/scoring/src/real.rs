@@ -202,9 +202,25 @@ pub fn entity_profile(
     entity_data: Option<&Entity>,
     genres_override: Option<&[String]>,
 ) -> Profile {
-    // `source = data if entity_data is not None else entity`
-    // (entity_data: Option<&Entity> carries exactly is-not-None; the
-    // pathological empty-dict case is rejected loudly by the bridge)
+    // canonical calls: real row data (truthy) or None
+    entity_profile_ex(entity, entity_data, entity_data.is_some(), genres_override)
+}
+
+/// The full-truthiness form used by the pyo3 bridge, where
+/// `entity_data` can be an EMPTY dict — a regular production input
+/// (`service.py`: `enriched.get(cid, {})`). Python's semantics there:
+/// the ENRICHED-source fields read the empty dict (everything falls to
+/// defaults), while the narrative/pacing/emotional-arc fields fall
+/// back to the ENTITY (`data.get(...) if data else entity.get(...)`
+/// — an empty dict is falsy). `data_truthy` carries exactly that.
+pub fn entity_profile_ex(
+    entity: &Entity,
+    entity_data: Option<&Entity>,
+    data_truthy: bool,
+    genres_override: Option<&[String]>,
+) -> Profile {
+    // `source = data if entity_data is not None else entity` — the
+    // enriched source follows is-not-None (an empty dict still counts)
     let source: &Entity = entity_data.unwrap_or(entity);
     // genres = entity.get("genres") or data.get("genres") or []
     let genres: Vec<String> = if !entity.genres.is_empty() {
@@ -227,9 +243,9 @@ pub fn entity_profile(
         .unwrap_or_default();
 
     let can_genres = canonical_genres(&param_genres);
-    // `data.get(...) if data else entity.get(...)` — the harness never
-    // passes an empty-dict data, so Option semantics are exact here
-    let arc_source: Option<&Vec<String>> = if entity_data.is_some() {
+    // `data.get(...) if data else entity.get(...)` — dict TRUTHINESS:
+    // an empty data dict falls these back to the entity
+    let arc_source: Option<&Vec<String>> = if data_truthy {
         entity_data.and_then(|d| d.emotional_arc.as_ref())
     } else {
         entity.emotional_arc.as_ref()
@@ -279,12 +295,12 @@ pub fn entity_profile(
         year: entity.release_year,
         votes: entity.vote_count.unwrap_or(0),
         rating: entity.vote_average.unwrap_or(0.0),
-        narrative: if entity_data.is_some() {
+        narrative: if data_truthy {
             entity_data.and_then(|d| d.narrative.clone())
         } else {
             entity.narrative.clone()
         },
-        pacing: if entity_data.is_some() {
+        pacing: if data_truthy {
             entity_data.and_then(|d| d.pacing.clone())
         } else {
             entity.pacing.clone()
@@ -324,8 +340,9 @@ pub fn vec_from_profiles(
         (!sp.dir_ids.is_empty() && !cp.dir_ids.is_empty() && !sp.dir_ids.is_disjoint(&cp.dir_ids))
             || (director_name_truthy && sp.director == cand_data.director);
 
-    let cand_coll = cand_data.collection_id.or(cand.collection_id);
-    let shared_collection = sp.coll.is_some() && cand_coll.is_some() && sp.coll == cand_coll;
+    let cand_coll = truthy_i64(cand_data.collection_id).or(truthy_i64(cand.collection_id));
+    let shared_collection =
+        truthy_i64(sp.coll).is_some() && cand_coll.is_some() && truthy_i64(sp.coll) == cand_coll;
 
     let mut director_channel = 0.0f64;
     if cand.via.as_deref() == Some("director") {
@@ -427,7 +444,8 @@ pub fn vec_from_profiles(
     } else {
         0.0
     };
-    let pacing_match = if sp.pacing.is_some() && sp.pacing == cp.pacing {
+    let pacing_truthy = matches!(sp.pacing.as_deref(), Some(p) if !p.is_empty());
+    let pacing_match = if pacing_truthy && sp.pacing == cp.pacing {
         1.0
     } else {
         0.0
@@ -472,6 +490,12 @@ pub fn vec_from_profiles(
     out.extend_from_slice(&vec);
     out.push(heuristic_score);
     out
+}
+
+/// Python truthiness for ints: 0 is falsy (`sp["coll"] and ...`,
+/// `cand_data.get("collection_id") or cand.get(...)`).
+fn truthy_i64(v: Option<i64>) -> Option<i64> {
+    v.filter(|x| *x != 0)
 }
 
 /// CPython 3.12's `sum()` over floats — Neumaier compensated summation,
@@ -574,7 +598,9 @@ pub fn score_pair_fast(
     let director_match =
         (!sp.dir_ids.is_empty() && !cp.dir_ids.is_empty() && !sp.dir_ids.is_disjoint(&cp.dir_ids))
             || (director_name_truthy && sp.director.as_deref() == cand_data_director);
-    let shared_collection = sp.coll.is_some() && cp.cand_coll.is_some() && sp.coll == cp.cand_coll;
+    let shared_collection = truthy_i64(sp.coll).is_some()
+        && truthy_i64(cp.cand_coll).is_some()
+        && truthy_i64(sp.coll) == truthy_i64(cp.cand_coll);
 
     let mut director_channel = 0.0f64;
     if cp.via.as_deref() == Some("director") {
@@ -668,7 +694,8 @@ pub fn score_pair_fast(
     } else {
         0.0
     };
-    let pacing_match = if sp.pacing.is_some() && sp.pacing == cp.pacing {
+    let pacing_truthy = matches!(sp.pacing.as_deref(), Some(p) if !p.is_empty());
+    let pacing_match = if pacing_truthy && sp.pacing == cp.pacing {
         1.0
     } else {
         0.0

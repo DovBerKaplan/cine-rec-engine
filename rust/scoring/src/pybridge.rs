@@ -55,10 +55,19 @@ fn opt_i64(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Option<i64>> {
     match dict_get(obj, key)? {
         None => Ok(None),
         Some(v) if v.is_none() => Ok(None),
-        Some(v) => v
-            .extract::<i64>()
-            .map(Some)
-            .map_err(|_| PyTypeError::new_err(format!("{key} must be an int"))),
+        // int-shaped is the norm; a float year/count truncates toward
+        // zero exactly like Python's int() (JSON rows occasionally
+        // carry floats). Exotic types raise — the per-call fallback
+        // in _scoring_accel covers them.
+        Some(v) => {
+            if let Ok(i) = v.extract::<i64>() {
+                Ok(Some(i))
+            } else if let Ok(f) = v.extract::<f64>() {
+                Ok(Some(f as i64))
+            } else {
+                Err(PyTypeError::new_err(format!("{key} must be a number")))
+            }
+        }
     }
 }
 
@@ -147,10 +156,12 @@ pub fn py_to_entity(obj: &Bound<'_, PyAny>) -> PyResult<Entity> {
         vote_average: opt_f64(obj, "vote_average")?,
         vote_count: opt_i64(obj, "vote_count")?,
         collection_id: opt_i64(obj, "collection_id")?,
-        adult: dict_get(obj, "adult")?
-            .map(|v| v.extract::<bool>())
-            .transpose()?
-            .unwrap_or(false),
+        // bool(entity.get("adult")) — Python truthiness of ANY value
+        adult: match dict_get(obj, "adult")? {
+            None => false,
+            Some(v) if v.is_none() => false,
+            Some(v) => v.is_truthy()?,
+        },
         via: opt_string(obj, "via")?,
         tmdb_rank: opt_i64(obj, "tmdb_rank")?,
         narrative: opt_string(obj, "narrative")?,
@@ -190,6 +201,7 @@ fn entity_profile(
     genres_override: Option<Vec<String>>,
 ) -> PyResult<PyProfile> {
     let ent = py_to_entity(entity)?;
+    let mut data_truthy = false;
     let data: Option<Entity> = match entity_data {
         None => None,
         Some(d) if d.is_none() => None,
@@ -197,17 +209,18 @@ fn entity_profile(
             let as_dict = d
                 .downcast::<PyDict>()
                 .map_err(|_| PyTypeError::new_err("entity_data must be a dict or None"))?;
-            // an EMPTY dict is the one input Python treats
-            // inconsistently — reject loudly rather than diverge
-            if as_dict.len() == 0 {
-                return Err(PyTypeError::new_err(
-                    "entity_data must be a non-empty dict or None",
-                ));
-            }
+            // EMPTY dict is a regular production input (service.py:
+            // `enriched.get(cid, {})` for every non-enriched candidate).
+            // Python semantics: enriched-source fields read the empty
+            // dict; narrative/pacing/emotional-arc fields fall back to
+            // the ENTITY (an empty dict is falsy). entity_profile_ex
+            // carries exactly that distinction.
+            data_truthy = as_dict.len() > 0;
             Some(py_to_entity(d)?)
         }
     };
-    let profile = real::entity_profile(&ent, data.as_ref(), genres_override.as_deref());
+    let profile =
+        real::entity_profile_ex(&ent, data.as_ref(), data_truthy, genres_override.as_deref());
     Ok(PyProfile {
         inner: Arc::new(profile),
     })
@@ -220,8 +233,8 @@ fn entity_profile(
 /// the per-pair call converts no weight data.
 #[pyclass]
 pub struct PairScorer {
-    w: Vec<f64>,
-    heuristic_w27: Vec<f64>,
+    w: std::sync::Arc<[f64]>,
+    heuristic_w27: std::sync::Arc<[f64]>,
 }
 
 #[pymethods]
@@ -244,8 +257,8 @@ impl PairScorer {
             )));
         }
         Ok(Self {
-            w: w_list,
-            heuristic_w27,
+            w: w_list.into(),
+            heuristic_w27: heuristic_w27.into(),
         })
     }
 
@@ -263,19 +276,24 @@ impl PairScorer {
         cand_genres_set: Option<&Bound<'_, PySet>>,
         overview_sim: f64,
     ) -> PyResult<f64> {
-        let director = opt_string(cand_data, "director")?;
+        // a non-string director can never equal the (string) seed
+        // director in Python — mapping it to None is identical
+        let director = match dict_get(cand_data, "director")? {
+            Some(v) if !v.is_none() => v.extract::<String>().ok(),
+            _ => None,
+        };
         let cgs: Option<HashSet<String>> = match cand_genres_set {
             // no identity cache here: the hot loop is multi-threaded
             // (warm path) and a shared cache both races and mis-hits on
             // recycled addresses — measured gain was ~5%, not worth it
+            // non-string items never intersect the canonical genre
+            // strings in Python either — skip them. No identity cache:
+            // callers may run multi-threaded, and a shared cache both
+            // races and mis-hits on recycled addresses (~5% measured).
             Some(s) => Some(
                 s.iter()
-                    .map(|item| {
-                        item.extract::<String>().map_err(|_| {
-                            PyTypeError::new_err("cand_genres_set items must be strings")
-                        })
-                    })
-                    .collect::<PyResult<HashSet<String>>>()?,
+                    .filter_map(|item| item.extract::<String>().ok())
+                    .collect::<HashSet<String>>(),
             ),
             None => None,
         };
@@ -308,13 +326,30 @@ impl PairScorer {
         seed: &Bound<'_, PyAny>,
         overview_sim: f64,
     ) -> PyResult<Vec<f64>> {
+        // the canonical call shape passes cand as its own data —
+        // convert once when they are the same object
         let cand_e = py_to_entity(cand)?;
-        let data_e = py_to_entity(cand_data)?;
+        let data_e = if cand.is(cand_data) {
+            cand_e.clone()
+        } else {
+            py_to_entity(cand_data)?
+        };
+        // an EMPTY data dict is falsy for the narrative-side fields;
+        // cand-as-its-own-data is always a real (truthy) row
+        let data_truthy = if cand.is(cand_data) {
+            true
+        } else {
+            cand_data
+                .downcast::<PyDict>()
+                .map(|d| d.len() > 0)
+                .unwrap_or(true)
+        };
         let seed_e = py_to_entity(seed)?;
         let hw = self.heuristic_w27.clone();
         Ok(py.allow_threads(move || {
             let sp = real::entity_profile(&seed_e, None, None);
-            let cp = real::entity_profile(&cand_e, Some(&data_e), Some(&cand_genres));
+            let cp =
+                real::entity_profile_ex(&cand_e, Some(&data_e), data_truthy, Some(&cand_genres));
             real::vec_from_profiles(&sp, &cp, &cand_e, &data_e, overview_sim, &hw)
         }))
     }

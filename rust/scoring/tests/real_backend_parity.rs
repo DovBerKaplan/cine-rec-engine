@@ -60,17 +60,36 @@ fn real_backend_is_bit_exact_on_base_and_enriched() {
 
 #[test]
 fn real_backend_scores_are_exactly_reproducible() {
-    // Determinism smoke: the same backend instance scored twice gives
-    // bit-identical results (no hidden state, no ordering luck).
+    // Determinism: the same backend scored twice gives BIT-IDENTICAL
+    // outputs (no hidden state, no ordering luck) — compare the actual
+    // values, not just mismatch counts.
     let h = load_enriched();
     let backend = RealBackend::new(h.w_list[..27].to_vec());
-    let r1 = run_parity(&backend, &h);
-    let r2 = run_parity(&backend, &h);
+
+    let collect = |b: &RealBackend| -> Vec<(Vec<u64>, u64)> {
+        h.cases
+            .iter()
+            .map(|case| {
+                let sp = b.entity_profile(&case.seed, None, None);
+                let cp = b.entity_profile(&case.cand, Some(&case.cand), Some(&case.cand.genres));
+                let set: HashSet<String> = case.cand.genres.iter().cloned().collect();
+                let score =
+                    b.score_pair_fast(&sp, &cp, &case.cand, &case.cand, Some(&set), 0.0, &h.w_list);
+                let vec =
+                    b.feature_vector(&case.cand, &case.cand, &case.cand.genres, &case.seed, 0.0);
+                let vec_bits: Vec<u64> = vec.iter().map(|v| v.to_bits()).collect();
+                (vec_bits, score.to_bits())
+            })
+            .collect()
+    };
+
+    let first = collect(&backend);
+    let second = collect(&backend);
     assert_eq!(
-        (r1.n_vec_mismatch, r1.n_score_mismatch),
-        (r2.n_vec_mismatch, r2.n_score_mismatch)
+        first, second,
+        "scores/vectors must be bit-identical across runs"
     );
-    assert!(r1.green());
+    assert!(!first.is_empty());
 }
 
 #[test]
