@@ -485,3 +485,206 @@ def test_differential_fuzz_rust_vs_python(_fuzz_entities):
                 )
                 checked += 1
     assert checked > 500  # a differential test that checked nothing is a bug
+
+
+# ── M-8: tests for the mixed-pair root fix (phase-2 review round 3) ──
+# Python's set() compares VALUES (None == None), sizes enter the
+# Jaccard/Dice denominators, and [:5] slices BEFORE any filtering —
+# so item-skipping conversions produced wrong-but-plausible scores.
+# These pin the exact repro cases + the rebuild-don't-crash contract.
+
+
+def _repro_base(**overrides):
+    """Deterministic base row (bench-shaped)."""
+    row = {
+        "id": 1,
+        "media_type": "movie",
+        "genres": ["Action"],
+        "keywords": ["dream"],
+        "cast_ids": [11],
+        "director_ids": [4],
+        "writer_ids": [],
+        "composer_ids": [],
+        "dp_ids": [],
+        "companies": ["co0"],
+        "networks": [],
+        "original_language": "en",
+        "overview": "A story",
+        "overview_en": None,
+        "release_year": 2001,
+        "vote_average": 7.0,
+        "vote_count": 100,
+        "collection_id": None,
+        "adult": False,
+        "via": None,
+    }
+    row.update(overrides)
+    return row
+
+
+@pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
+@pytest.mark.parametrize(
+    "cand_over,seed_over",
+    [
+        # cast: None is a VALUE — matches None on the other side
+        ({"cast_ids": [1, None]}, {"cast_ids": [2, None]}),
+        # cast by names: equal names match
+        ({"cast_ids": ["a", "b"]}, {"cast_ids": ["a", "c"]}),
+        # [:5] slices BEFORE anything: the trailing 9 never enters the set
+        ({"cast_ids": [None, 1, 2, 3, 4, 9]}, {"cast_ids": [9]}),
+        # director None == None
+        ({"director_ids": [None]}, {"director_ids": [None]}),
+        # companies with None members
+        ({"companies": ["co1", None]}, {"companies": [None]}),
+        # non-integral numeric rows must not crash the request
+        ({"vote_count": 15000.5}, {}),
+        ({"release_year": 2001.6}, {}),
+        # surrogate strings in overview: cand side
+        ({"overview": "x \ud800"}, {}),
+        # surrogate strings in overview: seed side
+        ({}, {"overview": "y \ud800"}),
+    ],
+)
+def test_mixed_and_value_semantics_repros(cand_over, seed_over):
+    w = list(S.HEURISTIC_WEIGHTS.values())
+    cand = _repro_base(id=2, **cand_over)
+    seed = _repro_base(id=100, genres=["Drama"], **seed_over)
+
+    vec_rs = S.feature_vector(cand, cand, cand["genres"], seed)
+    vec_py = S._py_feature_vector(cand, cand, cand["genres"], seed)
+    assert all(_bits(a) == _bits(b) for a, b in zip(vec_rs, vec_py)), (
+        cand_over,
+        seed_over,
+    )
+
+    sp = S._entity_profile(seed, None)
+    cp = S._entity_profile(cand, cand, genres_override=cand["genres"])
+    sp_py = S._py_entity_profile(seed, None)
+    cp_py = S._py_entity_profile(cand, cand, genres_override=cand["genres"])
+    fast_rs = S._score_pair_fast(sp, cp, cand, cand, set(cand["genres"]), 0.0, w)
+    fast_py = S._py_score_pair_fast(sp_py, cp_py, cand, cand, set(cand["genres"]), 0.0, w)
+    assert _ulp(fast_rs, fast_py) <= 1, (cand_over, seed_over, fast_rs, fast_py)
+
+
+@pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
+def test_mixed_profile_pair_rebuilds_pure():
+    """A Rust seed profile + a pure-Python candidate profile (the exact
+    crash shape: an exotic candidate row fell back at conversion) must
+    score identically to the pure path — never raise mixed-kinds."""
+    w = list(S.HEURISTIC_WEIGHTS.values())
+    clean_seed = _repro_base(id=100, genres=["Drama"], cast_ids=[7, 8])
+    exotic_cand = _repro_base(id=2, vote_count=15000.5, cast_ids=[7, 9])
+
+    sp_rust = S._entity_profile(clean_seed, None)  # Rust handle
+    assert type(sp_rust).__name__ == "PyProfile"
+    # the exotic row's conversion fails -> wrapper returns a pure dict
+    cp_pure = S._entity_profile(exotic_cand, exotic_cand, genres_override=exotic_cand["genres"])
+    assert isinstance(cp_pure, dict)
+
+    got = S._score_pair_fast(sp_rust, cp_pure, exotic_cand, exotic_cand,
+                             set(exotic_cand["genres"]), 0.0, w)
+    sp_py = S._py_entity_profile(clean_seed, None)
+    cp_py = S._py_entity_profile(exotic_cand, exotic_cand, genres_override=exotic_cand["genres"])
+    want = S._py_score_pair_fast(sp_py, cp_py, exotic_cand, exotic_cand,
+                                 set(exotic_cand["genres"]), 0.0, w)
+    assert _ulp(got, want) <= 1
+
+    # and the mirror mix (pure seed + Rust candidate)
+    got2 = S._score_pair_fast(sp_py, S._entity_profile(exotic_cand, exotic_cand,
+                                                       genres_override=exotic_cand["genres"]),
+                              exotic_cand, exotic_cand, set(exotic_cand["genres"]), 0.0, w)
+    assert _ulp(got2, want) <= 1
+
+
+@pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
+def test_differential_fuzz_typed_exotic_rows():
+    """The reviewer's typed/exotic profile: non-integral floats, Decimals,
+    None/str items inside id lists, sets/tuples as lists, via=True,
+    adult variants, 2**70 ids, surrogates — the service call must never
+    raise where _py_* doesn't, and outputs must match to the contract."""
+    import random
+    from decimal import Decimal
+
+    rng = random.Random(4242)
+    w = list(S.HEURISTIC_WEIGHTS.values())
+
+    def exotic_row(i):
+        return {
+            "id": rng.choice([i, 2**70, -1]),
+            "media_type": "movie",
+            "genres": rng.choice([["Action"], ["מותחן"], [], ["Action", "Drama"]]),
+            "keywords": rng.choice([("dream",), ["dream", "gritty"], [], ["x" * 3]]),
+            "cast_ids": rng.choice(
+                [[1, None], ["a", "b"], [None, 1, 2, 3, 4, 9], [], [2.0], ["a"]]
+            ),
+            "director_ids": rng.choice([[None], [4], [], [3, None]]),
+            "writer_ids": [],
+            "composer_ids": [],
+            "dp_ids": [],
+            "companies": rng.choice([{"co1", None}, ["co1", None], [], ["x"]]),
+            "networks": [],
+            "original_language": "en",
+            "overview": rng.choice(["A story", "x \ud800", "", None]),
+            "overview_en": None,
+            "release_year": rng.choice([2001, 2001.6, 0, None, Decimal("2001")]),
+            "vote_average": 7.0,
+            "vote_count": rng.choice([100, 15000.5, 20000, Decimal("900"), 0]),
+            "collection_id": rng.choice([None, 0, 7]),
+            "adult": rng.choice([False, True, 0, 1, "", "yes", None]),
+            "via": rng.choice([None, "", "knn", True, "tmdb"]),
+        }
+
+    rows = [exotic_row(i) for i in range(25)]
+    checked = 0
+    for cand in rows:
+        for seed in rows:
+            if seed is cand:
+                continue
+            for data in (cand, {}):
+                overview_sim = rng.choice([0.0, rng.random(), 1.0])
+                # the pure path defines what may not raise
+                vec_py = S._py_feature_vector(
+                    cand, data, cand.get("genres", []), seed, overview_sim
+                )
+                vec_rs = S.feature_vector(cand, data, cand.get("genres", []), seed, overview_sim)
+                assert all(_bits(a) == _bits(b) for a, b in zip(vec_rs, vec_py)), (
+                    f"vec diverged cand={cand['id']} seed={seed['id']}"
+                )
+                sp = S._entity_profile(seed, None)
+                cp = S._entity_profile(cand, data, genres_override=cand.get("genres"))
+                sp_py = S._py_entity_profile(seed, None)
+                cp_py = S._py_entity_profile(cand, data, genres_override=cand.get("genres"))
+                cgs = set(cand.get("genres", [])) or None
+                fast_rs = S._score_pair_fast(sp, cp, cand, data, cgs, 0.0, w)
+                fast_py = S._py_score_pair_fast(sp_py, cp_py, cand, data, cgs, 0.0, w)
+                assert _ulp(fast_rs, fast_py) <= 1, (
+                    f"score diverged cand={cand['id']} seed={seed['id']}"
+                )
+                checked += 1
+    assert checked > 500
+
+
+def test_extension_file_problem_flags_every_truncation():
+    """The ELF structural gate, exercised on real bytes (the file is
+    copied and truncated — NEVER imported)."""
+    import tempfile
+
+    from cine_rec_engine import _scoring_accel as A
+
+    src = Path(__file__).parent.parent / "cine_rec_engine" / "_scoring_rs.so"
+    if not src.exists():
+        pytest.skip("compiled _scoring_rs not installed")
+    full = src.read_bytes()
+    assert len(full) > 400_000
+
+    with tempfile.TemporaryDirectory() as d:
+        full_copy = Path(d) / "full.so"
+        full_copy.write_bytes(full)
+        assert A._extension_file_problem(str(full_copy)) is None
+
+        for cut in (0, 64, 4096, 400_000, len(full) // 2, len(full) - 1):
+            p = Path(d) / f"cut_{cut}.so"
+            p.write_bytes(full[:cut])
+            problem = A._extension_file_problem(str(p))
+            assert problem is not None, f"cut at {cut} must be flagged"
+            assert "truncated" in problem
