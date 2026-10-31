@@ -23,3 +23,6 @@ site/
 
 # Rust (rust-port) — crate build artifacts
 rust/*/target/
+
+# Rust extension (built locally; wheels bundle it at release time)
+*.so

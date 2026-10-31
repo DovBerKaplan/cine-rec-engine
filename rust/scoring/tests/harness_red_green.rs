@@ -105,19 +105,18 @@ fn enriched_set_actually_exercises_the_base_dead_features() {
 
 #[test]
 fn enriched_gate_exemption_is_visible_in_goldens() {
-    // A genre-clashing candidate WITH a via tag scores against every
-    // seed (exemption); the same clash WITHOUT via is gated to 0.0.
+    // A genre-clashing candidate WITH a (non-empty) via tag scores
+    // against every seed (exemption); the same clash WITHOUT via — or
+    // with an EMPTY via string, which is falsy in Python — is gated
+    // to 0.0 (pinned by the k=15 clash candidate).
     let h = load_enriched();
     let war = |c: &cine_rec_scoring::GoldenCase| c.cand.genres.as_slice() == ["War"];
-    let exempt: Vec<_> = h
-        .cases
-        .iter()
-        .filter(|c| war(c) && c.cand.via.is_some())
-        .collect();
+    let via_truthy = |c: &cine_rec_scoring::GoldenCase| matches!(c.cand.via.as_deref(), Some(v) if !v.is_empty());
+    let exempt: Vec<_> = h.cases.iter().filter(|c| war(c) && via_truthy(c)).collect();
     let gated: Vec<_> = h
         .cases
         .iter()
-        .filter(|c| war(c) && c.cand.via.is_none())
+        .filter(|c| war(c) && !via_truthy(c))
         .collect();
     assert!(!exempt.is_empty(), "no via-tagged clash candidates found");
     assert!(!gated.is_empty(), "no plain clash candidates found");

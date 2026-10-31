@@ -182,6 +182,13 @@ def build_enriched() -> tuple[list, list]:
         # a couple of named directors to exercise the name fallback
         if k % 4 == 0:
             c["director"] = f"Director Name {k // 4}"
+        # EMPTY via is falsy in Python — NOT gate-exempt. Pin that: a
+        # clash candidate with via="" must gate to 0.0 like a no-via one
+        # (caught live by test_gate_exemptions/hypothesis during the
+        # phase-2 port; anchored here for the later phases).
+        if k == 15:
+            c["via"] = ""
+            c["genres"] = [DISJOINT_GENRE]
         cands.append(c)
 
     seeds = []

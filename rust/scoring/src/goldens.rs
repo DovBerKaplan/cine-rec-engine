@@ -71,6 +71,7 @@ const KNOWN_ENTITY_KEYS: &[&str] = &[
     "genres",
     "keywords",
     "cast_ids",
+    "cast_list",
     "director_ids",
     "writer_ids",
     "composer_ids",

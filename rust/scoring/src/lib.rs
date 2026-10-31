@@ -42,13 +42,18 @@
 //! operations by default, and this crate must keep it that way.
 
 pub mod backend;
+pub mod constants;
 pub mod goldens;
 pub mod parity;
+#[cfg(feature = "pyo3")]
+pub mod pybridge;
+pub mod real;
 pub mod types;
 
 pub use backend::{OracleBackend, ScoringBackend, ZeroBackend};
 pub use goldens::{Fixture, GoldenCase, GoldenEntry, Harness, Probe};
 pub use parity::{ulp_distance, ParityReport};
+pub use real::RealBackend;
 pub use types::{Entity, Profile};
 
 /// Number of feature-vector entries the contract pins (27 features +

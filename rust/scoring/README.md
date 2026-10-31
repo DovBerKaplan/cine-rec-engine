@@ -1,8 +1,9 @@
-# cine-rec-scoring — golden parity harness (rust-port, phase 1)
+# cine-rec-scoring — scoring core port (rust-port, phases 1–2)
 
-Rust-side contract for porting the engine's scoring core. The Python
-package stays the source of truth; this crate pins the parity contract
-in executable form **before** any scoring code is ported.
+Phase 1 pinned the parity contract as an executable harness; phase 2
+translated the scoring core itself (`real.rs`, proven bit-exact by the
+same harness) and exposed it to Python through the optional pyo3
+bridge (`pybridge.rs`, feature `pyo3`, module `cine_rec_engine._scoring_rs`).
 
 ## The contract
 
@@ -84,3 +85,49 @@ Regenerates `entities_120_4.json`, `entities_enriched.json` and
 together with a re-capture of the golden files, under the same clean
 environment the goldens were captured in (no `REC_ENSEMBLE_CONFIG` /
 `CINE_REC_SCORER` overrides) — fixtures and goldens are one contract.
+
+
+## Phase 2 — the real port + pyo3 bridge
+
+* `src/real.rs` — the translated scoring core; `tests/real_backend_parity.rs`
+  drives it through the SAME harness: **bit-exact vectors, ≤1-ULP fast
+  scores, on both golden sets (480 + 64 pairs)**.
+* `src/pybridge.rs` — optional pyo3 extension (feature `pyo3`, abi3):
+  opaque `PyProfile` handles + a `PairScorer` binding the weight lists
+  once; the per-pair call releases the GIL, so the warm-path thread
+  pool parallelizes for real. Build: `cargo build --features pyo3
+  --release`, then copy `target/release/libcine_rec_scoring.so` to
+  `cine_rec_engine/_scoring_rs.so` (wheels bundle it at release time —
+  phase 8).
+* Python side: `cine_rec_engine/_scoring_accel.py` rebinds the service
+  dispatchers when the extension imports; `CINE_REC_SCORING_RS=0`
+  forces the pure path. A missing/broken extension never breaks the
+  engine.
+
+### Portability discoveries worth remembering
+
+1. **serde_json needs `float_roundtrip`**: the default parser can land
+   1 ULP off the correctly-rounded value on some literals — invisible
+   while both sides parse identically, fatal against computed bits.
+2. **CPython 3.12 `sum()` is Neumaier-compensated**: every ported
+   Python `sum()` over floats must use the same compensated fold
+   (`real.rs::py_sum`), or slot 27 lands 1 ULP off.
+3. **Python truthiness is part of the contract**: `via=""` is NOT a
+   gate exemption, `tmdb_rank=0` reads as rank 1, year 0 reads as
+   missing, empty genre sets read as `None`. Two of these were caught
+   by the live Python suite (hypothesis + gate-exemption tests), not
+   by the goldens — run the full suite against the extension.
+4. **The recall SQL's `cast_list` is actor NAMES**, `cast_ids` is ids;
+   Python `set()` keeps them distinct — hence `CastKey::Id | Name`.
+
+### Bench (this machine, 2500 pairs, best of 3 × 2 runs)
+
+| Path | Pure Python | Rust | Speedup |
+|---|---|---|---|
+| reference scorer (`_score_candidate_vs_seed`) | 14.1–14.3 µs/pair | 9.6–9.7 µs/pair | ~1.5× |
+| hot loop (profiles + `_score_pair_fast`) | 6.1–6.2 µs/pair | 3.8–3.9 µs/pair | ~1.6× |
+
+The remaining per-pair cost is dominated by the Python↔Rust boundary
+(wrapper dispatch, per-pair genre-set conversion); batching the
+per-candidate scoring into one call is the natural next lever — an
+A/B decision deliberately left for the release gate.

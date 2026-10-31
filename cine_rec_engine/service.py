@@ -1676,7 +1676,7 @@ ACTIVE_WEIGHTS = LEARNED_WEIGHTS or HEURISTIC_WEIGHTS
 HEURISTIC_ACTIVE_LIST = list(ACTIVE_WEIGHTS.values())
 
 
-def _entity_profile(entity: dict, entity_data: Optional[dict],
+def _py_entity_profile(entity: dict, entity_data: Optional[dict],
                     genres_override: Optional[list] = None) -> dict:
     """Derive-once view of one side of a (seed, candidate) pair.
 
@@ -1741,7 +1741,7 @@ def _entity_profile(entity: dict, entity_data: Optional[dict],
     }
 
 
-def _vec_from_profiles(sp: dict, cp: dict, cand: dict, cand_data: dict,
+def _py_vec_from_profiles(sp: dict, cp: dict, cand: dict, cand_data: dict,
                        overview_sim: float) -> list:
     """feature_vector over precomputed profiles — same 28-entry output."""
     # director_match (name fallback mirrors feature_vector)
@@ -1889,7 +1889,7 @@ def _vec_from_profiles(sp: dict, cp: dict, cand: dict, cand_data: dict,
     return vec
 
 
-def feature_vector(
+def _py_feature_vector(
     cand: dict,
     cand_data: dict,
     cand_genres: list,
@@ -1903,9 +1903,9 @@ def feature_vector(
     space. Delegates to the profile-cached fast path (identical output;
     profiles are built per call here, once per entity in hot loops).
     """
-    sp = _entity_profile(seed, None)
-    cp = _entity_profile(cand, cand_data, genres_override=cand_genres)
-    return _vec_from_profiles(sp, cp, cand, cand_data, overview_sim)
+    sp = _py_entity_profile(seed, None)
+    cp = _py_entity_profile(cand, cand_data, genres_override=cand_genres)
+    return _py_vec_from_profiles(sp, cp, cand, cand_data, overview_sim)
 
 
 
@@ -1985,7 +1985,7 @@ def _mmr_order(results: list, lam: float, k: int) -> list:
     return selected + pool
 
 
-def _score_pair_fast(sp: dict, cp: dict, cand: dict, cand_data: dict,
+def _py_score_pair_fast(sp: dict, cp: dict, cand: dict, cand_data: dict,
                        cand_genres_set: Optional[set], overview_sim: float,
                        w_list: list) -> float:
     """_score_candidate_vs_seed over precomputed profiles + weight list.
@@ -2195,6 +2195,36 @@ def _score_candidate_vs_seed(
     vec = feature_vector(cand, cand_data, cand_genres, seed, overview_sim)
     w_map = weights if weights is not None else ACTIVE_WEIGHTS
     return sum(w * v for w, v in zip(w_map.values(), vec))
+
+
+# ── Optional Rust acceleration (rust-port phase 2) ─────────────────
+# Public dispatchers: identical to the pure implementations until the
+# rebind below. Everything hot calls THESE names.
+_entity_profile = _py_entity_profile
+_score_pair_fast = _py_score_pair_fast
+feature_vector = _py_feature_vector
+
+# The _py_* implementations above are the SOURCE OF TRUTH; when the
+# optional compiled extension (`cine_rec_engine._scoring_rs`) is
+# importable the three dispatcher names rebind to it — output-identical
+# by the golden parity contract (rust/scoring harness, both golden
+# sets). CINE_REC_SCORING_RS=0 forces the pure-Python path. A missing
+# or broken extension must never break the engine: degrade, never fail.
+
+
+def _install_rust_scoring() -> str:
+    flag = os.getenv("CINE_REC_SCORING_RS", "1").strip().lower()
+    if flag in {"0", "false", "no", "off"}:
+        return "disabled (CINE_REC_SCORING_RS=0)"
+    try:
+        from . import _scoring_accel
+        return _scoring_accel.install(globals())
+    except Exception as e:  # noqa: BLE001 — fail-safe by contract
+        logger.info(f"rust scoring not active ({type(e).__name__}: {e})")
+        return "python-fallback"
+
+
+SCORING_RS = _install_rust_scoring()
 
 
 def _balance_by_media_type(

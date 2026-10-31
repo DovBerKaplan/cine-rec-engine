@@ -1,14 +1,23 @@
 [package]
 name = "cine-rec-scoring"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Rust port of cine-rec-engine's scoring core - phase 1: golden parity harness"
+description = "Rust port of cine-rec-engine's scoring core - golden parity harness + real backend + pyo3 bridge"
 license = "MIT"
 publish = false
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# float_roundtrip: the default parser can land 1 ULP off the
+# correctly-rounded value on some literals — unacceptable when the
+# golden bits ARE the contract (found via real-backend parity: case 0
+# slot 0 parsed 1 ULP high while Python/std parse agree)
+serde_json = { version = "1", features = ["float_roundtrip"] }
+pyo3 = { version = "0.23", features = ["abi3-py310", "macros"], optional = true }
+
+[features]
+pyo3 = ["dep:pyo3"]
 
 [lib]
 name = "cine_rec_scoring"
+crate-type = ["rlib", "cdylib"]

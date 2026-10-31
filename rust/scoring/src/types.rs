@@ -9,6 +9,16 @@
 
 use std::collections::HashSet;
 
+/// A cast-set member — person id OR actor name. The recall SQL emits
+/// BOTH shapes (`cast_ids` as ints, `cast_list` as names); Python's
+/// plain `set()` keeps them distinct (5 != "5") and so does this.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize)]
+#[serde(untagged)]
+pub enum CastKey {
+    Id(i64),
+    Name(String),
+}
+
 /// One enriched catalog row (as produced by recall / `bench_scoring`).
 ///
 /// `#[serde(default)]` mirrors Python `dict.get` semantics: a missing
@@ -23,6 +33,11 @@ pub struct Entity {
     pub genres: Vec<String>,
     pub keywords: Vec<String>,
     pub cast_ids: Vec<i64>,
+    /// Actor-name cast list the recall SQL produces; used only when
+    /// `cast_ids` is empty (`source.get("cast_ids") or source.get("cast_list")`).
+    /// Ints are accepted too (id-shaped lists behave as ids).
+    #[serde(default)]
+    pub cast_list: Vec<CastKey>,
     pub director_ids: Vec<i64>,
     pub writer_ids: Vec<i64>,
     pub composer_ids: Vec<i64>,
@@ -60,8 +75,8 @@ pub struct Profile {
     pub writer_ids: HashSet<i64>,
     pub composer_ids: HashSet<i64>,
     pub dp_ids: HashSet<i64>,
-    /// Top-5 cast ids.
-    pub cast5: HashSet<i64>,
+    /// Top-5 cast members (ids or names, whichever the row carried).
+    pub cast5: HashSet<CastKey>,
     /// Meta-stopword-filtered keyword set.
     pub keywords: HashSet<String>,
     pub companies: HashSet<String>,
@@ -89,8 +104,12 @@ pub struct Profile {
     pub narrative: Option<String>,
     pub pacing: Option<String>,
     pub emotional_arc: Option<Vec<String>>,
-    /// Lowercased/stripped emotional-arc tag set.
+    /// Lowercased/stripped emotional-arc tag set (arc-match input).
     pub arc_set: HashSet<String>,
+    /// Lowercased-only emotional-arc tag set — tone_score reads the
+    /// RAW lowered tags (no strip), so `'feel-good  '` with trailing
+    /// spaces does NOT hit the light/dark tag lists in Python.
+    pub arc_lower_raw: HashSet<String>,
     pub adult: bool,
     pub via: Option<String>,
     // candidate-side precomputed pair inputs
