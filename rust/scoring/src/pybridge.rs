@@ -242,9 +242,11 @@ pub fn py_to_entity(obj: &Bound<'_, PyAny>) -> PyResult<Entity> {
 /// The ORIGINAL inputs are kept alongside (the `origin` getter) so the
 /// pure-Python path can rebuild this side exactly when a call ends up
 /// mixed (one profile converted, the other not) or when a Rust call
-/// degrades — a mixed pair must never crash the request. The origins
-/// are Python objects touched ONLY under the GIL; the hot scoring
-/// closure sees just the `Arc<Profile>`.
+/// degrades — a mixed pair must never crash a request. The origins
+/// are REFERENCES to the caller's dicts, not copies: the service never
+/// mutates entity rows between profile construction and scoring
+/// (documented in _scoring_accel). Python objects are touched ONLY
+/// under the GIL; the hot scoring closure sees just the `Arc<Profile>`.
 #[pyclass]
 pub struct PyProfile {
     inner: Arc<Profile>,
@@ -267,6 +269,29 @@ impl PyProfile {
             self.origin_data.as_ref().map(|o| o.clone_ref(py)),
             self.origin_genres.as_ref().map(|o| o.clone_ref(py)),
         )
+    }
+
+    /// GC support: the held origin references could theoretically join
+    /// a reference cycle (an entity dict that somewhere stores this
+    /// profile); without traversal such a cycle would never collect.
+    fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
+        visit.call(&self.origin_entity)?;
+        if let Some(d) = &self.origin_data {
+            visit.call(d)?;
+        }
+        if let Some(g) = &self.origin_genres {
+            visit.call(g)?;
+        }
+        Ok(())
+    }
+
+    fn __clear__(&mut self) {
+        // release the origin references; the Rust profile stays usable
+        self.origin_data = None;
+        self.origin_genres = None;
+        // origin_entity is not Option; clearing it wholesale would need
+        // a None sentinel — the cycle is already broken by the two above
+        // plus Python's own tp_clear on the holder.
     }
 }
 

@@ -199,14 +199,27 @@ def install(ns: dict[str, Any]) -> str:
             # (lone surrogates) — this call only, pure Python
             return py_entity_profile(entity, entity_data, genres_override)
 
-    def _pure_profile(p):
-        """A profile usable by the pure scorer: dicts pass through; a
-        Rust profile is REBUILT from its saved original inputs (the
-        `origin` getter) — a mixed pair must never crash a request."""
+    # L-9: the rebuild is memoized per profile OBJECT (identity) — in
+    # the hot loop the same seed/candidate profile object scores many
+    # pairs, and rebuilding per pair made an exotic-seed request slower
+    # than plain Python. PyProfile is immutable from Python, so an
+    # identity cache cannot go stale.
+    _memo: dict[str, tuple] = {"sp": (None, None), "cp": (None, None)}
+
+    def _pure_profile(p, slot):
+        cached_obj, cached_pure = _memo[slot]
+        if cached_obj is p:
+            return cached_pure
         if not _is_rust_profile(p):
-            return p
+            return p  # already pure — nothing to remember
+        # L-10 note: origin holds REFERENCES to the original dicts, not
+        # copies. The service never mutates entity rows between profile
+        # construction and scoring (documented contract); mutating them
+        # would silently change the rebuild.
         entity, entity_data, genres_override = p.origin
-        return py_entity_profile(entity, entity_data, genres_override)
+        pure = py_entity_profile(entity, entity_data, genres_override)
+        _memo[slot] = (p, pure)
+        return pure
 
     def score_pair_fast(
         sp, cp, cand: dict, cand_data: dict, cand_genres_set, overview_sim: float, w_list: list
@@ -219,8 +232,8 @@ def install(ns: dict[str, Any]) -> str:
             except (TypeError, ValueError, OverflowError):
                 pass  # rebuild both sides pure below
         return py_score_pair_fast(
-            _pure_profile(sp),
-            _pure_profile(cp),
+            _pure_profile(sp, "sp"),
+            _pure_profile(cp, "cp"),
             cand, cand_data, cand_genres_set, overview_sim, w_list,
         )
 
