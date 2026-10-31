@@ -99,8 +99,14 @@ impl ScoringBackend for ZeroBackend {
 ///
 /// Beyond the cursor + phase discipline (a double call, a skipped
 /// call, or swapped order panics loudly), the oracle validates every
-/// driver argument it can see: entity ids per side (seed profiles get
-/// `entity_data = None`, candidate profiles get their own data back),
+/// driver argument it can see, PROFILES INCLUDED: `entity_profile`
+/// returns profiles TAGGED with their entity id and side (via the
+/// `coll` / `via` fields the oracle owns), and `score_pair_fast`
+/// checks those tags against the CURRENT case — so swapped sides,
+/// stale/foreign profiles, or skipped `entity_profile` calls all
+/// panic instead of passing. Additionally validated: entity ids per
+/// side (seed profiles get `entity_data = None`, candidates get their
+/// own data back AND a `genres_override` mirroring their genres),
 /// `cand_data.id == cand.id`, `cand_genres == cand.genres`,
 /// `cand_genres_set` matching (or `None` for empty genres),
 /// `overview_sim == 0.0`, and `w_list` equal to the harness's frozen
@@ -121,6 +127,11 @@ pub struct OracleBackend<'h> {
     /// case; true → feature_vector for the current case.
     fv_phase: Cell<bool>,
 }
+
+/// Side tag the oracle writes into returned profiles (`via` field) —
+/// pure test-double bookkeeping, never produced by a real backend.
+const ORACLE_SEED_SIDE: &str = "__oracle_seed__";
+const ORACLE_CAND_SIDE: &str = "__oracle_cand__";
 
 impl<'h> OracleBackend<'h> {
     pub fn new(harness: &'h Harness) -> Self {
@@ -161,14 +172,17 @@ impl ScoringBackend for OracleBackend<'_> {
         genres_override: Option<&[String]>,
     ) -> Profile {
         // Driver contract: seed side gets entity_data = None; candidate
-        // side gets the SAME entity back as its enriched data, and any
-        // genres_override equals the entity's own genres.
-        match entity_data {
-            None => assert!(
-                self.seed_ids.contains(&entity.id),
-                "entity_profile(seed, None) called with non-seed id {}",
-                entity.id
-            ),
+        // side gets the SAME entity back as its enriched data AND a
+        // genres_override mirroring its genres.
+        let side = match entity_data {
+            None => {
+                assert!(
+                    self.seed_ids.contains(&entity.id),
+                    "entity_profile(seed, None) called with non-seed id {}",
+                    entity.id
+                );
+                ORACLE_SEED_SIDE
+            }
             Some(data) => {
                 assert_eq!(
                     data.id, entity.id,
@@ -180,8 +194,14 @@ impl ScoringBackend for OracleBackend<'_> {
                     "entity_profile(cand, Some) called with non-candidate id {}",
                     entity.id
                 );
+                assert!(
+                    genres_override.is_some(),
+                    "candidate profile without genres_override (id {})",
+                    entity.id
+                );
+                ORACLE_CAND_SIDE
             }
-        }
+        };
         if let Some(g) = genres_override {
             assert_eq!(
                 g,
@@ -190,7 +210,12 @@ impl ScoringBackend for OracleBackend<'_> {
                 entity.id
             );
         }
-        Profile::default() // the oracle serves final answers only
+        // tagged profile: identity + side, for score_pair_fast to check
+        Profile {
+            coll: Some(entity.id),
+            via: Some(side.to_string()),
+            ..Profile::default()
+        }
     }
 
     fn feature_vector(
@@ -228,8 +253,8 @@ impl ScoringBackend for OracleBackend<'_> {
 
     fn score_pair_fast(
         &self,
-        _sp: &Profile,
-        _cp: &Profile,
+        sp: &Profile,
+        cp: &Profile,
         cand: &Entity,
         cand_data: &Entity,
         cand_genres_set: Option<&HashSet<String>>,
@@ -245,6 +270,30 @@ impl ScoringBackend for OracleBackend<'_> {
         assert_eq!(
             cand_data.id, cand.id,
             "score_pair_fast cand_data is not the candidate (case {i})"
+        );
+        // profile tags: the profiles must belong to THIS case's
+        // entities, on the right sides — swapped sides, stale profiles
+        // from a previous pair, foreign profiles, or skipped
+        // entity_profile calls (untagged Profile::default) all fail here
+        assert_eq!(
+            sp.coll,
+            Some(case.seed.id),
+            "sp is not the current case's seed profile (case {i})"
+        );
+        assert_eq!(
+            sp.via.as_deref(),
+            Some(ORACLE_SEED_SIDE),
+            "sp was not built by entity_profile(seed, None) (case {i})"
+        );
+        assert_eq!(
+            cp.coll,
+            Some(case.cand.id),
+            "cp is not the current case's candidate profile (case {i})"
+        );
+        assert_eq!(
+            cp.via.as_deref(),
+            Some(ORACLE_CAND_SIDE),
+            "cp was not built by entity_profile(cand, Some, override) (case {i})"
         );
         let expected_set: HashSet<String> = cand.genres.iter().cloned().collect();
         match cand_genres_set {

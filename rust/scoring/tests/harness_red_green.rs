@@ -130,54 +130,63 @@ fn enriched_gate_exemption_is_visible_in_goldens() {
 
 // ── Pairing convention, anchored to Python ─────────────────────────
 
+/// The full probe contract over a harness: index agreement, bit-exact
+/// computed vec slots, computed score within contract tolerance, and
+/// discriminating (non-zero, distinct) probes. Shared by the positive
+/// test and the golden-mutation negative test.
+fn check_probes(h: &Harness, label: &str) -> Result<(), String> {
+    if h.probes.is_empty() {
+        return Err(format!("{label}: fixture must carry probes"));
+    }
+    for p in &h.probes {
+        let case = h.case_for(p.cand_id, p.seed_id).ok_or_else(|| {
+            format!(
+                "{label}: probe pair ({}, {}) not found",
+                p.cand_id, p.seed_id
+            )
+        })?;
+        if case.index != p.golden_index {
+            return Err(format!(
+                "{label}: pairing convention disagrees with the Python-searched index for ({}, {}): {} != {}",
+                p.cand_id, p.seed_id, case.index, p.golden_index
+            ));
+        }
+        for (slot_str, value) in &p.vec_slots {
+            let slot: usize = slot_str.parse().expect("probe slot key is numeric");
+            if case.vec[slot].to_bits() != value.to_bits() {
+                return Err(format!(
+                    "{label}: probe vec[{slot}] (computed by Python) did not land bit-exact at case {}",
+                    case.index
+                ));
+            }
+        }
+        // the probe score is the COMPUTED fast-path value: within the
+        // contract tolerance of the golden it anchored
+        let ulp = cine_rec_scoring::ulp_distance(case.score, p.score);
+        if ulp > cine_rec_scoring::MAX_SCORE_ULP {
+            return Err(format!(
+                "{label}: probe score for ({}, {}) is {ulp} ULP from the golden",
+                p.cand_id, p.seed_id
+            ));
+        }
+    }
+    // probes must discriminate: non-zero scores, distinct cases
+    let mut scores: Vec<_> = h.probes.iter().map(|p| p.score).collect();
+    scores.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    scores.dedup();
+    if scores.len() != h.probes.len() {
+        return Err(format!("{label}: probes are not distinct"));
+    }
+    if !h.probes.iter().all(|p| p.score != 0.0) {
+        return Err(format!("{label}: probes must carry non-zero scores"));
+    }
+    Ok(())
+}
+
 #[test]
 fn pairing_convention_matches_python_probes() {
     for (label, h) in both() {
-        assert!(!h.probes.is_empty(), "{label}: fixture must carry probes");
-        for p in &h.probes {
-            let case = h.case_for(p.cand_id, p.seed_id).unwrap_or_else(|| {
-                panic!(
-                    "{label}: probe pair ({}, {}) not found",
-                    p.cand_id, p.seed_id
-                )
-            });
-            assert_eq!(
-                case.index, p.golden_index,
-                "{label}: pairing convention disagrees with the Python-searched index for ({}, {})",
-                p.cand_id, p.seed_id
-            );
-            for (slot_str, value) in &p.vec_slots {
-                let slot: usize = slot_str.parse().expect("probe slot key is numeric");
-                assert_eq!(
-                    case.vec[slot].to_bits(),
-                    value.to_bits(),
-                    "{label}: probe vec[{slot}] (computed by Python) did not land bit-exact at case {}",
-                    case.index
-                );
-            }
-            // the probe score is the COMPUTED fast-path value: within
-            // the contract tolerance of the golden it anchored
-            let ulp = cine_rec_scoring::ulp_distance(case.score, p.score);
-            assert!(
-                ulp <= cine_rec_scoring::MAX_SCORE_ULP,
-                "{label}: probe score for ({}, {}) is {ulp} ULP from the golden",
-                p.cand_id,
-                p.seed_id
-            );
-        }
-        // probes must discriminate: non-zero scores, distinct cases
-        let mut scores: Vec<_> = h.probes.iter().map(|p| p.score).collect();
-        scores.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        scores.dedup();
-        assert_eq!(
-            scores.len(),
-            h.probes.len(),
-            "{label}: probes are not distinct"
-        );
-        assert!(
-            h.probes.iter().all(|p| p.score != 0.0),
-            "{label}: probes must carry non-zero scores"
-        );
+        check_probes(&h, label).unwrap_or_else(|e| panic!("{e}"));
     }
 }
 
@@ -186,8 +195,9 @@ fn probes_catch_a_golden_file_that_breaks_the_convention() {
     // Negative proof of the anchoring: if the golden file did NOT
     // carry each pair's outputs at the convention's index (e.g. it was
     // captured under a transposed order, or two rows were swapped),
-    // the searched-index probes must disagree. Simulated by swapping
-    // two golden entries — index 1 is where a probe anchors.
+    // the searched-index probes must disagree — verified by running
+    // the FULL probe check against the mutated harness, not just by
+    // eyeballing one slot.
     let h = load_base();
     let anchored: Vec<usize> = h.probes.iter().map(|p| p.golden_index).collect();
     assert!(
@@ -202,9 +212,16 @@ fn probes_catch_a_golden_file_that_breaks_the_convention() {
         serde_json::from_str(&std::fs::read_to_string(&golden_path).expect("read goldens"))
             .expect("parse goldens");
     let entries = doc.as_array_mut().expect("goldens are a list");
-    entries.swap(1, 360); // index 360 = seed-major position of pair (0, seed[1])
+    // 120 = seed-major position of pair (cand 0, seed 1) — a piece of
+    // the transposition a wrong capture order would have produced
+    entries.swap(1, 120);
 
-    let tmp = std::env::temp_dir().join("cine_rec_goldens_swapped.json");
+    // PID-suffixed temp name: two concurrent cargo test runs on one
+    // machine must not clobber each other's mutated goldens
+    let tmp = std::env::temp_dir().join(format!(
+        "cine_rec_goldens_swapped_{}.json",
+        std::process::id()
+    ));
     std::fs::write(&tmp, serde_json::to_string(&doc).expect("serialize")).expect("write temp");
     let fixture = manifest_dir()
         .join("tests")
@@ -213,21 +230,9 @@ fn probes_catch_a_golden_file_that_breaks_the_convention() {
     let mutated = Harness::load(&tmp, &fixture).expect("mutated harness still loads (shape ok)");
     let _ = std::fs::remove_file(&tmp);
 
-    // the probe anchored at index 1 now sees another pair's vector —
-    // exactly the disagreement a wrong convention would produce
-    let probe = h
-        .probes
-        .iter()
-        .find(|p| p.golden_index == 1)
-        .expect("probe at index 1");
-    let case = mutated
-        .case_for(probe.cand_id, probe.seed_id)
-        .expect("case still findable by ids");
-    let slot0: usize = "0".parse().unwrap();
-    assert_ne!(
-        case.vec[slot0].to_bits(),
-        probe.vec_slots["0"].to_bits(),
-        "swapped goldens passed the probe anchor — anchoring is broken"
+    assert!(
+        check_probes(&mutated, "mutated").is_err(),
+        "swapped goldens passed the probe anchors — anchoring is broken"
     );
 }
 
@@ -255,10 +260,14 @@ fn zero_backend_is_caught_exactly() {
         );
 
         // Expected counts derived from the goldens themselves: a zero
-        // vec mismatches EVERY case (wrong length alone is a mismatch);
-        // a zero score mismatches every case whose golden score is
-        // nonzero (gated pairs legitimately score 0.0).
-        let exp_vec = h.cases.len();
+        // 28-entry vec mismatches exactly the cases whose golden vec
+        // has a nonzero slot; a zero score mismatches every case whose
+        // golden score is nonzero (gated pairs legitimately score 0.0).
+        let exp_vec = h
+            .cases
+            .iter()
+            .filter(|c| c.vec.iter().any(|v| v.to_bits() != 0))
+            .count();
         let exp_score = h.cases.iter().filter(|c| c.score != 0.0).count();
         assert_eq!(report.n_vec_mismatch, exp_vec, "{label}");
         assert_eq!(report.n_score_mismatch, exp_score, "{label}");
@@ -403,6 +412,70 @@ fn oracle_refuses_wrong_driver_arguments() {
     assert!(
         r3.is_err(),
         "oracle must refuse entity_data on the seed side"
+    );
+}
+
+#[test]
+fn oracle_refuses_swapped_or_untagged_profiles() {
+    // The oracle tags returned profiles with entity id + side, and
+    // score_pair_fast checks the tags against the CURRENT case — so
+    // swapped sides, a stale/foreign profile, or fully skipped
+    // entity_profile calls (untagged default) all panic.
+    let h = load_base();
+    let case = &h.cases[0];
+    let set: HashSet<String> = case.cand.genres.iter().cloned().collect();
+
+    // correct profiles, passed in the WRONG order (sp <-> cp)
+    let oracle = OracleBackend::new(&h);
+    let sp = oracle.entity_profile(&case.seed, None, None);
+    let cp = oracle.entity_profile(&case.cand, Some(&case.cand), Some(&case.cand.genres));
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ =
+            oracle.score_pair_fast(&cp, &sp, &case.cand, &case.cand, Some(&set), 0.0, &h.w_list);
+    }));
+    assert!(r.is_err(), "oracle must refuse swapped sp/cp");
+
+    // entity_profile skipped entirely: untagged default profiles
+    let oracle = OracleBackend::new(&h);
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = oracle.score_pair_fast(
+            &cine_rec_scoring::Profile::default(),
+            &cine_rec_scoring::Profile::default(),
+            &case.cand,
+            &case.cand,
+            Some(&set),
+            0.0,
+            &h.w_list,
+        );
+    }));
+    assert!(r.is_err(), "oracle must refuse untagged (skipped) profiles");
+
+    // stale profiles from a DIFFERENT case's entities
+    let oracle = OracleBackend::new(&h);
+    let other_seed = &h.cases[5].seed;
+    let wrong_sp = oracle.entity_profile(other_seed, None, None);
+    let cp = oracle.entity_profile(&case.cand, Some(&case.cand), Some(&case.cand.genres));
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = oracle.score_pair_fast(
+            &wrong_sp,
+            &cp,
+            &case.cand,
+            &case.cand,
+            Some(&set),
+            0.0,
+            &h.w_list,
+        );
+    }));
+    assert!(r.is_err(), "oracle must refuse a foreign seed profile");
+
+    // candidate profile without genres_override
+    let oracle = OracleBackend::new(&h);
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = oracle.entity_profile(&case.cand, Some(&case.cand), None);
+    }));
+    assert!(
+        r.is_err(),
+        "oracle must require genres_override on the candidate side"
     );
 }
 

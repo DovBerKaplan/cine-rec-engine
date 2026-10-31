@@ -57,8 +57,43 @@ pub struct Probe {
     pub vec_slots: HashMap<String, f64>,
 }
 
-/// The frozen input fixture (see module docs). `deny_unknown_fields`
-/// pins the fixture shape — a renamed key must fail loudly here, not
+/// Every key an entity row may carry in a fixture — exactly the field
+/// set of [`crate::types::Entity`]. A key outside this list fails
+/// [`Harness::load`] LOUDLY (a renamed field must not silently
+/// deserialize as the field default and zero a feature). If `Entity`
+/// ever gains a field, a regenerated fixture carrying it fails here
+/// until this list is updated — drift is self-correcting at regen.
+const KNOWN_ENTITY_KEYS: &[&str] = &[
+    "id",
+    "media_type",
+    "title",
+    "title_en",
+    "genres",
+    "keywords",
+    "cast_ids",
+    "director_ids",
+    "writer_ids",
+    "composer_ids",
+    "dp_ids",
+    "companies",
+    "networks",
+    "original_language",
+    "overview",
+    "overview_en",
+    "release_year",
+    "vote_average",
+    "vote_count",
+    "collection_id",
+    "adult",
+    "via",
+    "tmdb_rank",
+    "narrative",
+    "pacing",
+    "emotional_arc",
+    "director",
+];
+
+/// The frozen input fixture (see module docs). `deny_unknown_fields`/// pins the fixture shape — a renamed key must fail loudly here, not
 /// silently deserialize as an empty list (the runtime
 /// degrade-never-fail rule concerns optional DB channels, not this
 /// frozen contract file). `Entity` itself stays lenient
@@ -122,11 +157,38 @@ impl Harness {
                 .map_err(|e| format!("read {}: {e}", golden_path.display()))?,
         )
         .map_err(|e| format!("parse {}: {e}", golden_path.display()))?;
-        let fixture: Fixture = serde_json::from_str(
+        let fixture_raw: serde_json::Value = serde_json::from_str(
             &std::fs::read_to_string(fixture_path)
                 .map_err(|e| format!("read {}: {e}", fixture_path.display()))?,
         )
         .map_err(|e| format!("parse {}: {e}", fixture_path.display()))?;
+        let fixture: Fixture = serde_json::from_value(fixture_raw.clone())
+            .map_err(|e| format!("parse {}: {e}", fixture_path.display()))?;
+        // A renamed key inside an ENTITY row would otherwise deserialize
+        // silently as the field default (Entity is lenient on purpose,
+        // mirroring dict.get) and quietly zero a feature. The fixture
+        // shape is frozen and known — validate every row key against it.
+        // Self-correcting against drift: a regenerated fixture carrying a
+        // NEW field fails here until KNOWN_ENTITY_KEYS is updated.
+        for list in ["cands", "seeds"] {
+            let rows = fixture_raw
+                .get(list)
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| format!("fixture has no '{list}' array"))?;
+            for (i, row) in rows.iter().enumerate() {
+                if let Some(obj) = row.as_object() {
+                    for key in obj.keys() {
+                        if !KNOWN_ENTITY_KEYS.contains(&key.as_str()) {
+                            return Err(format!(
+                                "fixture {list}[{i}] carries unknown key {key:?} — \
+                                 renamed Entity fields must fail loudly, not \
+                                 silently deserialize as defaults"
+                            ));
+                        }
+                    }
+                }
+            }
+        }
 
         // ── Shape contract: fail loud, never empty-green ──
         if fixture.cands.is_empty() || fixture.seeds.is_empty() {

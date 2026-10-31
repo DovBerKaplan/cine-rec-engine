@@ -81,13 +81,16 @@ def make_probes(
 
     A probe records: the entity pair, the index FOUND by unique search
     over the goldens, the COMPUTED vector slots, and the COMPUTED fast
-    score. Non-zero-score pairs only, spread across the case space.
+    score. Non-zero-score pairs only (filtered by the COMPUTED score),
+    spread across the case space. The pairing formula plays no role
+    here: pairs enter only by their entities, and the recorded index
+    always comes from the search.
     """
     pairs = [(c, s) for c in cands for s in seeds]
     pool = []
     for i, (c, s) in enumerate(pairs):
         computed_score = pair_score(c, s, w_list)
-        if computed_score != 0.0 and goldens[i]["score"] != 0.0:
+        if computed_score != 0.0:
             pool.append((i, c, s, computed_score))
     assert len(pool) >= N_PROBES, f"{label}: not enough non-zero pairs for probes"
 

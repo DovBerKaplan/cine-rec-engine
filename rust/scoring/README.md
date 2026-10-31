@@ -37,9 +37,18 @@ Pairing convention: golden case `i` is `(cands[i / n_seeds],
 seeds[i % n_seeds])`. It is anchored by probes inside each fixture:
 the generator RUNS the Python scoring functions on a probe pair,
 records the computed values, and LOCATES the golden index by unique
-full-vector search — no pairing formula is used on the generator side,
-so a wrongly-captured convention cannot agree with the harness.
-Probe pairs carry non-zero scores so they discriminate.
+full-vector search — the pairing formula is never used to derive a
+recorded index (its only generator-side role is filtering probe pairs
+by their computed score), so a wrongly-captured convention cannot
+agree with the harness. Probe pairs carry non-zero computed scores so
+they discriminate.
+
+Note on provenance: BOTH golden sets — the repo's
+`tests/golden_feature_vectors.json` and `goldens_enriched.json` — are
+regression pins of the CURRENT Python implementation, not external
+truth (Python is the source of truth). Any change to Python scoring
+behavior requires re-capturing the goldens and regenerating the
+fixtures in the same change.
 
 ## Run
 
