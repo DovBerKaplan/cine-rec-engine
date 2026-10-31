@@ -1,0 +1,30 @@
+[package]
+name = "cine-rec-ingest"
+version = "0.1.0"
+edition = "2021"
+description = "Rust port of cine-rec-engine's ingest lane (wave C: rate limiter, TMDB export parsing, table-name mapping - everything DB-free)"
+license = "MIT"
+publish = false
+
+[dependencies]
+# float_roundtrip: JSON floats must round-trip bit-exactly - the same
+# lesson the scoring crate learned (the default parser can land 1 ULP
+# off the correctly-rounded value; here it would silently shift
+# popularity values). The parity fixtures carry exact f64 bits.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+# MultiGzDecoder: Python's gzip module reads ALL concatenated members
+# of a .gz stream; a single-member decoder would diverge on
+# multi-member files.
+flate2 = "1"
+# The async RateLimiter mirrors ingest/rate.py: a lock held across the
+# sleep, so concurrent acquirers queue behind the sleeping one.
+tokio = { version = "1", features = ["sync", "time", "macros", "rt"] }
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+# start_paused = true: deterministic virtual time for the async limiter
+# tests (auto-advance), never a real sleep.
+tokio = { version = "1", features = ["test-util"] }
+
+[lib]
+name = "cine_rec_ingest"
