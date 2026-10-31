@@ -20,3 +20,6 @@ eval/.mlbench/
 
 # mkdocs build output
 site/
+
+# Rust (rust-port) — crate build artifacts
+rust/*/target/
