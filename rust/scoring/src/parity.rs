@@ -2,15 +2,32 @@
 //!
 //! Two rules, no approximations:
 //!
-//! * `feature_vector` — BIT-EXACT: every one of the 28 entries must
-//!   equal the golden entry's bits. The Python computation is fully
-//!   deterministic here (every set is only measured with len/bool or
-//!   summed in sorted order), so bit equality is attainable and is the
-//!   contract. A NaN/Inf actual is a mismatch by construction (goldens
-//!   are validated finite at load time).
+//! * `feature_vector` — BIT-EXACT: all 28 entries, including their
+//!   COUNT. A vector of the wrong length (empty, truncated, padded)
+//!   is a mismatch, never a green pass. The Python computation is
+//!   deterministic on the golden inputs (every set is only measured
+//!   with len/bool or summed in sorted order — verified bit-exact
+//!   across multiple PYTHONHASHSEED values), so bit equality is the
+//!   contract. (The Python golden TEST compares with a loose approx
+//!   because set-iteration order is hash-seeded per process in
+//!   general; on these inputs the sums are order-free.) A NaN/Inf
+//!   actual is a mismatch by construction (goldens are validated
+//!   finite at load time).
 //! * `_score_pair_fast` — at most [`crate::MAX_SCORE_ULP`] (1) ULP from
 //!   the golden score: the golden file was captured from the reference
 //!   path, whose accumulation order differs from the hot loop's.
+//!
+//! ## Signed zero (documented decision)
+//!
+//! * vec: bit-exact, so `-0.0` where the golden has `0.0` IS a
+//!   mismatch — intended. Deterministic features only ever produce
+//!   `+0.0`.
+//! * score: `±0.0` compare equal (0 ULP), mirroring Python's `-0.0 ==
+//!   0.0`. The monotonic key counts the two zero representations as
+//!   adjacent, so `-smallest_subnormal` sits 2 ULP from `+0.0` while
+//!   `+smallest_subnormal` sits 1 ULP: the tolerance is asymmetric
+//!   across zero, STRICTER on the negative side. That is acceptable —
+//!   it errs toward flagging, never toward passing.
 
 use std::fmt;
 
@@ -113,6 +130,11 @@ impl ParityReport {
 
     /// Compare one (actual, expected) pair and record mismatches.
     /// Exposed for the same reason as [`ParityReport::new`].
+    ///
+    /// The vector comparison walks the LONGER of the two lengths: a
+    /// missing or extra entry is a mismatch at that slot, not a silent
+    /// pass (a zip would stop at the shorter side and an empty or
+    /// truncated vector would look identical to a correct one).
     pub fn record_pair(
         &mut self,
         index: usize,
@@ -121,17 +143,24 @@ impl ParityReport {
         actual_score: f64,
         expected_score: f64,
     ) {
-        for (slot, (actual, expected)) in actual_vec.iter().zip(expected_vec).enumerate() {
-            if actual.to_bits() != expected.to_bits() {
+        let longer = actual_vec.len().max(expected_vec.len());
+        for slot in 0..longer {
+            let differs = match (actual_vec.get(slot), expected_vec.get(slot)) {
+                (Some(actual), Some(expected)) => actual.to_bits() != expected.to_bits(),
+                // one side ran out of entries — the missing slot is the
+                // mismatch (values shown as NaN where absent)
+                _ => true,
+            };
+            if differs {
                 self.n_vec_mismatch += 1;
                 if self.first_vec_mismatch.is_none() {
                     self.first_vec_mismatch = Some(VecMismatch {
                         index,
                         slot,
-                        expected: *expected,
-                        actual: *actual,
-                        expected_bits: expected.to_bits(),
-                        actual_bits: actual.to_bits(),
+                        expected: expected_vec.get(slot).copied().unwrap_or(f64::NAN),
+                        actual: actual_vec.get(slot).copied().unwrap_or(f64::NAN),
+                        expected_bits: expected_vec.get(slot).map_or(0, |v| v.to_bits()),
+                        actual_bits: actual_vec.get(slot).map_or(0, |v| v.to_bits()),
                     });
                 }
                 break; // one report per case is enough

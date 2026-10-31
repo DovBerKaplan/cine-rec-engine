@@ -4,17 +4,30 @@
 //! the parity CONTRACT in executable Rust form before any scoring code
 //! is ported:
 //!
-//! * `feature_vector` — all 28 entries bit-exact against
-//!   `tests/golden_feature_vectors.json`.
+//! * `feature_vector` — all 28 entries (count included) bit-exact
+//!   against the golden files.
 //! * `_score_pair_fast` — at most 1 ULP from the golden score (the two
-//!   paths accumulate in different orders; the golden file was captured
+//!   paths accumulate in different orders; the goldens were captured
 //!   from the reference path).
 //!
-//! Inputs are pinned, not regenerated: `tests/fixtures/entities_120_4.json`
-//! freezes the exact entity rows and weight list produced by
-//! `benchmarks/bench_scoring.py::build(120, 4)` — the same generator the
-//! Python golden test uses. No RNG semantics ever enter the parity
-//! question.
+//! Inputs are pinned, not regenerated — no RNG semantics ever enter
+//! the parity question. Two sets are driven:
+//!
+//! * BASE (480 pairs): `tests/fixtures/entities_120_4.json` freezes
+//!   the rows of `benchmarks/bench_scoring.py::build(120, 4)` — the
+//!   same generator the Python golden test uses; outputs are the
+//!   repo's `tests/golden_feature_vectors.json`.
+//! * ENRICHED (64 pairs): the base rows lack `via`/`tmdb_rank`/
+//!   `narrative`/`pacing`/`emotional_arc`/`director`/style keywords,
+//!   leaving six features constant-zero and the via gate-exemption
+//!   untested. `entities_enriched.json` + `goldens_enriched.json`
+//!   (both in `tests/fixtures/`) close those holes; the goldens were
+//!   captured from the reference path on the enriched rows.
+//!
+//! Each fixture carries probes that anchor the pairing convention:
+//! values COMPUTED by running the Python scoring functions, indexes
+//! FOUND by unique search over the golden file (not by any pairing
+//! formula).
 //!
 //! Phase status (rust-port plan):
 //! * phase 1 (this crate) — spec harness + red-green stubs proving the
