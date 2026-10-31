@@ -156,20 +156,17 @@ impl SchemaMap {
         env_pairs: &[(String, String)],
         read_file: &dyn Fn(&str) -> std::io::Result<String>,
     ) -> Result<Self, SchemaMapError> {
-        let mut file_map: serde_json::Map<String, serde_json::Value> =
-            serde_json::Map::new();
+        let mut file_map: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
         let path = env_pairs
             .iter()
             .find(|(k, _)| k == "CINE_REC_SCHEMA_MAP")
             .map(|(_, v)| v.trim().to_string())
             .unwrap_or_default();
         if !path.is_empty() {
-            let text = read_file(&path).map_err(|e| {
-                SchemaMapError(format!("cannot load schema map {path:?}: {e}"))
-            })?;
-            let value: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
-                SchemaMapError(format!("cannot load schema map {path:?}: {e}"))
-            })?;
+            let text = read_file(&path)
+                .map_err(|e| SchemaMapError(format!("cannot load schema map {path:?}: {e}")))?;
+            let value: serde_json::Value = serde_json::from_str(&text)
+                .map_err(|e| SchemaMapError(format!("cannot load schema map {path:?}: {e}")))?;
             file_map = value
                 .as_object()
                 .ok_or_else(|| {
@@ -240,10 +237,7 @@ impl SchemaMap {
             if bytes[i] == b'{' && template[i..].starts_with("{t_") {
                 // scan [a-z_]+ greedily after the prefix
                 let mut j = i + 3;
-                while j < bytes.len()
-                    && (bytes[j] == b'_'
-                        || bytes[j].is_ascii_lowercase())
-                {
+                while j < bytes.len() && (bytes[j] == b'_' || bytes[j].is_ascii_lowercase()) {
                     j += 1;
                 }
                 if j > i + 3 && j < bytes.len() && bytes[j] == b'}' {

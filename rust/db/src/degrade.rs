@@ -5,10 +5,11 @@
 //! `UndefinedObjectError` (and, for channels reading optional tables,
 //! `UndefinedTableError`) and switches the channel off in place. The
 //! SQLSTATE equivalents:
-/// * `42703` undefined_column (embedding column absent)
-/// * `42704` undefined_object (vector type/extension absent)
-/// * `42883` undefined_function (`<=>` without the pgvector extension)
-/// * `42P01` undefined_table (optional enrichment table absent)
+//!
+//! * `42703` undefined_column (embedding column absent)
+//! * `42704` undefined_object (vector type/extension absent)
+//! * `42883` undefined_function (`<=>` without the pgvector extension)
+//! * `42P01` undefined_table (optional enrichment table absent)
 
 /// The SQLSTATE of a database error when it is one of the four
 /// "optional dependency missing" codes, else `None`.

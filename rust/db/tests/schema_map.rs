@@ -13,8 +13,7 @@ fn fixture() -> serde_json::Value {
         .join("tests")
         .join("fixtures")
         .join("schema_map_cases.json");
-    serde_json::from_str(&std::fs::read_to_string(path).expect("fixture"))
-        .expect("fixture json")
+    serde_json::from_str(&std::fs::read_to_string(path).expect("fixture")).expect("fixture json")
 }
 
 fn map_from_json(v: &serde_json::Value) -> SchemaMap {
@@ -94,8 +93,14 @@ fn every_logical_name_resolves_by_default() {
 #[test]
 fn invalid_names_are_loud() {
     for bad in [
-        "AppMedia", "app media", "app; DROP TABLE x", "a.b.c", "1app",
-        "-x", "app.x.y", "has-dash",
+        "AppMedia",
+        "app media",
+        "app; DROP TABLE x",
+        "a.b.c",
+        "1app",
+        "-x",
+        "app.x.y",
+        "has-dash",
     ] {
         assert!(
             SchemaMap::from_mapping([("tmdb_media", bad)]).is_err(),
@@ -123,11 +128,7 @@ fn blank_values_rejected() {
 
 #[test]
 fn active_map_lists_only_remapped() {
-    let m = SchemaMap::from_mapping([
-        ("tmdb_media", "app_media"),
-        ("tmdb_tv", "app_tv"),
-    ])
-    .unwrap();
+    let m = SchemaMap::from_mapping([("tmdb_media", "app_media"), ("tmdb_tv", "app_tv")]).unwrap();
     let active: BTreeMap<String, String> = m.active_map();
     assert_eq!(active.len(), 2);
     assert_eq!(active["tmdb_media"], "app_media");
@@ -138,7 +139,11 @@ fn env_pairs_file_and_override_semantics() {
     let dir = std::env::temp_dir().join(format!("smap_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let map_file = dir.join("map.json");
-    std::fs::write(&map_file, r#"{"tmdb_media": "file_media", "tmdb_tv": "file_tv"}"#).unwrap();
+    std::fs::write(
+        &map_file,
+        r#"{"tmdb_media": "file_media", "tmdb_tv": "file_tv"}"#,
+    )
+    .unwrap();
 
     let read_ok = |p: &str| std::fs::read_to_string(p);
 
@@ -152,7 +157,10 @@ fn env_pairs_file_and_override_semantics() {
 
     // env wins over file; blank env value ignored (file value stands)
     let env2 = vec![
-        ("CINE_REC_SCHEMA_MAP".to_string(), map_file.to_str().unwrap().into()),
+        (
+            "CINE_REC_SCHEMA_MAP".to_string(),
+            map_file.to_str().unwrap().into(),
+        ),
         ("CINE_REC_TABLE_TMDB_MEDIA".to_string(), "env_media".into()),
         ("CINE_REC_TABLE_TMDB_TV".to_string(), "   ".into()),
     ];
@@ -161,7 +169,10 @@ fn env_pairs_file_and_override_semantics() {
     assert_eq!(m2.name("tmdb_tv").as_deref(), Ok("file_tv"));
 
     // missing file is LOUD
-    let env3 = vec![("CINE_REC_SCHEMA_MAP".to_string(), "/nonexistent/x.json".into())];
+    let env3 = vec![(
+        "CINE_REC_SCHEMA_MAP".to_string(),
+        "/nonexistent/x.json".into(),
+    )];
     assert!(matches!(
         SchemaMap::from_env_pairs(&env3, &read_ok),
         Err(SchemaMapError(_))
@@ -170,7 +181,10 @@ fn env_pairs_file_and_override_semantics() {
     // broken JSON is LOUD
     let bad = dir.join("bad.json");
     std::fs::write(&bad, "{not json").unwrap();
-    let env4 = vec![("CINE_REC_SCHEMA_MAP".to_string(), bad.to_str().unwrap().into())];
+    let env4 = vec![(
+        "CINE_REC_SCHEMA_MAP".to_string(),
+        bad.to_str().unwrap().into(),
+    )];
     assert!(SchemaMap::from_env_pairs(&env4, &read_ok).is_err());
     let _ = std::fs::remove_dir_all(&dir);
 }

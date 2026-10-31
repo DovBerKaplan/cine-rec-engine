@@ -36,10 +36,17 @@ pub struct CandidateRow {
     /// recall channel tag ("knn" for the semantic channel)
     pub via: Option<String>,
     pub knn_similarity: Option<f64>,
+    /// TMDB behavioral rank (via="tmdb" rows).
+    pub tmdb_rank: Option<i64>,
 }
 
 impl CandidateRow {
-    fn from_recall_row(r: &sqlx::postgres::PgRow) -> Self {
+    /// TMDB behavioral rank (`via="tmdb"` rows carry it).
+    pub fn tmdb_rank(&self) -> Option<i64> {
+        self.tmdb_rank
+    }
+
+    pub(crate) fn from_recall_row(r: &sqlx::postgres::PgRow) -> Self {
         Self {
             id: row::opt_i64(r, "id").unwrap_or_default(),
             title: row::opt_text(r, "title"),
@@ -56,6 +63,7 @@ impl CandidateRow {
             genres: row::opt_text_array(r, "genres").unwrap_or_default(),
             via: None,
             knn_similarity: row::opt_f64(r, "knn_similarity"),
+            tmdb_rank: row::opt_i64(r, "tmdb_rank"),
         }
     }
 }
@@ -188,14 +196,18 @@ pub async fn generate_candidates(
         // crowd out the other's classics)
         let base_set: std::collections::HashSet<&String> = base_genres.iter().collect();
         cands.sort_by(|a, b| {
-            let overlap = |c: &CandidateRow| {
-                c.genres.iter().filter(|g| base_set.contains(g)).count()
+            let overlap =
+                |c: &CandidateRow| c.genres.iter().filter(|g| base_set.contains(g)).count();
+            let vc = |c: &CandidateRow| {
+                (c.vote_count.unwrap_or(0) as f64) * c.vote_average.unwrap_or(0.0)
             };
-            let vc = |c: &CandidateRow| (c.vote_count.unwrap_or(0) as f64)
-                * c.vote_average.unwrap_or(0.0);
             overlap(b)
                 .cmp(&overlap(a))
-                .then_with(|| vc(b).partial_cmp(&vc(a)).unwrap_or(std::cmp::Ordering::Equal))
+                .then_with(|| {
+                    vc(b)
+                        .partial_cmp(&vc(a))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
                 .then_with(|| {
                     b.popularity
                         .partial_cmp(&a.popularity)
@@ -321,9 +333,8 @@ pub async fn enrich_candidates_batch(
     };
     for r in db.fetch(writer_sql, &director_binds).await? {
         let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
-        out.entry(mid)
-            .or_default()
-            .writer_ids = row::opt_i64_array(&r, "writer_ids").unwrap_or_default();
+        out.entry(mid).or_default().writer_ids =
+            row::opt_i64_array(&r, "writer_ids").unwrap_or_default();
     }
 
     // Batch: composer + cinematographer ids (cinematic DNA beyond the
@@ -340,10 +351,7 @@ pub async fn enrich_candidates_batch(
             GROUP BY c.media_id
             "#;
     for r in db
-        .fetch(
-            DNA_SQL,
-            &[("ids", Bind::I64Array(candidate_ids.to_vec()))],
-        )
+        .fetch(DNA_SQL, &[("ids", Bind::I64Array(candidate_ids.to_vec()))])
         .await?
     {
         let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
@@ -362,10 +370,7 @@ pub async fn enrich_candidates_batch(
             ORDER BY c.cast_order ASC NULLS LAST
             "#;
     for r in db
-        .fetch(
-            CAST_SQL,
-            &[("ids", Bind::I64Array(candidate_ids.to_vec()))],
-        )
+        .fetch(CAST_SQL, &[("ids", Bind::I64Array(candidate_ids.to_vec()))])
         .await?
     {
         let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
@@ -456,10 +461,7 @@ pub async fn enrich_candidates_batch(
             WHERE id = ANY($1::bigint[])
             "#;
     for r in db
-        .fetch(
-            COLL_SQL,
-            &[("ids", Bind::I64Array(candidate_ids.to_vec()))],
-        )
+        .fetch(COLL_SQL, &[("ids", Bind::I64Array(candidate_ids.to_vec()))])
         .await?
     {
         let id = row::opt_i64(&r, "id").unwrap_or_default();
@@ -486,8 +488,7 @@ pub async fn enrich_candidates_batch(
                 let e = out.entry(mid).or_default();
                 e.narrative = row::opt_text(&r, "narrative_complexity");
                 e.pacing = row::opt_text(&r, "pacing");
-                e.emotional_arc =
-                    row::opt_text_array(&r, "emotional_arc").unwrap_or_default();
+                e.emotional_arc = row::opt_text_array(&r, "emotional_arc").unwrap_or_default();
             }
         }
         Err(e) => match e.into_degraded("cinematic") {
@@ -502,7 +503,7 @@ pub async fn enrich_candidates_batch(
 
 /// `_vote_floor` — TV vote counts run an order of magnitude below
 /// movies on TMDB; a flat floor starves tv seeds.
-fn vote_floor(media_type: Option<&str>) -> i64 {
+pub fn vote_floor_for(media_type: Option<&str>) -> i64 {
     match media_type {
         Some("tv") => 50,
         _ => 500,
@@ -622,9 +623,8 @@ pub async fn generate_knn_candidates(
     } else {
         vec![seed_media_type]
     };
-    let floor = floor_override.unwrap_or_else(|| {
-        vote_floor((!allow_cross_media).then_some(seed_media_type))
-    });
+    let floor = floor_override
+        .unwrap_or_else(|| vote_floor_for((!allow_cross_media).then_some(seed_media_type)));
 
     let arms: Vec<String> = media
         .iter()
@@ -654,10 +654,7 @@ pub async fn generate_knn_candidates(
     let rows = match db
         .fetch(
             &sql, // already resolved (built via SchemaMap::name, no placeholders)
-            &[
-                ("seed", Bind::I64(seed_id)),
-                ("limit", Bind::I64(limit)),
-            ],
+            &[("seed", Bind::I64(seed_id)), ("limit", Bind::I64(limit))],
         )
         .await
     {

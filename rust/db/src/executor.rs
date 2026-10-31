@@ -26,7 +26,10 @@ pub enum DbError {
     /// An optional channel's dependency is missing (undefined column /
     /// object / function / table). `channel` names the recall channel
     /// for logging.
-    ChannelOff { channel: &'static str, reason: String },
+    ChannelOff {
+        channel: &'static str,
+        reason: String,
+    },
 }
 
 impl From<SchemaMapError> for DbError {
@@ -163,6 +166,9 @@ pub enum Bind {
     I64Array(Vec<i64>),
     OptI64(Option<i64>),
     OptText(Option<String>),
+    /// pgvector vector bind (the user-vector ANN channels bind the
+    /// query vector as a parameter; KNN seeds stay in-statement).
+    Vector(Vec<f32>),
 }
 
 impl Bind {
@@ -170,7 +176,6 @@ impl Bind {
         &'q self,
         query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>,
     ) -> sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments> {
-        
         match self {
             Bind::I64(v) => query.bind(v),
             Bind::F64(v) => query.bind(v),
@@ -179,6 +184,7 @@ impl Bind {
             Bind::I64Array(v) => query.bind(v),
             Bind::OptI64(v) => query.bind(v),
             Bind::OptText(v) => query.bind(v),
+            Bind::Vector(v) => query.bind(pgvector::Vector::from(v.clone())),
         }
     }
 }
@@ -206,5 +212,11 @@ pub mod row {
 
     pub fn opt_i64_array(row: &sqlx::postgres::PgRow, col: &str) -> Option<Vec<i64>> {
         row.try_get(col).ok()
+    }
+
+    pub fn opt_vector(row: &sqlx::postgres::PgRow, col: &str) -> Option<Vec<f32>> {
+        row.try_get::<pgvector::Vector, _>(col)
+            .ok()
+            .map(|v| v.to_vec())
     }
 }

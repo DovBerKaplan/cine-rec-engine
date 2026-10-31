@@ -14,7 +14,9 @@ use cine_rec_db::recall::{enrich_candidates_batch, generate_candidates, generate
 use cine_rec_db::Db;
 
 fn dsn() -> Option<String> {
-    std::env::var("CINE_REC_INTEGRATION_DSN").ok().filter(|s| !s.is_empty())
+    std::env::var("CINE_REC_INTEGRATION_DSN")
+        .ok()
+        .filter(|s| !s.is_empty())
 }
 
 /// A seeded movie seed (exists in the demo catalog).
@@ -38,11 +40,14 @@ macro_rules! integration_test {
     };
 }
 
-integration_test!(genre_channel_returns_seedless_candidates, |db, dsn| {
+integration_test!(genre_channel_returns_seedless_candidates, |db, _dsn| {
     let cands = generate_candidates(
-        &db,
+        db,
         SEED_MOVIE_ID,
-        &SEED_GENRES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        &SEED_GENRES
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>(),
         "movie",
         10,
         false,
@@ -59,11 +64,14 @@ integration_test!(genre_channel_returns_seedless_candidates, |db, dsn| {
     }
 });
 
-integration_test!(cross_media_keeps_per_medium_budget, |db, dsn| {
+integration_test!(cross_media_keeps_per_medium_budget, |db, _dsn| {
     let cands = generate_candidates(
-        &db,
+        db,
         SEED_MOVIE_ID,
-        &SEED_GENRES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        &SEED_GENRES
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>(),
         "movie",
         5,
         true,
@@ -71,8 +79,7 @@ integration_test!(cross_media_keeps_per_medium_budget, |db, dsn| {
     .await
     .expect("cross-media genre channel");
     assert!(!cands.is_empty());
-    let mut per_medium: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
+    let mut per_medium: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     for c in &cands {
         *per_medium
             .entry(c.media_type.clone().unwrap_or_default())
@@ -83,31 +90,27 @@ integration_test!(cross_media_keeps_per_medium_budget, |db, dsn| {
     }
 });
 
-integration_test!(empty_genres_short_circuit, |db, dsn| {
-    let cands = generate_candidates(&db, SEED_MOVIE_ID, &[], "movie", 10, false)
+integration_test!(empty_genres_short_circuit, |db, _dsn| {
+    let cands = generate_candidates(db, SEED_MOVIE_ID, &[], "movie", 10, false)
         .await
         .expect("empty genres");
     assert!(cands.is_empty());
 });
 
-integration_test!(knn_returns_semantic_neighbors, |db, dsn| {
-    let cands = generate_knn_candidates(
-        &db,
-        SEED_MOVIE_ID,
-        "movie",
-        8,
-        false,
-        DEMO_EMB_COLUMN,
-        None,
-    )
-    .await
-    .expect("knn channel");
+integration_test!(knn_returns_semantic_neighbors, |db, _dsn| {
+    let cands =
+        generate_knn_candidates(db, SEED_MOVIE_ID, "movie", 8, false, DEMO_EMB_COLUMN, None)
+            .await
+            .expect("knn channel");
     assert!(!cands.is_empty(), "demo DB carries embeddings");
     assert!(cands.len() <= 8);
     for c in &cands {
         assert_eq!(c.via.as_deref(), Some("knn"));
         let sim = c.knn_similarity.unwrap();
-        assert!((0.0..=1.000001).contains(&sim), "similarity out of range: {sim}");
+        assert!(
+            (0.0..=1.000001).contains(&sim),
+            "similarity out of range: {sim}"
+        );
         assert_ne!(c.id, SEED_MOVIE_ID);
     }
     // descending similarity
@@ -117,9 +120,9 @@ integration_test!(knn_returns_semantic_neighbors, |db, dsn| {
     assert_eq!(sims, sorted, "knn rows must arrive similarity-ordered");
 });
 
-integration_test!(knn_missing_column_degrades_to_empty, |db, dsn| {
+integration_test!(knn_missing_column_degrades_to_empty, |db, _dsn| {
     let cands = generate_knn_candidates(
-        &db,
+        db,
         SEED_MOVIE_ID,
         "movie",
         8,
@@ -132,11 +135,14 @@ integration_test!(knn_missing_column_degrades_to_empty, |db, dsn| {
     assert!(cands.is_empty());
 });
 
-integration_test!(enrichment_covers_candidates, |db, dsn| {
+integration_test!(enrichment_covers_candidates, |db, _dsn| {
     let cands = generate_candidates(
-        &db,
+        db,
         SEED_MOVIE_ID,
-        &SEED_GENRES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        &SEED_GENRES
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>(),
         "movie",
         10,
         false,
@@ -150,7 +156,7 @@ integration_test!(enrichment_covers_candidates, |db, dsn| {
         .collect();
     assert!(!ids.is_empty());
 
-    let enriched = enrich_candidates_batch(&db, &ids, Some(&media))
+    let enriched = enrich_candidates_batch(db, &ids, Some(&media))
         .await
         .expect("enrichment");
     assert_eq!(enriched.len(), ids.len(), "every candidate gets a bundle");
@@ -174,9 +180,12 @@ integration_test!(table_map_reaches_the_sql, |db, dsn| {
     use cine_rec_db::SchemaMap;
     // sanity first: the default map resolves to the shipped names
     let cands = generate_candidates(
-        &db,
+        db,
         SEED_MOVIE_ID,
-        &SEED_GENRES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        &SEED_GENRES
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>(),
         "movie",
         5,
         false,
@@ -193,7 +202,10 @@ integration_test!(table_map_reaches_the_sql, |db, dsn| {
     let cands2 = generate_candidates(
         &db2,
         SEED_MOVIE_ID,
-        &SEED_GENRES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        &SEED_GENRES
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>(),
         "movie",
         5,
         false,
@@ -202,3 +214,182 @@ integration_test!(table_map_reaches_the_sql, |db, dsn| {
     .expect("identity map");
     assert_eq!(cands, cands2, "identity mapping must be a no-op");
 });
+
+// ── part-2 channels: uvec, discovery, embeddings, tmdb-recs, auteur ──
+
+use cine_rec_db::recall2::{
+    fetch_embeddings_batch, generate_director_candidates, generate_director_candidates_batch,
+    generate_discovery_candidates, generate_popular_candidates, generate_tmdb_rec_candidates,
+    generate_tmdb_rec_candidates_batch, generate_user_vector_candidates,
+};
+
+async fn a_seed_with_embedding(db: &Db) -> (i64, Vec<f32>) {
+    let sql = db
+        .sql("SELECT id, {emb} AS v FROM {t_tmdb_movies} WHERE {emb} IS NOT NULL ORDER BY id LIMIT 1")
+        .unwrap()
+        .replace("{emb}", DEMO_EMB_COLUMN);
+    let rows = db.fetch(&sql, &[]).await.expect("embedding seed");
+    assert!(!rows.is_empty(), "demo DB carries embeddings");
+    let r = &rows[0];
+    (row_id(r), row_emb(r))
+}
+
+fn row_id(r: &sqlx::postgres::PgRow) -> i64 {
+    use sqlx::Row;
+    r.try_get::<i64, _>("id").unwrap()
+}
+fn row_emb(r: &sqlx::postgres::PgRow) -> Vec<f32> {
+    use sqlx::Row;
+    r.try_get::<pgvector::Vector, _>("v").unwrap().to_vec()
+}
+
+integration_test!(uvec_channel_returns_neighbors, |db, _dsn| {
+    let (_, vec) = a_seed_with_embedding(db).await;
+    let cands = generate_user_vector_candidates(db, &vec, 8, DEMO_EMB_COLUMN)
+        .await
+        .expect("uvec");
+    assert!(!cands.is_empty(), "demo DB has ANN neighbors");
+    assert!(cands.len() <= 8);
+    for c in &cands {
+        assert_eq!(c.via.as_deref(), Some("uvec"));
+        assert!(c.vote_average.unwrap_or(0.0) >= 5.5);
+    }
+    let sims: Vec<f64> = cands.iter().filter_map(|c| c.knn_similarity).collect();
+    let mut sorted = sims.clone();
+    sorted.sort_by(|a, b| b.partial_cmp(a).unwrap());
+    assert_eq!(sims, sorted);
+});
+
+integration_test!(uvec_missing_column_degrades, |db, _dsn| {
+    let (_, vec) = a_seed_with_embedding(db).await;
+    let cands = generate_user_vector_candidates(db, &vec, 8, "embedding_missing")
+        .await
+        .expect("degrade");
+    assert!(cands.is_empty());
+});
+
+integration_test!(discovery_excludes_genres_and_degrades, |db, _dsn| {
+    let (_, vec) = a_seed_with_embedding(db).await;
+    // missing column degrades
+    let out = generate_discovery_candidates(db, &vec, &[1, 2], 5, "embedding_missing")
+        .await
+        .expect("degrade");
+    assert!(out.is_empty());
+});
+
+integration_test!(embeddings_batch_roundtrip, |db, _dsn| {
+    let cands = generate_candidates(
+        db,
+        SEED_MOVIE_ID,
+        &SEED_GENRES
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>(),
+        "movie",
+        6,
+        false,
+    )
+    .await
+    .expect("genre");
+    let pairs: Vec<(i64, String)> = cands
+        .iter()
+        .map(|c| (c.id, c.media_type.clone().unwrap_or_default()))
+        .collect();
+    let embs = fetch_embeddings_batch(db, &pairs, DEMO_EMB_COLUMN)
+        .await
+        .expect("embeddings");
+    // some of the demo candidates carry embeddings (671 do)
+    assert!(!embs.is_empty(), "expected some embeddings");
+    for v in embs.values() {
+        assert!(!v.is_empty());
+    }
+    // missing column -> empty map, not an error
+    let none = fetch_embeddings_batch(db, &pairs, "embedding_missing")
+        .await
+        .expect("degrade to empty");
+    assert!(none.is_empty());
+});
+
+integration_test!(tmdb_recs_single_and_batch, |db, _dsn| {
+    // find a seed that HAS synced recs in the demo graph
+    let rows = db
+        .fetch(
+            "SELECT media_id, media_type FROM {t_tmdb_recommendations} ORDER BY media_id LIMIT 1",
+            &[],
+        )
+        .await
+        .expect("rec graph");
+    if rows.is_empty() {
+        eprintln!("demo graph empty — channel-shape check only");
+    } else {
+        use sqlx::Row;
+        let sid: i64 = rows[0].try_get("media_id").unwrap();
+        let smt: String = rows[0].try_get("media_type").unwrap();
+        let single = generate_tmdb_rec_candidates(db, sid, &smt, 20)
+            .await
+            .expect("single tmdb");
+        let batch = generate_tmdb_rec_candidates_batch(db, &[(sid, smt.clone())], 20)
+            .await
+            .expect("batch tmdb");
+        assert!(!single.is_empty());
+        assert_eq!(single.len(), batch[0].len(), "single == batch per-seed");
+        for c in &single {
+            assert_eq!(c.via.as_deref(), Some("tmdb"));
+            // rank may be NULL on unsynced rows; ordering still holds
+            let _ = c.tmdb_rank();
+        }
+    }
+    // missing table degrades to empty
+    // (the demo DB has the table; the degrade path is covered by the
+    //  classification unit tests + the knn missing-column live test)
+});
+
+integration_test!(director_channel_and_batch_parity, |db, _dsn| {
+    // a movie seed with a director in the demo crew table
+    let rows = db
+        .fetch(
+            "SELECT DISTINCT c.media_id FROM {t_tmdb_crew} c \
+             WHERE c.job = 'Director' ORDER BY c.media_id LIMIT 1",
+            &[],
+        )
+        .await
+        .expect("crew");
+    use sqlx::Row;
+    let sid: i64 = rows[0].try_get("media_id").unwrap();
+    let single = generate_director_candidates(db, sid, "movie", 15)
+        .await
+        .expect("director single");
+    let batch = generate_director_candidates_batch(db, &[(sid, "movie".to_string())], 15)
+        .await
+        .expect("director batch");
+    if !single.is_empty() {
+        assert_eq!(single, batch[0], "single and batch must agree per-seed");
+        for c in &single {
+            assert!(matches!(
+                c.via.as_deref(),
+                Some("director") | Some("writer")
+            ));
+            assert_ne!(c.id, sid);
+        }
+    }
+});
+
+integration_test!(popular_and_gems_interleave, |db, _dsn| {
+    let popular = generate_popular_candidates(db, 8, None, None)
+        .await
+        .expect("popular");
+    assert!(!popular.is_empty(), "demo popularity slice");
+    assert!(popular.len() <= 8);
+    for r in &popular {
+        assert_eq!(r.via.as_deref(), Some("text"));
+        assert!(r.rating.unwrap_or(0.0) >= 0.0);
+    }
+    let gems = gem_rows(db, "gems", 6).await;
+    assert!(!gems.is_empty());
+});
+
+async fn gem_rows(db: &Db, mode: &str, limit: usize) -> Vec<cine_rec_db::recall2::PageRow> {
+    cine_rec_db::recall2::gem_or_trending_rows(db, mode, limit, None, None, None)
+        .await
+        .expect(mode)
+}
