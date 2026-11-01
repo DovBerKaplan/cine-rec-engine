@@ -578,14 +578,23 @@ pub struct RecallArgs {
 }
 
 /// Steps 2–2b: all four recall channels concurrently, then the pool
-/// walk, then session filters. Channel failures land in their seed's
+/// walk, then session filters. Returns the walk's dedup state too —
+/// caller-injected extras continue it. Channel failures land in their seed's
 /// slot (`Failed`) — a failed channel never fails the request.
+pub struct RecallOutcome {
+    pub candidates: Vec<CandidateRow>,
+    pub knn_sims: HashMap<i64, HashMap<i64, f64>>,
+    /// the walk's dedup state — the extras merge continues it
+    pub seen_ids: HashSet<i64>,
+    pub seed_id_set: HashSet<i64>,
+}
+
 pub async fn recall_pool(
     db: &Db,
     seed_infos: &[SeedInfo],
     args: &RecallArgs,
     filters: &cine_rec_db::info::RecallFilters,
-) -> Result<(Vec<CandidateRow>, HashMap<i64, HashMap<i64, f64>>), cine_rec_db::DbError> {
+) -> Result<RecallOutcome, cine_rec_db::DbError> {
     let n = seed_infos.len();
 
     // per-seed channels — each seed degrades alone
@@ -690,6 +699,8 @@ pub async fn recall_pool(
     ];
 
     let (mut candidates, knn_sims) = assemble_pool(seed_infos, channels);
+    let seen_ids: HashSet<i64> = candidates.iter().map(|c| c.id).collect();
+    let seed_id_set: HashSet<i64> = seed_infos.iter().map(|s| s.id).collect();
 
     // 2b. session filters at the recall boundary
     if filters != &cine_rec_db::info::RecallFilters::default() {
@@ -706,7 +717,7 @@ pub async fn recall_pool(
             });
         }
     }
-    Ok((candidates, knn_sims))
+    Ok(RecallOutcome { candidates, knn_sims, seen_ids, seed_id_set })
 }
 
 // join_all without pulling the futures crate: wrap the three per-seed
@@ -857,11 +868,14 @@ use cine_rec_scoring::types::{CastKey, Entity};
 /// in the fixture): `active` = ACTIVE weights (28, feature order),
 /// `heuristic27` = HEURISTIC_WEIGHTS_LIST — the module global driving
 /// the residual/heuristic terms (NOT the active list).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct WeightLists {
     pub active: Vec<f64>,
     pub heuristic27: Vec<f64>,
 }
+
+// Default derived (empty) — the caller must supply real weights; an
+// empty list would fail loudly inside score_pair_fast, not silently.
 
 /// Python `round(x, 3)` — decimal banker's rounding via the scaled
 /// integer (CPython uses correctly-rounded dtoa; scaled-bankers matches
@@ -971,7 +985,7 @@ fn enrichment_entity(e: &Enrichment) -> Entity {
 /// average), one slot per story, auteur decays, MMR, round to 3
 /// decimals. The auteur factors/`genre_mismatch` are inputs (config
 /// values, defaulted by the caller to the deployment constants).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DecayConfig {
     pub auteur_factors: Vec<f64>,      // AUTEUR_DECAY_FACTORS
     pub genre_mismatch_factor: f64,    // GENRE_MISMATCH_AUTEUR_FACTOR
@@ -1221,4 +1235,243 @@ pub fn dedup_same_story(items: Vec<ScoredItem>) -> Vec<ScoredItem> {
     let mut out: Vec<ScoredItem> = best.into_values().collect();
     out.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     out
+}
+
+// ---------------------------------------------------------------------------
+// The orchestrator: the full compute path, cache bypassed (NoopCache
+// deployment parity), per-user passes excluded (they are 5c, Python's
+// user_context). randomness must be <= 0 — the Mersenne stream stays
+// on the Python side of the bridge.
+// ---------------------------------------------------------------------------
+
+use serde::{Deserialize, Serialize};
+
+/// MAX_SEEDS (find_similar) — the seed cap.
+pub const MAX_SEEDS: usize = 20;
+/// optimize_candidate_selection's target count (find_similar step 4).
+const OPTIMIZE_TARGET: usize = 150;
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ComputeSpec {
+    /// (tmdb_id, per-seed media_type) — None entries fall back to
+    /// `media_type` like Python's seed_media_types.get(sid, media_type)
+    pub seeds: Vec<(i64, Option<String>)>,
+    pub media_type: Option<String>,
+    pub limit: Option<usize>,
+    pub allow_cross_media: bool,
+    pub seed_weights: Option<HashMap<i64, f64>>,
+    pub emb_column: String,
+    pub knn_ft_enabled: bool,
+    #[serde(default)]
+    pub filters: cine_rec_db::info::RecallFilters,
+    #[serde(default)]
+    pub weights: WeightLists,
+    #[serde(default)]
+    pub decay: DecayConfig,
+    /// caller-injected uvec-ANN extras: (vector, extra_limit). Resolved
+    /// INSIDE — the lazy factory's Rust equivalent (Python's laziness
+    /// spares CACHE hits the query; the NoopCache path always computes)
+    pub uvec_extra: Option<(Vec<f32>, i64)>,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct ComputeResult {
+    pub results: Vec<ScoredItemSerde>,
+    pub movie_ratio: f64,
+    /// per-candidate per-seed raw scores (parity + cache payload shape)
+    pub raw_per_seed: HashMap<i64, HashMap<i64, f64>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ScoredItemSerde {
+    pub tmdb_id: i64,
+    pub score: f64,
+    pub title: String,
+    pub title_en: Option<String>,
+    pub media_type: String,
+    pub rating: f64,
+    pub genres: Vec<String>,
+    pub poster_path: Option<String>,
+    pub collection_id: Option<i64>,
+    pub release_year: Option<i64>,
+    pub director_ids: Vec<i64>,
+}
+
+/// Steps 1–9 of Python's compute path (cache bypassed, exclude=None,
+/// randomness <= 0). `ensure_seeds_synced` is deliberately NOT here:
+/// it is an HTTP side-effect that stays at the Python entry.
+pub async fn compute_find_similar(
+    db: &Db,
+    spec: &ComputeSpec,
+) -> Result<ComputeResult, cine_rec_db::DbError> {
+    // seed normalization + MAX_SEEDS cap (Python keeps order, filters
+    // the per-seed media map to the survivors)
+    let mut tmdb_ids: Vec<i64> = Vec::new();
+    let mut seed_media_types: HashMap<i64, String> = HashMap::new();
+    for (sid, mt) in &spec.seeds {
+        tmdb_ids.push(*sid);
+        if let Some(mt) = mt {
+            seed_media_types.insert(*sid, mt.clone());
+        }
+    }
+    if tmdb_ids.len() > MAX_SEEDS {
+        tmdb_ids.truncate(MAX_SEEDS);
+        let keep: HashSet<i64> = tmdb_ids.iter().copied().collect();
+        seed_media_types.retain(|k, _| keep.contains(k));
+    }
+
+    // 1. seed infos — one batch per media-type group when composite
+    //    keys were given, else a single batch (Python gathers the
+    //    group queries; sequential here — identical result map)
+    let mut seed_map: HashMap<i64, SeedInfo> = HashMap::new();
+    if !seed_media_types.is_empty() {
+        let mut groups: Vec<(String, Vec<i64>)> = Vec::new();
+        for sid in &tmdb_ids {
+            let mt = seed_media_types
+                .get(sid)
+                .cloned()
+                .or_else(|| spec.media_type.clone())
+                .unwrap_or_default();
+            match groups.iter_mut().find(|(g, _)| *g == mt) {
+                Some((_, ids)) => ids.push(*sid),
+                None => groups.push((mt, vec![*sid])),
+            }
+        }
+        for (mt, ids) in groups {
+            let mt_opt = if mt.is_empty() { None } else { Some(mt.as_str()) };
+            for (id, info) in cine_rec_db::info::get_movie_info_batch(db, &ids, mt_opt).await? {
+                seed_map.insert(id, info);
+            }
+        }
+    } else {
+        seed_map = cine_rec_db::info::get_movie_info_batch(
+            db,
+            &tmdb_ids,
+            spec.media_type.as_deref(),
+        )
+        .await?;
+    }
+    let mut seed_infos: Vec<SeedInfo> = tmdb_ids
+        .iter()
+        .filter_map(|sid| seed_map.get(sid).cloned())
+        .collect();
+    if seed_infos.is_empty() {
+        return Ok(ComputeResult::default());
+    }
+
+    // 1b. cinematic tags — mutate onto the infos (Python mutates dicts)
+    let seed_id_list: Vec<i64> = seed_infos.iter().map(|s| s.id).collect();
+    let tags = cine_rec_db::info::fetch_cinematic_tags(db, &seed_id_list).await?;
+    for s in &mut seed_infos {
+        if let Some((narrative, pacing, arc)) = tags.get(&s.id) {
+            s.narrative = narrative.clone();
+            s.pacing = pacing.clone();
+            s.emotional_arc = arc.clone();
+        }
+    }
+
+    // 2–2b. recall + pool + filters
+    let args = RecallArgs {
+        allow_cross_media: spec.allow_cross_media,
+        emb_column: spec.emb_column.clone(),
+        knn_ft_enabled: spec.knn_ft_enabled,
+    };
+    let filters = spec.filters.clone();
+    let mut pool = recall_pool(db, &seed_infos, &args, &filters).await?;
+    if pool.candidates.is_empty() {
+        return Ok(ComputeResult::default());
+    }
+
+    // 4. intake filter over the merged seed genres
+    let all_genres: Vec<String> =
+        seed_infos.iter().flat_map(|s| s.genres.clone()).collect();
+    pool.candidates = optimize_candidate_selection(pool.candidates, &all_genres, OPTIMIZE_TARGET);
+    if pool.candidates.is_empty() {
+        return Ok(ComputeResult::default());
+    }
+
+    // 5. batch-enrich
+    let enriched = enrich_pool(db, &pool.candidates).await?;
+
+    // 5b. semantic similarities — KNN harvest wins on collision
+    //     (Python merges the batched map with setdefault INTO the
+    //     harvest), then caller extras merge AFTER (their sims are
+    //     absent by construction — Python's order, kept faithfully)
+    let mut seed_sims = pool.knn_sims.clone();
+    let candidate_ids: Vec<i64> = pool.candidates.iter().map(|c| c.id).collect();
+    let batched = cine_rec_db::info::semantic_overview_similarity_batch(
+        db,
+        &seed_id_list,
+        &candidate_ids,
+        None,
+        &spec.emb_column,
+        None,
+    )
+    .await?;
+    for (sid, cmap) in batched {
+        let entry = seed_sims.entry(sid).or_default();
+        for (cid, sim) in cmap {
+            entry.entry(cid).or_insert(sim);
+        }
+    }
+
+    // 5c. caller extras (uvec ANN) — same dedup + seed guard as channels
+    if let Some((vector, extra_limit)) = &spec.uvec_extra {
+        let extras = cine_rec_db::recall2::generate_user_vector_candidates(
+            db,
+            vector,
+            *extra_limit,
+            &spec.emb_column,
+        )
+        .await
+        .unwrap_or_default();
+        for c in extras {
+            if !pool.seen_ids.contains(&c.id) && !pool.seed_id_set.contains(&c.id) {
+                pool.seen_ids.insert(c.id);
+                pool.candidates.push(c);
+            }
+        }
+    }
+
+    // 6–8. the scoring loop
+    let weights = spec.weights.clone();
+    let decay = spec.decay.clone();
+    let sw = spec.seed_weights.as_ref();
+    let outcome = score_candidates(
+        &seed_infos,
+        &pool.candidates,
+        &enriched,
+        &seed_sims,
+        sw,
+        &weights,
+        &decay,
+        spec.limit,
+    );
+
+    // 9. media balancing on the final list (no user passes here; noise
+    //    is the Python-side Mersenne regime, r <= 0 by contract)
+    let mut results = outcome.results.clone();
+    if let Some(limit) = spec.limit {
+        results = balance_by_media_type(&results, outcome.movie_ratio, limit);
+    }
+    Ok(ComputeResult {
+        results: results
+            .into_iter()
+            .map(|r| ScoredItemSerde {
+                tmdb_id: r.tmdb_id,
+                score: r.score,
+                title: r.title,
+                title_en: r.title_en,
+                media_type: r.media_type,
+                rating: r.rating,
+                genres: r.genres,
+                poster_path: r.poster_path,
+                collection_id: r.collection_id,
+                release_year: r.release_year,
+                director_ids: r.director_ids,
+            })
+            .collect(),
+        movie_ratio: outcome.movie_ratio,
+        raw_per_seed: outcome.raw_per_seed,
+    })
 }

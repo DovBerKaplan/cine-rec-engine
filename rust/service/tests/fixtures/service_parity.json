@@ -1,0 +1,3934 @@
+{
+ "note": "compute-path parity; cache off; exclude=None; r=0",
+ "emb_column": "embedding",
+ "plan_seeds_910001": [
+  [
+   103,
+   "movie"
+  ],
+  [
+   11,
+   "movie"
+  ],
+  [
+   121,
+   "movie"
+  ],
+  [
+   43,
+   "tv"
+  ]
+ ],
+ "cases": [
+  {
+   "name": "single_movie",
+   "spec": {
+    "seeds": [
+     [
+      11,
+      "movie"
+     ]
+    ],
+    "media_type": null,
+    "limit": 20,
+    "allow_cross_media": false,
+    "seed_weights": null,
+    "emb_column": "embedding",
+    "knn_ft_enabled": true,
+    "filters": {},
+    "weights": {
+     "active": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0,
+      0.0
+     ],
+     "heuristic27": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0
+     ]
+    },
+    "decay": {
+     "auteur_factors": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "genre_mismatch_factor": 0.5,
+     "mmr_enabled": true,
+     "mmr_lambda": 0.8
+    },
+    "uvec_extra": null
+   },
+   "movie_ratio": 1.0,
+   "results": [
+    {
+     "tmdb_id": 1891,
+     "score": 25.839,
+     "title": "The Empire Strikes Back",
+     "title_en": "The Empire Strikes Back",
+     "media_type": "movie",
+     "rating": 8.392,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/nNAeTmF4CtdSgMDplXTDPOpYzsX.jpg",
+     "collection_id": 10,
+     "release_year": 1980,
+     "director_ids": [
+      10930
+     ]
+    },
+    {
+     "tmdb_id": 348,
+     "score": 15.647,
+     "title": "Alien",
+     "title_en": "Alien",
+     "media_type": "movie",
+     "rating": 8.174,
+     "genres": [
+      "Science Fiction",
+      "Horror"
+     ],
+     "poster_path": "/vfrQk5IPloGg1v9Rzbh2Eg3VGyM.jpg",
+     "collection_id": 8091,
+     "release_year": 1979,
+     "director_ids": [
+      578
+     ]
+    },
+    {
+     "tmdb_id": 280,
+     "score": 14.849,
+     "title": "Terminator 2: Judgment Day",
+     "title_en": "Terminator 2: Judgment Day",
+     "media_type": "movie",
+     "rating": 8.2,
+     "genres": [
+      "Thriller",
+      "Science Fiction",
+      "Action"
+     ],
+     "poster_path": "/jFTVD4XoWQTcg7wdyJKa8PEds5q.jpg",
+     "collection_id": 528,
+     "release_year": 1991,
+     "director_ids": [
+      2710
+     ]
+    },
+    {
+     "tmdb_id": 75612,
+     "score": 15.414,
+     "title": "Oblivion",
+     "title_en": "Oblivion",
+     "media_type": "movie",
+     "rating": 6.693,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action",
+      "Mystery"
+     ],
+     "poster_path": "/bYLM3GpNUZnoFElPXp1zlhDPdtv.jpg",
+     "collection_id": null,
+     "release_year": 2013,
+     "director_ids": [
+      86270
+     ]
+    },
+    {
+     "tmdb_id": 24188,
+     "score": 13.162,
+     "title": "Il Sorpasso",
+     "title_en": "Il Sorpasso",
+     "media_type": "movie",
+     "rating": 8.232,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/4h1ckrJQVcQYjeOkqS8i9BqZ9MI.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      57641
+     ]
+    },
+    {
+     "tmdb_id": 14537,
+     "score": 13.154,
+     "title": "Harakiri",
+     "title_en": "Harakiri",
+     "media_type": "movie",
+     "rating": 8.465,
+     "genres": [
+      "Drama",
+      "History",
+      "Action"
+     ],
+     "poster_path": "/5konZnIbcAxZjP616Cz5o9bKEfW.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      76978
+     ]
+    },
+    {
+     "tmdb_id": 348350,
+     "score": 14.569,
+     "title": "Solo: A Star Wars Story",
+     "title_en": "Solo: A Star Wars Story",
+     "media_type": "movie",
+     "rating": 6.552,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/4oD6VEccFkorEBTEDXtpLAaz0Rl.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": [
+      6159
+     ]
+    },
+    {
+     "tmdb_id": 603,
+     "score": 13.631,
+     "title": "The Matrix",
+     "title_en": "The Matrix",
+     "media_type": "movie",
+     "rating": 8.259,
+     "genres": [
+      "Science Fiction",
+      "Action"
+     ],
+     "poster_path": "/dXNAPwY7VrqMAo51EKhhCJfaGb5.jpg",
+     "collection_id": 2344,
+     "release_year": 1999,
+     "director_ids": [
+      9340,
+      9339
+     ]
+    },
+    {
+     "tmdb_id": 157336,
+     "score": 12.961,
+     "title": "Interstellar",
+     "title_en": "Interstellar",
+     "media_type": "movie",
+     "rating": 8.488,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Drama"
+     ],
+     "poster_path": "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": [
+      525
+     ]
+    },
+    {
+     "tmdb_id": 1127384,
+     "score": 12.227,
+     "title": "Deep Water",
+     "title_en": "Deep Water",
+     "media_type": "movie",
+     "rating": 7.396,
+     "genres": [
+      "Thriller",
+      "Adventure",
+      "Horror"
+     ],
+     "poster_path": "/ZWHxL2ETItcZzeVsVfs6gv3SZ7.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      16938
+     ]
+    },
+    {
+     "tmdb_id": 1280738,
+     "score": 12.692,
+     "title": "The Furious",
+     "title_en": "The Furious",
+     "media_type": "movie",
+     "rating": 8.192,
+     "genres": [
+      "Crime",
+      "Thriller",
+      "Action"
+     ],
+     "poster_path": "/ivQ1Z3lI1xWvAeGDHBw3CCYZDGJ.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      1113443
+     ]
+    },
+    {
+     "tmdb_id": 1228710,
+     "score": 13.915,
+     "title": "The Mandalorian and Grogu",
+     "title_en": "The Mandalorian and Grogu",
+     "media_type": "movie",
+     "rating": 7.463,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/uwMKWjcNID0D9jjplsjkQS2OrB4.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      15277
+     ]
+    },
+    {
+     "tmdb_id": 152,
+     "score": 13.055,
+     "title": "Star Trek: The Motion Picture",
+     "title_en": "Star Trek: The Motion Picture",
+     "media_type": "movie",
+     "rating": 6.484,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Mystery"
+     ],
+     "poster_path": "/wfiAfNwH6CMKxz4vRaW8CPTabtk.jpg",
+     "collection_id": 151,
+     "release_year": 1979,
+     "director_ids": [
+      1744
+     ]
+    },
+    {
+     "tmdb_id": 1356039,
+     "score": 12.389,
+     "title": "Counterattack",
+     "title_en": "Counterattack",
+     "media_type": "movie",
+     "rating": 8.3,
+     "genres": [
+      "Thriller",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/kxnFdLJhi37ZVFDCL1ka0yeQVU5.jpg",
+     "collection_id": null,
+     "release_year": 2025,
+     "director_ids": [
+      964826
+     ]
+    },
+    {
+     "tmdb_id": 283566,
+     "score": 12.11,
+     "title": "Evangelion: 3.0+1.0 Thrice Upon a Time",
+     "title_en": "Evangelion: 3.0+1.0 Thrice Upon a Time",
+     "media_type": "movie",
+     "rating": 8.216,
+     "genres": [
+      "Science Fiction",
+      "Drama",
+      "Action",
+      "Animation"
+     ],
+     "poster_path": "/md5wZRRj8biHrGtyitgBZo7674t.jpg",
+     "collection_id": 210303,
+     "release_year": 2021,
+     "director_ids": [
+      1999367,
+      77923,
+      56341,
+      77921
+     ]
+    },
+    {
+     "tmdb_id": 13475,
+     "score": 12.957,
+     "title": "Star Trek",
+     "title_en": "Star Trek",
+     "media_type": "movie",
+     "rating": 7.437,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/lV5OpzAss1z06YNagOVap1I35mH.jpg",
+     "collection_id": 115575,
+     "release_year": 2009,
+     "director_ids": [
+      15344
+     ]
+    },
+    {
+     "tmdb_id": 105,
+     "score": 11.304,
+     "title": "Back to the Future",
+     "title_en": "Back to the Future",
+     "media_type": "movie",
+     "rating": 8.3,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Comedy"
+     ],
+     "poster_path": "/vN5B5WgYscRGcQpVhHl6p9DDTP0.jpg",
+     "collection_id": 264,
+     "release_year": 1985,
+     "director_ids": [
+      24
+     ]
+    },
+    {
+     "tmdb_id": 1383731,
+     "score": 11.698,
+     "title": "Protector",
+     "title_en": "Protector",
+     "media_type": "movie",
+     "rating": 8.4,
+     "genres": [
+      "Thriller",
+      "Action"
+     ],
+     "poster_path": "/icOZpnGuH9YrEaW3wrw5GJaXGih.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      589402
+     ]
+    },
+    {
+     "tmdb_id": 687163,
+     "score": 11.657,
+     "title": "Project Hail Mary",
+     "title_en": "Project Hail Mary",
+     "media_type": "movie",
+     "rating": 8.6,
+     "genres": [
+      "Science Fiction",
+      "Adventure"
+     ],
+     "poster_path": "/AdpvqIhgaqg5JHzH3M6532XV3PG.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      155267,
+      107446
+     ]
+    },
+    {
+     "tmdb_id": 346,
+     "score": 11.61,
+     "title": "Seven Samurai",
+     "title_en": "Seven Samurai",
+     "media_type": "movie",
+     "rating": 8.453,
+     "genres": [
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/lOMGc8bnSwQhS4XyE1S99uH8NXf.jpg",
+     "collection_id": null,
+     "release_year": 1954,
+     "director_ids": [
+      5026
+     ]
+    }
+   ],
+   "raw_per_seed": null
+  },
+  {
+   "name": "single_tv",
+   "spec": {
+    "seeds": [
+     [
+      43,
+      "tv"
+     ]
+    ],
+    "media_type": null,
+    "limit": 20,
+    "allow_cross_media": false,
+    "seed_weights": null,
+    "emb_column": "embedding",
+    "knn_ft_enabled": true,
+    "filters": {},
+    "weights": {
+     "active": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0,
+      0.0
+     ],
+     "heuristic27": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0
+     ]
+    },
+    "decay": {
+     "auteur_factors": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "genre_mismatch_factor": 0.5,
+     "mmr_enabled": true,
+     "mmr_lambda": 0.8
+    },
+    "uvec_extra": null
+   },
+   "movie_ratio": 0.0,
+   "results": [
+    {
+     "tmdb_id": 31356,
+     "score": 17.685,
+     "title": "Big Time Rush",
+     "title_en": "Big Time Rush",
+     "media_type": "tv",
+     "rating": 8.566,
+     "genres": [
+      "Kids",
+      "Comedy"
+     ],
+     "poster_path": "/34y5JjZYj2paoxA0RXEppU5LRpb.jpg",
+     "collection_id": null,
+     "release_year": 2009,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 3498,
+     "score": 17.564,
+     "title": "Wizards of Waverly Place",
+     "title_en": "Wizards of Waverly Place",
+     "media_type": "tv",
+     "rating": 8.626,
+     "genres": [
+      "Kids",
+      "Comedy",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/spVI8Zns4Ep30zzxcoO7f7nwfck.jpg",
+     "collection_id": null,
+     "release_year": 2007,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 72637,
+     "score": 17.097,
+     "title": "Once",
+     "title_en": "Once",
+     "media_type": "tv",
+     "rating": 8.628,
+     "genres": [
+      "Family",
+      "Soap",
+      "Comedy"
+     ],
+     "poster_path": "/d4vPg3QsTJJh6C5MHARTb5CyqOu.jpg",
+     "collection_id": null,
+     "release_year": 2017,
+     "director_ids": [
+      81161
+     ]
+    },
+    {
+     "tmdb_id": 3854,
+     "score": 16.229,
+     "title": "The Spectacular Spider-Man",
+     "title_en": "The Spectacular Spider-Man",
+     "media_type": "tv",
+     "rating": 8.624,
+     "genres": [
+      "Family",
+      "Kids",
+      "Action & Adventure",
+      "Animation"
+     ],
+     "poster_path": "/dCNxOhXT7c4lqYuRpdM3m8s9XDp.jpg",
+     "collection_id": null,
+     "release_year": 2008,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 42705,
+     "score": 16.118,
+     "title": "Fighting Spirit",
+     "title_en": "Fighting Spirit",
+     "media_type": "tv",
+     "rating": 8.671,
+     "genres": [
+      "Drama",
+      "Action & Adventure",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/fEYVJu08En9A7n0e5TTpeoSjtIm.jpg",
+     "collection_id": null,
+     "release_year": 2000,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 68595,
+     "score": 15.596,
+     "title": "Planet Earth II",
+     "title_en": "Planet Earth II",
+     "media_type": "tv",
+     "rating": 8.642,
+     "genres": [
+      "Family",
+      "Documentary"
+     ],
+     "poster_path": "/tUKomxy50suT4MyxjYfOJDkZUq3.jpg",
+     "collection_id": null,
+     "release_year": 2016,
+     "director_ids": [
+      67589
+     ]
+    },
+    {
+     "tmdb_id": 37606,
+     "score": 15.541,
+     "title": "The Amazing World of Gumball",
+     "title_en": "The Amazing World of Gumball",
+     "media_type": "tv",
+     "rating": 8.535,
+     "genres": [
+      "Family",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/VYnnyA2hyxi3VUPgCA71mMtt69.jpg",
+     "collection_id": null,
+     "release_year": 2011,
+     "director_ids": [
+      2279899,
+      1254165
+     ]
+    },
+    {
+     "tmdb_id": 100,
+     "score": 15.436,
+     "title": "I Am Not an Animal",
+     "title_en": "I Am Not an Animal",
+     "media_type": "tv",
+     "rating": 8.602,
+     "genres": [
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/zXhtWhYtlJVyyp5MdT7ggMJn5si.jpg",
+     "collection_id": null,
+     "release_year": 2004,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 70785,
+     "score": 14.635,
+     "title": "Anne with an E",
+     "title_en": "Anne with an E",
+     "media_type": "tv",
+     "rating": 8.65,
+     "genres": [
+      "Drama",
+      "Family"
+     ],
+     "poster_path": "/6P6tXhjT5tK3qOXzxF9OMLlG7iz.jpg",
+     "collection_id": null,
+     "release_year": 2017,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 82728,
+     "score": 14.781,
+     "title": "Bluey",
+     "title_en": "Bluey",
+     "media_type": "tv",
+     "rating": 8.572,
+     "genres": [
+      "Family",
+      "Kids",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/9p4pNoGcuyCfHcGWKNrTopqMWtq.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 42573,
+     "score": 14.742,
+     "title": "Slam Dunk",
+     "title_en": "Slam Dunk",
+     "media_type": "tv",
+     "rating": 8.663,
+     "genres": [
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/nmmOKeydeeO4TKucpvyMA2o6gdD.jpg",
+     "collection_id": null,
+     "release_year": 1993,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 61617,
+     "score": 14.846,
+     "title": "Over the Garden Wall",
+     "title_en": "Over the Garden Wall",
+     "media_type": "tv",
+     "rating": 8.567,
+     "genres": [
+      "Family",
+      "Mystery",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/m3lU8n7WxzMecxKZcqhq5y5ESy.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": [
+      1245729
+     ]
+    },
+    {
+     "tmdb_id": 28136,
+     "score": 14.745,
+     "title": "Rurouni Kenshin",
+     "title_en": "Rurouni Kenshin",
+     "media_type": "tv",
+     "rating": 8.522,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/lQ4p6OF9KjagTfs8otZt0VTe3Al.jpg",
+     "collection_id": null,
+     "release_year": 1996,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 62741,
+     "score": 14.887,
+     "title": "Kamisama Kiss",
+     "title_en": "Kamisama Kiss",
+     "media_type": "tv",
+     "rating": 8.629,
+     "genres": [
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/cRama3S1CMYXFu1LmUkMMPoC99O.jpg",
+     "collection_id": null,
+     "release_year": 2012,
+     "director_ids": [
+      145351
+     ]
+    },
+    {
+     "tmdb_id": 110070,
+     "score": 14.619,
+     "title": "Horimiya",
+     "title_en": "Horimiya",
+     "media_type": "tv",
+     "rating": 8.503,
+     "genres": [
+      "Drama",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/iSOKGl5KIeOCAtigUDCfFZe2cOi.jpg",
+     "collection_id": null,
+     "release_year": 2021,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 57706,
+     "score": 14.273,
+     "title": "Ranma ½",
+     "title_en": "Ranma ½",
+     "media_type": "tv",
+     "rating": 8.615,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/qb1R5iLZcjIgdDIfXFQXmJadQPI.jpg",
+     "collection_id": null,
+     "release_year": 1989,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 85077,
+     "score": 14.188,
+     "title": "The Chosen",
+     "title_en": "The Chosen",
+     "media_type": "tv",
+     "rating": 8.808,
+     "genres": [
+      "Drama",
+      "Family",
+      "Action & Adventure"
+     ],
+     "poster_path": "/dqVUFuNrMFWt7uGNWlpo91VKYOI.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 82739,
+     "score": 14.458,
+     "title": "Rascal Does Not Dream of Bunny Girl Senpai",
+     "title_en": "Rascal Does Not Dream of Bunny Girl Senpai",
+     "media_type": "tv",
+     "rating": 8.513,
+     "genres": [
+      "Drama",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/fbqDG7GjodvaNecgv1q8kfSNPl5.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 76121,
+     "score": 14.131,
+     "title": "DARLING in the FRANXX",
+     "title_en": "DARLING in the FRANXX",
+     "media_type": "tv",
+     "rating": 8.51,
+     "genres": [
+      "Drama",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/m6R8gI3brohD6izeVCXFmuGeV2m.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": [
+      109192
+     ]
+    },
+    {
+     "tmdb_id": 37854,
+     "score": 14.364,
+     "title": "One Piece",
+     "title_en": "One Piece",
+     "media_type": "tv",
+     "rating": 8.749,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/dB4EDhre2dsC2kxYDavyKWqLQwi.jpg",
+     "collection_id": null,
+     "release_year": 1999,
+     "director_ids": []
+    }
+   ],
+   "raw_per_seed": null
+  },
+  {
+   "name": "multi_mixed",
+   "spec": {
+    "seeds": [
+     [
+      11,
+      "movie"
+     ],
+     [
+      43,
+      "tv"
+     ]
+    ],
+    "media_type": null,
+    "limit": 20,
+    "allow_cross_media": false,
+    "seed_weights": null,
+    "emb_column": "embedding",
+    "knn_ft_enabled": true,
+    "filters": {},
+    "weights": {
+     "active": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0,
+      0.0
+     ],
+     "heuristic27": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0
+     ]
+    },
+    "decay": {
+     "auteur_factors": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "genre_mismatch_factor": 0.5,
+     "mmr_enabled": true,
+     "mmr_lambda": 0.8
+    },
+    "uvec_extra": null
+   },
+   "movie_ratio": 0.5,
+   "results": [
+    {
+     "tmdb_id": 24188,
+     "score": 12.929,
+     "title": "Il Sorpasso",
+     "title_en": "Il Sorpasso",
+     "media_type": "movie",
+     "rating": 8.232,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/4h1ckrJQVcQYjeOkqS8i9BqZ9MI.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      57641
+     ]
+    },
+    {
+     "tmdb_id": 1891,
+     "score": 12.92,
+     "title": "The Empire Strikes Back",
+     "title_en": "The Empire Strikes Back",
+     "media_type": "movie",
+     "rating": 8.392,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/nNAeTmF4CtdSgMDplXTDPOpYzsX.jpg",
+     "collection_id": 10,
+     "release_year": 1980,
+     "director_ids": [
+      10930
+     ]
+    },
+    {
+     "tmdb_id": 348350,
+     "score": 12.0,
+     "title": "Solo: A Star Wars Story",
+     "title_en": "Solo: A Star Wars Story",
+     "media_type": "movie",
+     "rating": 6.552,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/4oD6VEccFkorEBTEDXtpLAaz0Rl.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": [
+      6159
+     ]
+    },
+    {
+     "tmdb_id": 75612,
+     "score": 11.814,
+     "title": "Oblivion",
+     "title_en": "Oblivion",
+     "media_type": "movie",
+     "rating": 6.693,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action",
+      "Mystery"
+     ],
+     "poster_path": "/bYLM3GpNUZnoFElPXp1zlhDPdtv.jpg",
+     "collection_id": null,
+     "release_year": 2013,
+     "director_ids": [
+      86270
+     ]
+    },
+    {
+     "tmdb_id": 105,
+     "score": 11.318,
+     "title": "Back to the Future",
+     "title_en": "Back to the Future",
+     "media_type": "movie",
+     "rating": 8.3,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Comedy"
+     ],
+     "poster_path": "/vN5B5WgYscRGcQpVhHl6p9DDTP0.jpg",
+     "collection_id": 264,
+     "release_year": 1985,
+     "director_ids": [
+      24
+     ]
+    },
+    {
+     "tmdb_id": 13475,
+     "score": 11.268,
+     "title": "Star Trek",
+     "title_en": "Star Trek",
+     "media_type": "movie",
+     "rating": 7.437,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/lV5OpzAss1z06YNagOVap1I35mH.jpg",
+     "collection_id": 115575,
+     "release_year": 2009,
+     "director_ids": [
+      15344
+     ]
+    },
+    {
+     "tmdb_id": 346698,
+     "score": 10.968,
+     "title": "Barbie",
+     "title_en": "Barbie",
+     "media_type": "movie",
+     "rating": 6.907,
+     "genres": [
+      "Adventure",
+      "Fantasy",
+      "Comedy"
+     ],
+     "poster_path": "/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg",
+     "collection_id": null,
+     "release_year": 2023,
+     "director_ids": [
+      45400
+     ]
+    },
+    {
+     "tmdb_id": 284053,
+     "score": 10.914,
+     "title": "Thor: Ragnarok",
+     "title_en": "Thor: Ragnarok",
+     "media_type": "movie",
+     "rating": 7.579,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action",
+      "Comedy"
+     ],
+     "poster_path": "/rzRwTcFvttcN1ZpX2xv4j3tSdJu.jpg",
+     "collection_id": 131296,
+     "release_year": 2017,
+     "director_ids": [
+      55934
+     ]
+    },
+    {
+     "tmdb_id": 537061,
+     "score": 10.674,
+     "title": "Steven Universe: The Movie",
+     "title_en": "Steven Universe: The Movie",
+     "media_type": "movie",
+     "rating": 8.204,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Family",
+      "Fantasy",
+      "TV Movie",
+      "Animation"
+     ],
+     "poster_path": "/8mRgpubxHqnqvENK4Bei30xMDvy.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": [
+      1245726
+     ]
+    },
+    {
+     "tmdb_id": 1226863,
+     "score": 10.559,
+     "title": "The Super Mario Galaxy Movie",
+     "title_en": "The Super Mario Galaxy Movie",
+     "media_type": "movie",
+     "rating": 8.222,
+     "genres": [
+      "Adventure",
+      "Family",
+      "Fantasy",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/eJGWx219ZcEMVQJhAgMiqo8tYY.jpg",
+     "collection_id": 1434561,
+     "release_year": 2026,
+     "director_ids": [
+      1719706,
+      113901
+     ]
+    },
+    {
+     "tmdb_id": 31356,
+     "score": 8.842,
+     "title": "Big Time Rush",
+     "title_en": "Big Time Rush",
+     "media_type": "tv",
+     "rating": 8.566,
+     "genres": [
+      "Kids",
+      "Comedy"
+     ],
+     "poster_path": "/34y5JjZYj2paoxA0RXEppU5LRpb.jpg",
+     "collection_id": null,
+     "release_year": 2009,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 3498,
+     "score": 8.782,
+     "title": "Wizards of Waverly Place",
+     "title_en": "Wizards of Waverly Place",
+     "media_type": "tv",
+     "rating": 8.626,
+     "genres": [
+      "Kids",
+      "Comedy",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/spVI8Zns4Ep30zzxcoO7f7nwfck.jpg",
+     "collection_id": null,
+     "release_year": 2007,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 72637,
+     "score": 8.549,
+     "title": "Once",
+     "title_en": "Once",
+     "media_type": "tv",
+     "rating": 8.628,
+     "genres": [
+      "Family",
+      "Soap",
+      "Comedy"
+     ],
+     "poster_path": "/d4vPg3QsTJJh6C5MHARTb5CyqOu.jpg",
+     "collection_id": null,
+     "release_year": 2017,
+     "director_ids": [
+      81161
+     ]
+    },
+    {
+     "tmdb_id": 3854,
+     "score": 8.114,
+     "title": "The Spectacular Spider-Man",
+     "title_en": "The Spectacular Spider-Man",
+     "media_type": "tv",
+     "rating": 8.624,
+     "genres": [
+      "Family",
+      "Kids",
+      "Action & Adventure",
+      "Animation"
+     ],
+     "poster_path": "/dCNxOhXT7c4lqYuRpdM3m8s9XDp.jpg",
+     "collection_id": null,
+     "release_year": 2008,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 42705,
+     "score": 8.059,
+     "title": "Fighting Spirit",
+     "title_en": "Fighting Spirit",
+     "media_type": "tv",
+     "rating": 8.671,
+     "genres": [
+      "Drama",
+      "Action & Adventure",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/fEYVJu08En9A7n0e5TTpeoSjtIm.jpg",
+     "collection_id": null,
+     "release_year": 2000,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 68595,
+     "score": 7.798,
+     "title": "Planet Earth II",
+     "title_en": "Planet Earth II",
+     "media_type": "tv",
+     "rating": 8.642,
+     "genres": [
+      "Family",
+      "Documentary"
+     ],
+     "poster_path": "/tUKomxy50suT4MyxjYfOJDkZUq3.jpg",
+     "collection_id": null,
+     "release_year": 2016,
+     "director_ids": [
+      67589
+     ]
+    },
+    {
+     "tmdb_id": 37606,
+     "score": 7.771,
+     "title": "The Amazing World of Gumball",
+     "title_en": "The Amazing World of Gumball",
+     "media_type": "tv",
+     "rating": 8.535,
+     "genres": [
+      "Family",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/VYnnyA2hyxi3VUPgCA71mMtt69.jpg",
+     "collection_id": null,
+     "release_year": 2011,
+     "director_ids": [
+      2279899,
+      1254165
+     ]
+    },
+    {
+     "tmdb_id": 100,
+     "score": 7.718,
+     "title": "I Am Not an Animal",
+     "title_en": "I Am Not an Animal",
+     "media_type": "tv",
+     "rating": 8.602,
+     "genres": [
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/zXhtWhYtlJVyyp5MdT7ggMJn5si.jpg",
+     "collection_id": null,
+     "release_year": 2004,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 62741,
+     "score": 7.444,
+     "title": "Kamisama Kiss",
+     "title_en": "Kamisama Kiss",
+     "media_type": "tv",
+     "rating": 8.629,
+     "genres": [
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/cRama3S1CMYXFu1LmUkMMPoC99O.jpg",
+     "collection_id": null,
+     "release_year": 2012,
+     "director_ids": [
+      145351
+     ]
+    },
+    {
+     "tmdb_id": 61617,
+     "score": 7.423,
+     "title": "Over the Garden Wall",
+     "title_en": "Over the Garden Wall",
+     "media_type": "tv",
+     "rating": 8.567,
+     "genres": [
+      "Family",
+      "Mystery",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/m3lU8n7WxzMecxKZcqhq5y5ESy.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": [
+      1245729
+     ]
+    }
+   ],
+   "raw_per_seed": null
+  },
+  {
+   "name": "seed_weights",
+   "spec": {
+    "seeds": [
+     [
+      11,
+      "movie"
+     ],
+     [
+      28,
+      "movie"
+     ]
+    ],
+    "media_type": null,
+    "limit": 20,
+    "allow_cross_media": false,
+    "seed_weights": {
+     "11": 2.0,
+     "28": 1.0
+    },
+    "emb_column": "embedding",
+    "knn_ft_enabled": true,
+    "filters": {},
+    "weights": {
+     "active": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0,
+      0.0
+     ],
+     "heuristic27": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0
+     ]
+    },
+    "decay": {
+     "auteur_factors": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "genre_mismatch_factor": 0.5,
+     "mmr_enabled": true,
+     "mmr_lambda": 0.8
+    },
+    "uvec_extra": null
+   },
+   "movie_ratio": 1.0,
+   "results": [
+    {
+     "tmdb_id": 592,
+     "score": 20.072,
+     "title": "The Conversation",
+     "title_en": "The Conversation",
+     "media_type": "movie",
+     "rating": 7.499,
+     "genres": [
+      "Crime",
+      "Drama",
+      "Mystery"
+     ],
+     "poster_path": "/dHqVBwcv1SGymOpUueRoKzcmdes.jpg",
+     "collection_id": null,
+     "release_year": 1974,
+     "director_ids": [
+      1776
+     ]
+    },
+    {
+     "tmdb_id": 11975,
+     "score": 17.888,
+     "title": "The Rainmaker",
+     "title_en": "The Rainmaker",
+     "media_type": "movie",
+     "rating": 7.021,
+     "genres": [
+      "Crime",
+      "Thriller",
+      "Drama"
+     ],
+     "poster_path": "/twLGHXPjQtS8UyVGp5GXmhJiTM7.jpg",
+     "collection_id": null,
+     "release_year": 1997,
+     "director_ids": [
+      1776
+     ]
+    },
+    {
+     "tmdb_id": 348350,
+     "score": 13.296,
+     "title": "Solo: A Star Wars Story",
+     "title_en": "Solo: A Star Wars Story",
+     "media_type": "movie",
+     "rating": 6.552,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/4oD6VEccFkorEBTEDXtpLAaz0Rl.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": [
+      6159
+     ]
+    },
+    {
+     "tmdb_id": 14537,
+     "score": 13.586,
+     "title": "Harakiri",
+     "title_en": "Harakiri",
+     "media_type": "movie",
+     "rating": 8.465,
+     "genres": [
+      "Drama",
+      "History",
+      "Action"
+     ],
+     "poster_path": "/5konZnIbcAxZjP616Cz5o9bKEfW.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      76978
+     ]
+    },
+    {
+     "tmdb_id": 111,
+     "score": 13.971,
+     "title": "Scarface",
+     "title_en": "Scarface",
+     "media_type": "movie",
+     "rating": 8.153,
+     "genres": [
+      "Crime",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/iQ5ztdjvteGeboxtmRdXEChJOHh.jpg",
+     "collection_id": null,
+     "release_year": 1983,
+     "director_ids": [
+      1150
+     ]
+    },
+    {
+     "tmdb_id": 24188,
+     "score": 13.115,
+     "title": "Il Sorpasso",
+     "title_en": "Il Sorpasso",
+     "media_type": "movie",
+     "rating": 8.232,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/4h1ckrJQVcQYjeOkqS8i9BqZ9MI.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      57641
+     ]
+    },
+    {
+     "tmdb_id": 152,
+     "score": 12.466,
+     "title": "Star Trek: The Motion Picture",
+     "title_en": "Star Trek: The Motion Picture",
+     "media_type": "movie",
+     "rating": 6.484,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Mystery"
+     ],
+     "poster_path": "/wfiAfNwH6CMKxz4vRaW8CPTabtk.jpg",
+     "collection_id": 151,
+     "release_year": 1979,
+     "director_ids": [
+      1744
+     ]
+    },
+    {
+     "tmdb_id": 616,
+     "score": 11.961,
+     "title": "The Last Samurai",
+     "title_en": "The Last Samurai",
+     "media_type": "movie",
+     "rating": 7.61,
+     "genres": [
+      "Drama",
+      "War",
+      "Action"
+     ],
+     "poster_path": "/a8jmJPs5eZBARmnuEEvZwbjwyz4.jpg",
+     "collection_id": null,
+     "release_year": 2003,
+     "director_ids": [
+      9181
+     ]
+    },
+    {
+     "tmdb_id": 75612,
+     "score": 12.529,
+     "title": "Oblivion",
+     "title_en": "Oblivion",
+     "media_type": "movie",
+     "rating": 6.693,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action",
+      "Mystery"
+     ],
+     "poster_path": "/bYLM3GpNUZnoFElPXp1zlhDPdtv.jpg",
+     "collection_id": null,
+     "release_year": 2013,
+     "director_ids": [
+      86270
+     ]
+    },
+    {
+     "tmdb_id": 98,
+     "score": 11.549,
+     "title": "Gladiator",
+     "title_en": "Gladiator",
+     "media_type": "movie",
+     "rating": 8.2,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/wN2xWp1eIwCKOD0BHTcErTBv1Uq.jpg",
+     "collection_id": 1069584,
+     "release_year": 2000,
+     "director_ids": [
+      578
+     ]
+    },
+    {
+     "tmdb_id": 1419406,
+     "score": 11.864,
+     "title": "The Shadow's Edge",
+     "title_en": "The Shadow's Edge",
+     "media_type": "movie",
+     "rating": 8.293,
+     "genres": [
+      "Crime",
+      "Thriller",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/cHKo3m8N1fwvEy2ZEr0xGmmMODV.jpg",
+     "collection_id": null,
+     "release_year": 2025,
+     "director_ids": [
+      1452270
+     ]
+    },
+    {
+     "tmdb_id": 346,
+     "score": 11.605,
+     "title": "Seven Samurai",
+     "title_en": "Seven Samurai",
+     "media_type": "movie",
+     "rating": 8.453,
+     "genres": [
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/lOMGc8bnSwQhS4XyE1S99uH8NXf.jpg",
+     "collection_id": null,
+     "release_year": 1954,
+     "director_ids": [
+      5026
+     ]
+    },
+    {
+     "tmdb_id": 13475,
+     "score": 12.232,
+     "title": "Star Trek",
+     "title_en": "Star Trek",
+     "media_type": "movie",
+     "rating": 7.437,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/lV5OpzAss1z06YNagOVap1I35mH.jpg",
+     "collection_id": 115575,
+     "release_year": 2009,
+     "director_ids": [
+      15344
+     ]
+    },
+    {
+     "tmdb_id": 157336,
+     "score": 11.041,
+     "title": "Interstellar",
+     "title_en": "Interstellar",
+     "media_type": "movie",
+     "rating": 8.488,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Drama"
+     ],
+     "poster_path": "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": [
+      525
+     ]
+    },
+    {
+     "tmdb_id": 315837,
+     "score": 10.671,
+     "title": "Ghost in the Shell",
+     "title_en": "Ghost in the Shell",
+     "media_type": "movie",
+     "rating": 6.113,
+     "genres": [
+      "Science Fiction",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/zCtL3UBgCoZzd7XTVGhvl6XY75E.jpg",
+     "collection_id": null,
+     "release_year": 2017,
+     "director_ids": [
+      228134
+     ]
+    },
+    {
+     "tmdb_id": 101,
+     "score": 10.857,
+     "title": "Léon: The Professional",
+     "title_en": "Léon: The Professional",
+     "media_type": "movie",
+     "rating": 8.29,
+     "genres": [
+      "Crime",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/bxB2q91nKYp8JNzqE7t7TWBVupB.jpg",
+     "collection_id": null,
+     "release_year": 1994,
+     "director_ids": [
+      59
+     ]
+    },
+    {
+     "tmdb_id": 40096,
+     "score": 9.052,
+     "title": "A Dog's Will",
+     "title_en": "A Dog's Will",
+     "media_type": "movie",
+     "rating": 8.4,
+     "genres": [
+      "Drama",
+      "Fantasy",
+      "Romance",
+      "Comedy"
+     ],
+     "poster_path": "/z9Au9XtK0ARzkKGsZCzMkmKgMPf.jpg",
+     "collection_id": 1219938,
+     "release_year": 2000,
+     "director_ids": [
+      102560
+     ]
+    },
+    {
+     "tmdb_id": 18491,
+     "score": 9.486,
+     "title": "Neon Genesis Evangelion: The End of Evangelion",
+     "title_en": "Neon Genesis Evangelion: The End of Evangelion",
+     "media_type": "movie",
+     "rating": 8.3,
+     "genres": [
+      "Science Fiction",
+      "Drama",
+      "Fantasy",
+      "Action",
+      "Animation"
+     ],
+     "poster_path": "/j6G24dqI4WgUtChhWjfnI4lnmiK.jpg",
+     "collection_id": 96850,
+     "release_year": 1997,
+     "director_ids": [
+      77921,
+      77923
+     ]
+    },
+    {
+     "tmdb_id": 329865,
+     "score": 9.15,
+     "title": "Arrival",
+     "title_en": "Arrival",
+     "media_type": "movie",
+     "rating": 7.634,
+     "genres": [
+      "Science Fiction",
+      "Drama",
+      "Mystery"
+     ],
+     "poster_path": "/pEzNVQfdzYDzVK0XqxERIw2x2se.jpg",
+     "collection_id": null,
+     "release_year": 2016,
+     "director_ids": [
+      137427
+     ]
+    },
+    {
+     "tmdb_id": 118340,
+     "score": 10.22,
+     "title": "Guardians of the Galaxy",
+     "title_en": "Guardians of the Galaxy",
+     "media_type": "movie",
+     "rating": 7.908,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/r7vmZjiyZw9rpJMQJdXpjgiCOk9.jpg",
+     "collection_id": 284433,
+     "release_year": 2014,
+     "director_ids": [
+      15218
+     ]
+    }
+   ],
+   "raw_per_seed": null
+  },
+  {
+   "name": "cross_media",
+   "spec": {
+    "seeds": [
+     [
+      11,
+      "movie"
+     ]
+    ],
+    "media_type": null,
+    "limit": 20,
+    "allow_cross_media": true,
+    "seed_weights": null,
+    "emb_column": "embedding",
+    "knn_ft_enabled": true,
+    "filters": {},
+    "weights": {
+     "active": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0,
+      0.0
+     ],
+     "heuristic27": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0
+     ]
+    },
+    "decay": {
+     "auteur_factors": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "genre_mismatch_factor": 0.5,
+     "mmr_enabled": true,
+     "mmr_lambda": 0.8
+    },
+    "uvec_extra": null
+   },
+   "movie_ratio": 1.0,
+   "results": [
+    {
+     "tmdb_id": 1891,
+     "score": 25.839,
+     "title": "The Empire Strikes Back",
+     "title_en": "The Empire Strikes Back",
+     "media_type": "movie",
+     "rating": 8.392,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/nNAeTmF4CtdSgMDplXTDPOpYzsX.jpg",
+     "collection_id": 10,
+     "release_year": 1980,
+     "director_ids": [
+      10930
+     ]
+    },
+    {
+     "tmdb_id": 871,
+     "score": 16.483,
+     "title": "Planet of the Apes",
+     "title_en": "Planet of the Apes",
+     "media_type": "movie",
+     "rating": 7.7,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/2r9iKnlSYEk4daQadsXfcjHfIjQ.jpg",
+     "collection_id": 1709,
+     "release_year": 1968,
+     "director_ids": [
+      13265
+     ]
+    },
+    {
+     "tmdb_id": 280,
+     "score": 14.849,
+     "title": "Terminator 2: Judgment Day",
+     "title_en": "Terminator 2: Judgment Day",
+     "media_type": "movie",
+     "rating": 8.2,
+     "genres": [
+      "Thriller",
+      "Science Fiction",
+      "Action"
+     ],
+     "poster_path": "/jFTVD4XoWQTcg7wdyJKa8PEds5q.jpg",
+     "collection_id": 528,
+     "release_year": 1991,
+     "director_ids": [
+      2710
+     ]
+    },
+    {
+     "tmdb_id": 75612,
+     "score": 14.539,
+     "title": "Oblivion",
+     "title_en": "Oblivion",
+     "media_type": "movie",
+     "rating": 6.693,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action",
+      "Mystery"
+     ],
+     "poster_path": "/bYLM3GpNUZnoFElPXp1zlhDPdtv.jpg",
+     "collection_id": null,
+     "release_year": 2013,
+     "director_ids": [
+      86270
+     ]
+    },
+    {
+     "tmdb_id": 24188,
+     "score": 13.162,
+     "title": "Il Sorpasso",
+     "title_en": "Il Sorpasso",
+     "media_type": "movie",
+     "rating": 8.232,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/4h1ckrJQVcQYjeOkqS8i9BqZ9MI.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      57641
+     ]
+    },
+    {
+     "tmdb_id": 14537,
+     "score": 13.154,
+     "title": "Harakiri",
+     "title_en": "Harakiri",
+     "media_type": "movie",
+     "rating": 8.465,
+     "genres": [
+      "Drama",
+      "History",
+      "Action"
+     ],
+     "poster_path": "/5konZnIbcAxZjP616Cz5o9bKEfW.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      76978
+     ]
+    },
+    {
+     "tmdb_id": 428078,
+     "score": 13.72,
+     "title": "Mortal Engines",
+     "title_en": "Mortal Engines",
+     "media_type": "movie",
+     "rating": 6.254,
+     "genres": [
+      "Science Fiction",
+      "Adventure"
+     ],
+     "poster_path": "/gLhYg9NIvIPKVRTtvzCWnp1qJWG.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": [
+      1419579
+     ]
+    },
+    {
+     "tmdb_id": 603,
+     "score": 13.631,
+     "title": "The Matrix",
+     "title_en": "The Matrix",
+     "media_type": "movie",
+     "rating": 8.259,
+     "genres": [
+      "Science Fiction",
+      "Action"
+     ],
+     "poster_path": "/dXNAPwY7VrqMAo51EKhhCJfaGb5.jpg",
+     "collection_id": 2344,
+     "release_year": 1999,
+     "director_ids": [
+      9340,
+      9339
+     ]
+    },
+    {
+     "tmdb_id": 670292,
+     "score": 14.42,
+     "title": "The Creator",
+     "title_en": "The Creator",
+     "media_type": "movie",
+     "rating": 7.026,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/3dSivDtOuyxLDxPH4v2tcNG1fP7.jpg",
+     "collection_id": null,
+     "release_year": 2023,
+     "director_ids": [
+      129894
+     ]
+    },
+    {
+     "tmdb_id": 399579,
+     "score": 14.352,
+     "title": "Alita: Battle Angel",
+     "title_en": "Alita: Battle Angel",
+     "media_type": "movie",
+     "rating": 7.278,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/xRWht48C2V8XNfzvPehyClOvDni.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": [
+      2294
+     ]
+    },
+    {
+     "tmdb_id": 157350,
+     "score": 14.225,
+     "title": "Divergent",
+     "title_en": "Divergent",
+     "media_type": "movie",
+     "rating": 6.899,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/aNh4Q3iuPKDMPi2SL7GgOpiLukX.jpg",
+     "collection_id": 283579,
+     "release_year": 2014,
+     "director_ids": [
+      17329
+     ]
+    },
+    {
+     "tmdb_id": 1228710,
+     "score": 13.915,
+     "title": "The Mandalorian and Grogu",
+     "title_en": "The Mandalorian and Grogu",
+     "media_type": "movie",
+     "rating": 7.463,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/uwMKWjcNID0D9jjplsjkQS2OrB4.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      15277
+     ]
+    },
+    {
+     "tmdb_id": 74,
+     "score": 12.921,
+     "title": "War of the Worlds",
+     "title_en": "War of the Worlds",
+     "media_type": "movie",
+     "rating": 6.574,
+     "genres": [
+      "Thriller",
+      "Science Fiction",
+      "Adventure"
+     ],
+     "poster_path": "/6Biy7R9LfumYshur3YKhpj56MpB.jpg",
+     "collection_id": null,
+     "release_year": 2005,
+     "director_ids": [
+      488
+     ]
+    },
+    {
+     "tmdb_id": 1356039,
+     "score": 12.389,
+     "title": "Counterattack",
+     "title_en": "Counterattack",
+     "media_type": "movie",
+     "rating": 8.3,
+     "genres": [
+      "Thriller",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/kxnFdLJhi37ZVFDCL1ka0yeQVU5.jpg",
+     "collection_id": null,
+     "release_year": 2025,
+     "director_ids": [
+      964826
+     ]
+    },
+    {
+     "tmdb_id": 315837,
+     "score": 13.006,
+     "title": "Ghost in the Shell",
+     "title_en": "Ghost in the Shell",
+     "media_type": "movie",
+     "rating": 6.113,
+     "genres": [
+      "Science Fiction",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/zCtL3UBgCoZzd7XTVGhvl6XY75E.jpg",
+     "collection_id": null,
+     "release_year": 2017,
+     "director_ids": [
+      228134
+     ]
+    },
+    {
+     "tmdb_id": 157336,
+     "score": 12.961,
+     "title": "Interstellar",
+     "title_en": "Interstellar",
+     "media_type": "movie",
+     "rating": 8.488,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Drama"
+     ],
+     "poster_path": "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": [
+      525
+     ]
+    },
+    {
+     "tmdb_id": 199,
+     "score": 12.793,
+     "title": "Star Trek: First Contact",
+     "title_en": "Star Trek: First Contact",
+     "media_type": "movie",
+     "rating": 7.308,
+     "genres": [
+      "Thriller",
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/iqhHe893Vcf07jNkNQ31tu85dKG.jpg",
+     "collection_id": 115570,
+     "release_year": 1996,
+     "director_ids": [
+      2388
+     ]
+    },
+    {
+     "tmdb_id": 1419406,
+     "score": 11.815,
+     "title": "The Shadow's Edge",
+     "title_en": "The Shadow's Edge",
+     "media_type": "movie",
+     "rating": 8.293,
+     "genres": [
+      "Crime",
+      "Thriller",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/cHKo3m8N1fwvEy2ZEr0xGmmMODV.jpg",
+     "collection_id": null,
+     "release_year": 2025,
+     "director_ids": [
+      1452270
+     ]
+    },
+    {
+     "tmdb_id": 58857,
+     "score": 12.513,
+     "title": "13 Assassins",
+     "title_en": "13 Assassins",
+     "media_type": "movie",
+     "rating": 7.303,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/yUsVsiVXUwClk4vSCx80vrdO6MV.jpg",
+     "collection_id": null,
+     "release_year": 2010,
+     "director_ids": [
+      17282
+     ]
+    },
+    {
+     "tmdb_id": 127533,
+     "score": 11.331,
+     "title": "Rurouni Kenshin Part I: Origins",
+     "title_en": "Rurouni Kenshin Part I: Origins",
+     "media_type": "movie",
+     "rating": 7.537,
+     "genres": [
+      "Adventure",
+      "History",
+      "Fantasy",
+      "War",
+      "Action"
+     ],
+     "poster_path": "/vo3Zs07PZfKNsTrU0pcPZONJcN5.jpg",
+     "collection_id": 247028,
+     "release_year": 2012,
+     "director_ids": [
+      1084905
+     ]
+    }
+   ],
+   "raw_per_seed": null
+  },
+  {
+   "name": "filters",
+   "spec": {
+    "seeds": [
+     [
+      11,
+      "movie"
+     ]
+    ],
+    "media_type": null,
+    "limit": 20,
+    "allow_cross_media": false,
+    "seed_weights": null,
+    "emb_column": "embedding",
+    "knn_ft_enabled": true,
+    "filters": {
+     "year_min": 2000,
+     "year_max": null,
+     "genre_ids": [
+      12
+     ],
+     "exclude_genre_ids": null,
+     "max_runtime": null
+    },
+    "weights": {
+     "active": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0,
+      0.0
+     ],
+     "heuristic27": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0
+     ]
+    },
+    "decay": {
+     "auteur_factors": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "genre_mismatch_factor": 0.5,
+     "mmr_enabled": true,
+     "mmr_lambda": 0.8
+    },
+    "uvec_extra": null
+   },
+   "movie_ratio": 1.0,
+   "results": [
+    {
+     "tmdb_id": 140607,
+     "score": 21.77,
+     "title": "Star Wars: The Force Awakens",
+     "title_en": "Star Wars: The Force Awakens",
+     "media_type": "movie",
+     "rating": 7.241,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/wqnLdwVXoBjKibFRR5U3y0aDUhs.jpg",
+     "collection_id": 10,
+     "release_year": 2015,
+     "director_ids": [
+      15344
+     ]
+    },
+    {
+     "tmdb_id": 75612,
+     "score": 15.414,
+     "title": "Oblivion",
+     "title_en": "Oblivion",
+     "media_type": "movie",
+     "rating": 6.693,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action",
+      "Mystery"
+     ],
+     "poster_path": "/bYLM3GpNUZnoFElPXp1zlhDPdtv.jpg",
+     "collection_id": null,
+     "release_year": 2013,
+     "director_ids": [
+      86270
+     ]
+    },
+    {
+     "tmdb_id": 348350,
+     "score": 14.569,
+     "title": "Solo: A Star Wars Story",
+     "title_en": "Solo: A Star Wars Story",
+     "media_type": "movie",
+     "rating": 6.552,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/4oD6VEccFkorEBTEDXtpLAaz0Rl.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": [
+      6159
+     ]
+    },
+    {
+     "tmdb_id": 157336,
+     "score": 12.961,
+     "title": "Interstellar",
+     "title_en": "Interstellar",
+     "media_type": "movie",
+     "rating": 8.488,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Drama"
+     ],
+     "poster_path": "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": [
+      525
+     ]
+    },
+    {
+     "tmdb_id": 1228710,
+     "score": 13.915,
+     "title": "The Mandalorian and Grogu",
+     "title_en": "The Mandalorian and Grogu",
+     "media_type": "movie",
+     "rating": 7.463,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/uwMKWjcNID0D9jjplsjkQS2OrB4.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      15277
+     ]
+    },
+    {
+     "tmdb_id": 1127384,
+     "score": 12.227,
+     "title": "Deep Water",
+     "title_en": "Deep Water",
+     "media_type": "movie",
+     "rating": 7.396,
+     "genres": [
+      "Thriller",
+      "Adventure",
+      "Horror"
+     ],
+     "poster_path": "/ZWHxL2ETItcZzeVsVfs6gv3SZ7.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      16938
+     ]
+    },
+    {
+     "tmdb_id": 1356039,
+     "score": 12.389,
+     "title": "Counterattack",
+     "title_en": "Counterattack",
+     "media_type": "movie",
+     "rating": 8.3,
+     "genres": [
+      "Thriller",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/kxnFdLJhi37ZVFDCL1ka0yeQVU5.jpg",
+     "collection_id": null,
+     "release_year": 2025,
+     "director_ids": [
+      964826
+     ]
+    },
+    {
+     "tmdb_id": 98,
+     "score": 11.95,
+     "title": "Gladiator",
+     "title_en": "Gladiator",
+     "media_type": "movie",
+     "rating": 8.2,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/wN2xWp1eIwCKOD0BHTcErTBv1Uq.jpg",
+     "collection_id": 1069584,
+     "release_year": 2000,
+     "director_ids": [
+      578
+     ]
+    },
+    {
+     "tmdb_id": 687163,
+     "score": 11.657,
+     "title": "Project Hail Mary",
+     "title_en": "Project Hail Mary",
+     "media_type": "movie",
+     "rating": 8.6,
+     "genres": [
+      "Science Fiction",
+      "Adventure"
+     ],
+     "poster_path": "/AdpvqIhgaqg5JHzH3M6532XV3PG.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      155267,
+      107446
+     ]
+    },
+    {
+     "tmdb_id": 120,
+     "score": 11.132,
+     "title": "The Lord of the Rings: The Fellowship of the Ring",
+     "title_en": "The Lord of the Rings: The Fellowship of the Ring",
+     "media_type": "movie",
+     "rating": 8.445,
+     "genres": [
+      "Adventure",
+      "Fantasy",
+      "Action"
+     ],
+     "poster_path": "/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg",
+     "collection_id": 119,
+     "release_year": 2001,
+     "director_ids": [
+      108
+     ]
+    },
+    {
+     "tmdb_id": 13475,
+     "score": 12.957,
+     "title": "Star Trek",
+     "title_en": "Star Trek",
+     "media_type": "movie",
+     "rating": 7.437,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/lV5OpzAss1z06YNagOVap1I35mH.jpg",
+     "collection_id": 115575,
+     "release_year": 2009,
+     "director_ids": [
+      15344
+     ]
+    },
+    {
+     "tmdb_id": 346698,
+     "score": 10.233,
+     "title": "Barbie",
+     "title_en": "Barbie",
+     "media_type": "movie",
+     "rating": 6.907,
+     "genres": [
+      "Adventure",
+      "Fantasy",
+      "Comedy"
+     ],
+     "poster_path": "/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg",
+     "collection_id": null,
+     "release_year": 2023,
+     "director_ids": [
+      45400
+     ]
+    },
+    {
+     "tmdb_id": 118340,
+     "score": 11.166,
+     "title": "Guardians of the Galaxy",
+     "title_en": "Guardians of the Galaxy",
+     "media_type": "movie",
+     "rating": 7.908,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/r7vmZjiyZw9rpJMQJdXpjgiCOk9.jpg",
+     "collection_id": 284433,
+     "release_year": 2014,
+     "director_ids": [
+      15218
+     ]
+    },
+    {
+     "tmdb_id": 986056,
+     "score": 11.1,
+     "title": "Thunderbolts*",
+     "title_en": "Thunderbolts*",
+     "media_type": "movie",
+     "rating": 7.297,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/hqcexYHbiTBfDIdDWxrxPtVndBX.jpg",
+     "collection_id": null,
+     "release_year": 2025,
+     "director_ids": [
+      836732
+     ]
+    },
+    {
+     "tmdb_id": 840464,
+     "score": 10.337,
+     "title": "Greenland 2: Migration",
+     "title_en": "Greenland 2: Migration",
+     "media_type": "movie",
+     "rating": 6.374,
+     "genres": [
+      "Thriller",
+      "Science Fiction",
+      "Adventure"
+     ],
+     "poster_path": "/z2tqCJLsw6uEJ8nJV8BsQXGa3dr.jpg",
+     "collection_id": 840465,
+     "release_year": 2026,
+     "director_ids": [
+      76422
+     ]
+    },
+    {
+     "tmdb_id": 634649,
+     "score": 10.835,
+     "title": "Spider-Man: No Way Home",
+     "title_en": "Spider-Man: No Way Home",
+     "media_type": "movie",
+     "rating": 7.947,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg",
+     "collection_id": 531241,
+     "release_year": 2021,
+     "director_ids": [
+      1293994
+     ]
+    },
+    {
+     "tmdb_id": 284053,
+     "score": 10.333,
+     "title": "Thor: Ragnarok",
+     "title_en": "Thor: Ragnarok",
+     "media_type": "movie",
+     "rating": 7.579,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action",
+      "Comedy"
+     ],
+     "poster_path": "/rzRwTcFvttcN1ZpX2xv4j3tSdJu.jpg",
+     "collection_id": 131296,
+     "release_year": 2017,
+     "director_ids": [
+      55934
+     ]
+    },
+    {
+     "tmdb_id": 24428,
+     "score": 10.717,
+     "title": "The Avengers",
+     "title_en": "The Avengers",
+     "media_type": "movie",
+     "rating": 8.078,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/RYMX2wcKCBAr24UyPD7xwmjaTn.jpg",
+     "collection_id": 86311,
+     "release_year": 2012,
+     "director_ids": [
+      12891
+     ]
+    },
+    {
+     "tmdb_id": 674,
+     "score": 9.704,
+     "title": "Harry Potter and the Goblet of Fire",
+     "title_en": "Harry Potter and the Goblet of Fire",
+     "media_type": "movie",
+     "rating": 7.8,
+     "genres": [
+      "Adventure",
+      "Fantasy"
+     ],
+     "poster_path": "/fECBtHlr0RB3foNHDiCBXeg9Bv9.jpg",
+     "collection_id": 1241,
+     "release_year": 2005,
+     "director_ids": [
+      10723
+     ]
+    },
+    {
+     "tmdb_id": 453395,
+     "score": 9.984,
+     "title": "Doctor Strange in the Multiverse of Madness",
+     "title_en": "Doctor Strange in the Multiverse of Madness",
+     "media_type": "movie",
+     "rating": 7.225,
+     "genres": [
+      "Adventure",
+      "Fantasy",
+      "Action"
+     ],
+     "poster_path": "/ddJcSKbcp4rKZTmuyWaMhuwcfMz.jpg",
+     "collection_id": 618529,
+     "release_year": 2022,
+     "director_ids": [
+      7623
+     ]
+    }
+   ],
+   "raw_per_seed": null
+  },
+  {
+   "name": "recommend_910001_core",
+   "spec": {
+    "seeds": [
+     [
+      103,
+      "movie"
+     ],
+     [
+      11,
+      "movie"
+     ],
+     [
+      121,
+      "movie"
+     ],
+     [
+      43,
+      "tv"
+     ]
+    ],
+    "media_type": null,
+    "limit": 30,
+    "allow_cross_media": false,
+    "seed_weights": null,
+    "emb_column": "embedding",
+    "knn_ft_enabled": true,
+    "filters": {},
+    "weights": {
+     "active": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0,
+      0.0
+     ],
+     "heuristic27": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0
+     ]
+    },
+    "decay": {
+     "auteur_factors": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "genre_mismatch_factor": 0.5,
+     "mmr_enabled": true,
+     "mmr_lambda": 0.8
+    },
+    "uvec_extra": [
+     [
+      -0.005586381070315838,
+      0.009069133549928665,
+      -0.005915228743106127,
+      0.023759610950946808,
+      0.026491787284612656,
+      -0.04105446860194206,
+      0.05608927458524704,
+      0.0089257238432765,
+      0.025112254545092583,
+      -0.05317474901676178,
+      0.005958749912679195,
+      -0.01012876071035862,
+      -0.021726226434111595,
+      -0.04870942607522011,
+      -0.01003306545317173,
+      0.03130631521344185,
+      0.014647231437265873,
+      0.06487811356782913,
+      0.0327814482152462,
+      -0.02127857320010662,
+      0.020675206556916237,
+      0.01749209128320217,
+      0.024450089782476425,
+      0.05525515228509903,
+      -0.060634955763816833,
+      0.01194543857127428,
+      0.030404994264245033,
+      0.005597375333309174,
+      -0.07007212191820145,
+      -0.10684170573949814,
+      -0.012759429402649403,
+      0.05497753620147705,
+      -0.07443434000015259,
+      0.05322824791073799,
+      -0.03301696479320526,
+      0.11109320819377899,
+      0.05528470128774643,
+      0.03181147947907448,
+      0.09975330531597137,
+      -0.11593670397996902,
+      0.024700894951820374,
+      -0.011086972430348396,
+      0.03343193978071213,
+      -0.07229803502559662,
+      -0.028624026104807854,
+      -0.09179605543613434,
+      -0.08538517355918884,
+      -0.04812496900558472,
+      0.09529789537191391,
+      -0.018875163048505783,
+      0.012875586748123169,
+      0.03916725888848305,
+      0.014296923764050007,
+      0.049166638404130936,
+      0.10657640546560287,
+      0.022859251126646996,
+      0.01858152076601982,
+      -0.05363888293504715,
+      0.14773200452327728,
+      0.008310197852551937,
+      0.00986174214631319,
+      0.06243988499045372,
+      0.0483982153236866,
+      0.04564877972006798,
+      0.09306488931179047,
+      -0.07754981517791748,
+      -0.01679096929728985,
+      0.02611258439719677,
+      -0.07038812339305878,
+      -0.025477685034275055,
+      -0.03506410866975784,
+      -0.01431786548346281,
+      0.03839896619319916,
+      -0.10823065042495728,
+      0.03596114739775658,
+      -0.003755273064598441,
+      -0.017860066145658493,
+      -0.0021660346537828445,
+      -0.001238261698745191,
+      -0.031185058876872063,
+      -0.016043635085225105,
+      -0.058693815022706985,
+      -0.002242323011159897,
+      0.08157390356063843,
+      -0.029685111716389656,
+      -0.014046396128833294,
+      -0.03862939029932022,
+      -0.05128312110900879,
+      0.044081658124923706,
+      9.475790284341201e-05,
+      -0.06833508610725403,
+      -0.022583933547139168,
+      0.021535014733672142,
+      0.03742966428399086,
+      -0.06596928089857101,
+      -0.01897335611283779,
+      -0.0061515215784311295,
+      -0.012920243665575981,
+      -0.04019186645746231,
+      0.05752310901880264,
+      0.0516299307346344,
+      0.025052526965737343,
+      0.0848734974861145,
+      -0.035516560077667236,
+      0.02583952248096466,
+      -0.03353028744459152,
+      0.031054196879267693,
+      -0.08277986198663712,
+      -0.05292573571205139,
+      -0.013957004062831402,
+      -0.0074313185177743435,
+      -0.08271072804927826,
+      -0.0002630180970299989,
+      -0.021822184324264526,
+      0.06299174576997757,
+      0.07518373429775238,
+      -0.015516937710344791,
+      0.10484600067138672,
+      -0.07329761236906052,
+      0.07406572252511978,
+      0.0050126854330301285,
+      0.048575516790151596,
+      0.031836360692977905,
+      -0.009298219345510006,
+      0.003999821376055479,
+      -0.07995232939720154,
+      0.05088599771261215,
+      0.0,
+      0.03748635947704315,
+      -0.034143175929784775,
+      0.017269233241677284,
+      0.10467283427715302,
+      0.10403600335121155,
+      -0.019244538620114326,
+      -0.03499394655227661,
+      0.07610627263784409,
+      -0.025044362992048264,
+      0.006034502759575844,
+      -0.05872539058327675,
+      -0.07764311879873276,
+      -0.019306574016809464,
+      -0.0026042540557682514,
+      0.026119882240891457,
+      -0.01603112928569317,
+      -0.014993604272603989,
+      -0.059461548924446106,
+      -0.001219055731780827,
+      -0.02603899873793125,
+      -0.014348641037940979,
+      0.09903230518102646,
+      0.015843451023101807,
+      0.03610546514391899,
+      0.018411746248602867,
+      -0.02301759459078312,
+      0.038426242768764496,
+      0.008598322048783302,
+      0.022060057148337364,
+      0.05227135121822357,
+      -0.08650942146778107,
+      0.09233388304710388,
+      0.012236976996064186,
+      0.024332314729690552,
+      0.07070065289735794,
+      0.009377537295222282,
+      -0.08281189948320389,
+      -0.005908466875553131,
+      -0.15463699400424957,
+      0.02741122432053089,
+      -0.0747373029589653,
+      -0.037143513560295105,
+      -0.08075706660747528,
+      -0.06235477328300476,
+      -0.0801323726773262,
+      -0.00821889191865921,
+      0.030685655772686005,
+      0.008916223421692848,
+      -0.026650115847587585,
+      0.12720490992069244,
+      -0.013350153341889381,
+      0.006401620805263519,
+      -0.07531455904245377,
+      -0.03669204190373421,
+      -0.05032568797469139,
+      -0.05355815589427948,
+      -0.0017265472561120987,
+      -0.09259641170501709,
+      0.0429542139172554,
+      0.03410700336098671,
+      -0.011177914217114449,
+      0.035834670066833496,
+      -0.08509569615125656,
+      0.05577322468161583,
+      0.01535841729491949,
+      -0.0009754318743944168,
+      -0.06386341899633408,
+      -0.06741369515657425,
+      0.048577237874269485,
+      -0.03674615919589996,
+      -0.02514534629881382,
+      -0.008575526997447014,
+      -0.01013872679322958,
+      0.021704277023673058,
+      0.0038735291454941034,
+      0.002566547831520438,
+      -0.07011869549751282,
+      -0.032999187707901,
+      -0.08052185922861099,
+      -0.0186004638671875,
+      -0.05465761572122574,
+      0.0019442251650616527,
+      0.04101072624325752,
+      0.025689512491226196,
+      0.04746348410844803,
+      -0.011350160464644432,
+      -0.029032014310359955,
+      -0.1257462054491043,
+      -0.0024180030450224876,
+      0.03591100126504898,
+      -0.03733422979712486,
+      0.000515851890668273,
+      0.028621075674891472,
+      -0.049957141280174255,
+      -0.013042627833783627,
+      0.0,
+      0.06683244556188583,
+      -0.07488478720188141,
+      0.024957064539194107,
+      -0.03938040882349014,
+      0.0950804278254509,
+      0.0027308461721986532,
+      -0.08832743018865585,
+      -0.016032379120588303,
+      0.018528452143073082,
+      0.0013200861867517233,
+      -0.18013790249824524,
+      0.05706596374511719,
+      0.09172222763299942,
+      0.05546869337558746,
+      0.0879061296582222,
+      -0.031582023948431015,
+      0.14423514902591705,
+      -0.02211555279791355,
+      -0.05112050846219063,
+      0.05565880239009857,
+      0.09071458876132965,
+      -0.03573912754654884,
+      -0.05551278963685036,
+      -0.0682348683476448,
+      -0.040849413722753525,
+      0.06855099648237228,
+      0.03368665277957916,
+      0.027776852250099182,
+      -0.06207936257123947,
+      0.03153613209724426,
+      0.002067334484308958,
+      -0.02904164046049118,
+      -0.0012865433236584067,
+      0.04938170313835144,
+      -0.003376855980604887,
+      0.06090400740504265,
+      -0.009535636752843857,
+      -0.00346366292797029,
+      -0.0025128796696662903,
+      -0.03377413749694824,
+      -0.016132492572069168,
+      -0.0022699381224811077,
+      -0.028195369988679886,
+      0.00662766769528389,
+      -0.011292736046016216,
+      -0.07689681649208069,
+      0.03549191355705261,
+      0.11032000929117203,
+      -0.1055300235748291,
+      0.005469243507832289,
+      -0.06994341313838959,
+      0.042607542127370834,
+      -0.016906216740608215,
+      3.291762914159335e-05,
+      -0.008776050060987473,
+      0.041422296315431595,
+      -0.04039786756038666,
+      -0.0313730351626873,
+      0.07928939163684845,
+      -0.03644980490207672,
+      -0.012264218181371689,
+      0.022082684561610222,
+      0.003477999474853277,
+      0.024682242423295975,
+      0.01642511785030365,
+      -0.0632590651512146,
+      0.04232720285654068,
+      0.014395471662282944,
+      -0.03457426652312279,
+      -0.03392753750085831,
+      0.0020643481984734535,
+      -0.01596091501414776,
+      -0.04881831631064415,
+      0.05652620270848274,
+      -0.01464113313704729,
+      -0.009323193691670895,
+      -0.045341361314058304,
+      -0.04135087504982948,
+      0.019928233698010445,
+      -0.021599819883704185,
+      0.03968977928161621,
+      -0.04387194663286209,
+      0.04138753563165665,
+      0.0782540962100029,
+      0.013691945001482964,
+      0.042227357625961304,
+      0.042732879519462585,
+      -0.006094440817832947,
+      0.03154045715928078,
+      -0.053634997457265854,
+      0.07663453370332718,
+      -0.003843116806820035,
+      -0.000984926475211978,
+      0.02308621257543564,
+      0.06963136792182922,
+      0.0,
+      -0.07103781402111053,
+      0.007877546362578869,
+      -0.09571061283349991,
+      -0.055426470935344696,
+      0.014417460188269615,
+      -0.03562820702791214,
+      0.0006241033552214503,
+      0.010175595059990883,
+      -0.03175509721040726,
+      0.07197337597608566,
+      0.05121948942542076,
+      0.04232482239603996,
+      -0.017217403277754784,
+      -0.0035754558630287647,
+      0.02301679737865925,
+      0.07334248721599579,
+      0.07836074382066727,
+      -0.04484467953443527,
+      -0.0857621282339096,
+      -0.02213715761899948,
+      -0.009967139922082424,
+      -0.0891815572977066,
+      0.025947920978069305,
+      -0.020820723846554756,
+      -0.028468916192650795,
+      0.013729957863688469,
+      -0.08151049166917801,
+      -0.06760220229625702,
+      0.02122201956808567,
+      0.028600158169865608,
+      0.010741675272583961,
+      0.08043121546506882,
+      -0.07076022028923035,
+      -0.06885824352502823,
+      0.007809994742274284,
+      0.030088115483522415,
+      0.025338035076856613,
+      -0.01814836636185646,
+      0.029541272670030594,
+      0.009025918319821358,
+      0.05870869755744934,
+      0.11579415202140808,
+      -0.0021166023798286915,
+      0.04064611718058586,
+      -0.008405250497162342,
+      -0.03170768544077873,
+      0.026996172964572906,
+      -0.0621737539768219,
+      -0.058542367070913315,
+      -0.055308230221271515,
+      -0.03296929970383644,
+      -0.0015671205474063754,
+      0.06682945042848587,
+      0.06736554950475693,
+      0.06560085713863373,
+      -0.04009270668029785,
+      -0.022440964356064796,
+      0.02272585593163967,
+      -0.09857586771249771,
+      0.02296016737818718,
+      0.0928235575556755,
+      0.039337486028671265,
+      0.003585314843803644,
+      -0.011409325525164604
+     ],
+     60
+    ]
+   },
+   "movie_ratio": 0.75,
+   "results": [
+    {
+     "tmdb_id": 398978,
+     "score": 14.311,
+     "title": "The Irishman",
+     "title_en": "The Irishman",
+     "media_type": "movie",
+     "rating": 7.57,
+     "genres": [
+      "Crime",
+      "Drama",
+      "History"
+     ],
+     "poster_path": "/mbm8k3GFhXS0ROd9AD1gqYbIFbM.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": [
+      1032
+     ]
+    },
+    {
+     "tmdb_id": 9516,
+     "score": 13.907,
+     "title": "Menace II Society",
+     "title_en": "Menace II Society",
+     "media_type": "movie",
+     "rating": 7.517,
+     "genres": [
+      "Crime",
+      "Thriller",
+      "Drama"
+     ],
+     "poster_path": "/guvPiEOeXwROpfCb2LkHkVEvOck.jpg",
+     "collection_id": null,
+     "release_year": 1993,
+     "director_ids": [
+      11447,
+      11448
+     ]
+    },
+    {
+     "tmdb_id": 524,
+     "score": 13.775,
+     "title": "Casino",
+     "title_en": "Casino",
+     "media_type": "movie",
+     "rating": 7.998,
+     "genres": [
+      "Crime",
+      "Drama"
+     ],
+     "poster_path": "/gziIkUSnYuj9ChCi8qOu2ZunpSC.jpg",
+     "collection_id": null,
+     "release_year": 1995,
+     "director_ids": [
+      1032
+     ]
+    },
+    {
+     "tmdb_id": 7980,
+     "score": 13.399,
+     "title": "The Lovely Bones",
+     "title_en": "The Lovely Bones",
+     "media_type": "movie",
+     "rating": 7.057,
+     "genres": [
+      "Drama",
+      "Fantasy"
+     ],
+     "poster_path": "/kIa9CyK2yiE4CAy7RJPGe7lztse.jpg",
+     "collection_id": null,
+     "release_year": 2009,
+     "director_ids": [
+      108
+     ]
+    },
+    {
+     "tmdb_id": 187,
+     "score": 12.788,
+     "title": "Sin City",
+     "title_en": "Sin City",
+     "media_type": "movie",
+     "rating": 7.464,
+     "genres": [
+      "Crime",
+      "Thriller"
+     ],
+     "poster_path": "/i66G50wATMmPrvpP95f0XP6ZdVS.jpg",
+     "collection_id": 135179,
+     "release_year": 2005,
+     "director_ids": [
+      2294,
+      2293
+     ]
+    },
+    {
+     "tmdb_id": 3131,
+     "score": 12.563,
+     "title": "Gangs of New York",
+     "title_en": "Gangs of New York",
+     "media_type": "movie",
+     "rating": 7.315,
+     "genres": [
+      "Crime",
+      "Drama",
+      "History"
+     ],
+     "poster_path": "/lemqKtcCuAano5aqrzxYiKC8kkn.jpg",
+     "collection_id": null,
+     "release_year": 2002,
+     "director_ids": [
+      1032
+     ]
+    },
+    {
+     "tmdb_id": 11171,
+     "score": 12.442,
+     "title": "Mysterious Skin",
+     "title_en": "Mysterious Skin",
+     "media_type": "movie",
+     "rating": 7.717,
+     "genres": [
+      "Drama"
+     ],
+     "poster_path": "/wgSwDqhl6Rt3cuSCwt5sNpPna3x.jpg",
+     "collection_id": null,
+     "release_year": 2005,
+     "director_ids": [
+      19224
+     ]
+    },
+    {
+     "tmdb_id": 348350,
+     "score": 12.44,
+     "title": "Solo: A Star Wars Story",
+     "title_en": "Solo: A Star Wars Story",
+     "media_type": "movie",
+     "rating": 6.552,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/4oD6VEccFkorEBTEDXtpLAaz0Rl.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": [
+      6159
+     ]
+    },
+    {
+     "tmdb_id": 75612,
+     "score": 12.344,
+     "title": "Oblivion",
+     "title_en": "Oblivion",
+     "media_type": "movie",
+     "rating": 6.693,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action",
+      "Mystery"
+     ],
+     "poster_path": "/bYLM3GpNUZnoFElPXp1zlhDPdtv.jpg",
+     "collection_id": null,
+     "release_year": 2013,
+     "director_ids": [
+      86270
+     ]
+    },
+    {
+     "tmdb_id": 24188,
+     "score": 12.067,
+     "title": "Il Sorpasso",
+     "title_en": "Il Sorpasso",
+     "media_type": "movie",
+     "rating": 8.232,
+     "genres": [
+      "Adventure",
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/4h1ckrJQVcQYjeOkqS8i9BqZ9MI.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      57641
+     ]
+    },
+    {
+     "tmdb_id": 49051,
+     "score": 11.853,
+     "title": "The Hobbit: An Unexpected Journey",
+     "title_en": "The Hobbit: An Unexpected Journey",
+     "media_type": "movie",
+     "rating": 7.382,
+     "genres": [
+      "Adventure",
+      "Fantasy",
+      "Action"
+     ],
+     "poster_path": "/yHA9Fc37VmpUA5UncTxxo3rTGVA.jpg",
+     "collection_id": 121938,
+     "release_year": 2012,
+     "director_ids": [
+      108
+     ]
+    },
+    {
+     "tmdb_id": 13475,
+     "score": 11.8,
+     "title": "Star Trek",
+     "title_en": "Star Trek",
+     "media_type": "movie",
+     "rating": 7.437,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Action"
+     ],
+     "poster_path": "/lV5OpzAss1z06YNagOVap1I35mH.jpg",
+     "collection_id": 115575,
+     "release_year": 2009,
+     "director_ids": [
+      15344
+     ]
+    },
+    {
+     "tmdb_id": 152,
+     "score": 11.475,
+     "title": "Star Trek: The Motion Picture",
+     "title_en": "Star Trek: The Motion Picture",
+     "media_type": "movie",
+     "rating": 6.484,
+     "genres": [
+      "Science Fiction",
+      "Adventure",
+      "Mystery"
+     ],
+     "poster_path": "/wfiAfNwH6CMKxz4vRaW8CPTabtk.jpg",
+     "collection_id": 151,
+     "release_year": 1979,
+     "director_ids": [
+      1744
+     ]
+    },
+    {
+     "tmdb_id": 68735,
+     "score": 10.846,
+     "title": "Warcraft",
+     "title_en": "Warcraft",
+     "media_type": "movie",
+     "rating": 6.418,
+     "genres": [
+      "Adventure",
+      "Fantasy",
+      "Action"
+     ],
+     "poster_path": "/eGi5aoxaZveqNLtE7BZJCuWwR3G.jpg",
+     "collection_id": null,
+     "release_year": 2016,
+     "director_ids": [
+      81850
+     ]
+    },
+    {
+     "tmdb_id": 524659,
+     "score": 10.312,
+     "title": "Crown Vic",
+     "title_en": "Crown Vic",
+     "media_type": "movie",
+     "rating": 6.18,
+     "genres": [
+      "Crime",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/aUFuuUMd4nMbt3pdzulnFRxbY6e.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": [
+      1151353
+     ]
+    },
+    {
+     "tmdb_id": 411,
+     "score": 10.239,
+     "title": "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe",
+     "title_en": "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe",
+     "media_type": "movie",
+     "rating": 7.145,
+     "genres": [
+      "Adventure",
+      "Family",
+      "Fantasy"
+     ],
+     "poster_path": "/iREd0rNCjYdf5Ar0vfaW32yrkm.jpg",
+     "collection_id": 420,
+     "release_year": 2005,
+     "director_ids": [
+      5524
+     ]
+    },
+    {
+     "tmdb_id": 1280738,
+     "score": 10.138,
+     "title": "The Furious",
+     "title_en": "The Furious",
+     "media_type": "movie",
+     "rating": 8.192,
+     "genres": [
+      "Crime",
+      "Thriller",
+      "Action"
+     ],
+     "poster_path": "/ivQ1Z3lI1xWvAeGDHBw3CCYZDGJ.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      1113443
+     ]
+    },
+    {
+     "tmdb_id": 111,
+     "score": 10.004,
+     "title": "Scarface",
+     "title_en": "Scarface",
+     "media_type": "movie",
+     "rating": 8.153,
+     "genres": [
+      "Crime",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/iQ5ztdjvteGeboxtmRdXEChJOHh.jpg",
+     "collection_id": null,
+     "release_year": 1983,
+     "director_ids": [
+      1150
+     ]
+    },
+    {
+     "tmdb_id": 4413,
+     "score": 9.956,
+     "title": "The Brave One",
+     "title_en": "The Brave One",
+     "media_type": "movie",
+     "rating": 6.581,
+     "genres": [
+      "Crime",
+      "Thriller",
+      "Drama"
+     ],
+     "poster_path": "/tdbOFY9ZnmOcxbNThJqGaIGCOow.jpg",
+     "collection_id": null,
+     "release_year": 2007,
+     "director_ids": [
+      17016
+     ]
+    },
+    {
+     "tmdb_id": 40096,
+     "score": 9.882,
+     "title": "A Dog's Will",
+     "title_en": "A Dog's Will",
+     "media_type": "movie",
+     "rating": 8.4,
+     "genres": [
+      "Drama",
+      "Fantasy",
+      "Romance",
+      "Comedy"
+     ],
+     "poster_path": "/z9Au9XtK0ARzkKGsZCzMkmKgMPf.jpg",
+     "collection_id": 1219938,
+     "release_year": 2000,
+     "director_ids": [
+      102560
+     ]
+    },
+    {
+     "tmdb_id": 14537,
+     "score": 9.747,
+     "title": "Harakiri",
+     "title_en": "Harakiri",
+     "media_type": "movie",
+     "rating": 8.465,
+     "genres": [
+      "Drama",
+      "History",
+      "Action"
+     ],
+     "poster_path": "/5konZnIbcAxZjP616Cz5o9bKEfW.jpg",
+     "collection_id": null,
+     "release_year": 1962,
+     "director_ids": [
+      76978
+     ]
+    },
+    {
+     "tmdb_id": 1419406,
+     "score": 9.603,
+     "title": "The Shadow's Edge",
+     "title_en": "The Shadow's Edge",
+     "media_type": "movie",
+     "rating": 8.293,
+     "genres": [
+      "Crime",
+      "Thriller",
+      "Drama",
+      "Action"
+     ],
+     "poster_path": "/cHKo3m8N1fwvEy2ZEr0xGmmMODV.jpg",
+     "collection_id": null,
+     "release_year": 2025,
+     "director_ids": [
+      1452270
+     ]
+    },
+    {
+     "tmdb_id": 117376,
+     "score": 6.627,
+     "title": "Vincenzo",
+     "title_en": "Vincenzo",
+     "media_type": "tv",
+     "rating": 8.509,
+     "genres": [
+      "Crime",
+      "Drama",
+      "Action & Adventure",
+      "Comedy"
+     ],
+     "poster_path": "/qbkSS1cTjT4DzIwD44bdhTuYgdT.jpg",
+     "collection_id": null,
+     "release_year": 2021,
+     "director_ids": [
+      1702901,
+      2971576
+     ]
+    },
+    {
+     "tmdb_id": 79744,
+     "score": 6.009,
+     "title": "The Rookie",
+     "title_en": "The Rookie",
+     "media_type": "tv",
+     "rating": 8.539,
+     "genres": [
+      "Crime",
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/70kTz0OmjjZe7zHvIDrq2iKW7PJ.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 97186,
+     "score": 5.988,
+     "title": "Love, Victor",
+     "title_en": "Love, Victor",
+     "media_type": "tv",
+     "rating": 8.551,
+     "genres": [
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/pcT1vivabBnBk0tZgVBO1I8aK75.jpg",
+     "collection_id": null,
+     "release_year": 2020,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 62914,
+     "score": 5.915,
+     "title": "Merlí",
+     "title_en": "Merlí",
+     "media_type": "tv",
+     "rating": 8.597,
+     "genres": [
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/wQaGnuwIHhmB1jgY6CM3rJgScYR.jpg",
+     "collection_id": null,
+     "release_year": 2015,
+     "director_ids": [
+      1475420
+     ]
+    },
+    {
+     "tmdb_id": 276161,
+     "score": 5.69,
+     "title": "Teach You a Lesson",
+     "title_en": "Teach You a Lesson",
+     "media_type": "tv",
+     "rating": 9.383,
+     "genres": [
+      "Drama",
+      "Action & Adventure",
+      "Comedy"
+     ],
+     "poster_path": "/fMECSPrTmRClSViMsXFYmiYIcWP.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      1856374
+     ]
+    },
+    {
+     "tmdb_id": 42705,
+     "score": 5.607,
+     "title": "Fighting Spirit",
+     "title_en": "Fighting Spirit",
+     "media_type": "tv",
+     "rating": 8.671,
+     "genres": [
+      "Drama",
+      "Action & Adventure",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/fEYVJu08En9A7n0e5TTpeoSjtIm.jpg",
+     "collection_id": null,
+     "release_year": 2000,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 94796,
+     "score": 5.522,
+     "title": "Crash Landing on You",
+     "title_en": "Crash Landing on You",
+     "media_type": "tv",
+     "rating": 8.53,
+     "genres": [
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/fgBNLPr6mC8pxuR79ENAJY4nBmj.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": [
+      2971576
+     ]
+    },
+    {
+     "tmdb_id": 89901,
+     "score": 5.316,
+     "title": "Dickinson",
+     "title_en": "Dickinson",
+     "media_type": "tv",
+     "rating": 8.491,
+     "genres": [
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/dDdcAfHBZ6Aalv53iR6o35CSLWA.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": []
+    }
+   ],
+   "raw_per_seed": null
+  }
+ ]
+}

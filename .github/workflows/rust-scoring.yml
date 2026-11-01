@@ -92,3 +92,64 @@ jobs:
         run: cargo test --manifest-path rust/db/Cargo.toml
         env:
           CINE_REC_REQUIRE_DB: "1"
+
+  service-live-parity:
+    # phase 5b: the _service_rs extension + live compute-path parity
+    # (crate-direct AND through the PyO3 boundary) on a seeded DB
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: demo
+          POSTGRES_DB: demo
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U demo"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CINE_REC_INTEGRATION_DSN: postgresql://demo:demo@127.0.0.1:5432/demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.91.1
+      - name: Schema + demo data
+        run: |
+          pip install asyncpg loguru
+          python - <<'PY'
+          import asyncio, asyncpg, os
+          DSN = os.environ["CINE_REC_INTEGRATION_DSN"]
+          async def main():
+              c = await asyncpg.connect(DSN)
+              await c.execute("CREATE EXTENSION IF NOT EXISTS vector")
+              await c.execute(open("docs/schema.sql").read())
+              await c.execute(open("docs/user_data.sql").read())
+              await c.close()
+          asyncio.run(main())
+          PY
+          DUMMY=1 python demo/seed.py
+        env:
+          DATABASE_URL: postgresql://demo:demo@127.0.0.1:5432/demo
+      - name: Regenerate fixtures from Python
+        run: |
+          pip install -e . --no-deps
+          python rust/db/tests/fixtures/gen_personalization_parity.py
+          python rust/service/tests/fixtures/gen_service_parity.py
+      - name: Unit tests (no boundary)
+        run: cargo test --manifest-path rust/service/Cargo.toml
+      - name: Service live parity (crate-direct)
+        run: cargo test --manifest-path rust/service/Cargo.toml --test service_parity
+        env:
+          CINE_REC_REQUIRE_DB: "1"
+      - name: Build extension + boundary parity (pytest)
+        run: |
+          cargo build --release --features pyo3 --manifest-path rust/service/Cargo.toml
+          cp target/release/libcine_rec_service.so cine_rec_engine/_service_rs.so
+          python -m pytest tests/integration/test_service_rs_parity.py -q
+        env:
+          CINE_REC_REQUIRE_DB: "1"

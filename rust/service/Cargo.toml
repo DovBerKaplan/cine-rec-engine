@@ -14,10 +14,17 @@ sqlx = { version = "=0.8.6", default-features = false, features = [
     "postgres",
     "json",
 ] }
-tokio = { version = "1", features = ["rt", "macros", "sync"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
 async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
 cine-rec-db = { path = "../db" }
 cine-rec-scoring = { path = "../scoring" }
+pyo3 = { version = "0.23", features = ["abi3-py310", "macros"], optional = true }
+
+[features]
+pyo3 = ["dep:pyo3"]
 
 [lib]
 name = "cine_rec_service"
+crate-type = ["rlib", "cdylib"]

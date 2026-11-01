@@ -7,6 +7,8 @@
 //! is wired in through a PyO3 bridge only after live parity holds.
 
 pub mod cache;
+#[cfg(feature = "pyo3")]
+pub mod pybridge;
 pub mod similar;
 
 pub use cache::{NoopCache, ResultCache};
