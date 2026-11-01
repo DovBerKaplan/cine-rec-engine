@@ -908,7 +908,10 @@ class RecommendationService:
                         if merged is None and "merged" in prefetch:
                             merged = await prefetch["merged"]
                         elif exclude:
-                            merged = set(merged) | set(exclude)
+                            # merged may be absent (no context and no
+                            # prefetch) — no prior exclusions, don't
+                            # raise on set(None).
+                            merged = set(merged or ()) | set(exclude)
                         blocked = (
                             await prefetch["blocked"]
                             if "blocked" in prefetch else None)
@@ -1023,10 +1026,12 @@ class RecommendationService:
         # to the two-channel form.
         knn_ft_enabled = os.getenv("ENABLE_KNN_FINETUNED", "true").lower() != "false"
 
-        async def _tmdb_recs_channel() -> List[List[dict]]:
+        async def _tmdb_recs_channel() -> Sequence[Union[List[dict], BaseException]]:
             """One query for every seed's TMDB recs, or the per-seed
             channel when the batch fails (each seed then degrades
-            alone, exactly like the pre-batch fan-out)."""
+            alone, exactly like the pre-batch fan-out). The fallback
+            list carries a BaseException placeholder in a failed
+            seed's slot — the merge loop isinstance-handles them."""
             try:
                 return await generate_tmdb_rec_candidates_batch(
                     self.pool,
@@ -1040,9 +1045,11 @@ class RecommendationService:
                       for s in seed_infos],
                     return_exceptions=True)
 
-        async def _director_channel() -> List[List[dict]]:
+        async def _director_channel() -> Sequence[Union[List[dict], BaseException]]:
             """Same contract for the auteur channel: one query for all
-            seeds, per-seed fallback when the batch fails."""
+            seeds, per-seed fallback when the batch fails (a failed
+            seed degrades alone; see the merge loop's isinstance
+            handling)."""
             try:
                 return await generate_director_candidates_batch(
                     self.pool,
@@ -1372,7 +1379,9 @@ class RecommendationService:
             if merged is None and "merged" in prefetch:
                 merged = await prefetch["merged"]
             elif exclude:
-                merged = set(merged) | set(exclude)
+                # merged may be absent (no context and no prefetch) —
+                # no prior exclusions, don't raise on set(None).
+                merged = set(merged or ()) | set(exclude)
             blocked = (
                 await prefetch["blocked"]
                 if "blocked" in prefetch else None)
