@@ -580,7 +580,7 @@ mod tests {
         // are both empty → skip. This lock documents the contract.
         let title_ok = |item: &ScoredItem| {
             item.title_en.as_deref().is_some_and(|t| !t.trim().is_empty())
-                || item.title.as_str().is_some_and(|t| !t.trim().is_empty())
+                || !item.title.trim().is_empty()
         };
         assert!(!title_ok(&mk(1, "", None)), "both empty");
         assert!(!title_ok(&mk(2, "  ", Some("  "))), "whitespace only");
