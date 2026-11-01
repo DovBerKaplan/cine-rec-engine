@@ -61,7 +61,9 @@ _MIN_SO_BYTES = 400_000
 def _elf_looks_intact(path: str) -> bool:
     """All PT_LOAD segments and the section-header table fit in the
     file (validated against a byte-level truncation sweep by the
-    phase-2 review). False for anything not obviously ELF."""
+    phase-2 review). True for files that are not obviously ELF (or too
+    short to tell) — the caller's size floor decides those; this is a
+    structural TRUNCATION check only, not a content-integrity check."""
     import struct
 
     try:
@@ -122,7 +124,7 @@ def _extension_file_problem(path: str) -> Optional[str]:
             magic = f.read(4)
         if magic == b"\x7fELF":
             if not _elf_looks_intact(path):
-                return f"extension file is truncated/corrupt: {path}"
+                return f"extension file is truncated: {path}"
             return None
         if os.path.getsize(path) < _MIN_SO_BYTES:
             return f"extension file looks truncated: {path}"
@@ -197,29 +199,43 @@ def install(ns: dict[str, Any]) -> str:
             # (lone surrogates) — this call only, pure Python
             return py_entity_profile(entity, entity_data, genres_override)
 
+    # L-9: the rebuild is memoized per profile OBJECT (identity) — in
+    # the hot loop the same seed/candidate profile object scores many
+    # pairs, and rebuilding per pair made an exotic-seed request slower
+    # than plain Python. PyProfile is immutable from Python, so an
+    # identity cache cannot go stale.
+    _memo: dict[str, tuple] = {"sp": (None, None), "cp": (None, None)}
+
+    def _pure_profile(p, slot):
+        cached_obj, cached_pure = _memo[slot]
+        if cached_obj is p:
+            return cached_pure
+        if not _is_rust_profile(p):
+            return p  # already pure — nothing to remember
+        # L-10 note: origin holds REFERENCES to the original dicts, not
+        # copies. The service never mutates entity rows between profile
+        # construction and scoring (documented contract); mutating them
+        # would silently change the rebuild.
+        entity, entity_data, genres_override = p.origin
+        pure = py_entity_profile(entity, entity_data, genres_override)
+        _memo[slot] = (p, pure)
+        return pure
+
     def score_pair_fast(
         sp, cp, cand: dict, cand_data: dict, cand_genres_set, overview_sim: float, w_list: list
     ) -> float:
-        rust_sp = _is_rust_profile(sp)
-        rust_cp = _is_rust_profile(cp)
-        if rust_sp != rust_cp:
-            raise TypeError(
-                "mixed profile kinds (one Rust, one pure-Python) — cannot "
-                "score; rebuild both profiles from the same path"
-            )
-        if not rust_sp:
-            return py_score_pair_fast(
-                sp, cp, cand, cand_data, cand_genres_set, overview_sim, w_list
-            )
-        try:
-            return _scorer_for(w_list).score_pair_fast(
-                sp, cp, cand_data, cand_genres_set, overview_sim
-            )
-        except TypeError as e:
-            # the call reads only the director name and the genre set
-            # from the dicts — both are lenient; a TypeError here means
-            # something structural: loud is better than wrong
-            raise TypeError(f"rust score_pair_fast failed: {e}") from e
+        if _is_rust_profile(sp) and _is_rust_profile(cp):
+            try:
+                return _scorer_for(w_list).score_pair_fast(
+                    sp, cp, cand_data, cand_genres_set, overview_sim
+                )
+            except (TypeError, ValueError, OverflowError):
+                pass  # rebuild both sides pure below
+        return py_score_pair_fast(
+            _pure_profile(sp, "sp"),
+            _pure_profile(cp, "cp"),
+            cand, cand_data, cand_genres_set, overview_sim, w_list,
+        )
 
     def feature_vector(
         cand: dict,

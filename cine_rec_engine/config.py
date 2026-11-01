@@ -177,10 +177,9 @@ GENRE_LABELS_EN: dict[str, str] = {
 # proven classics out of the shortlist.
 MIN_VOTE_COUNT: int = 500
 
-# Media-type-aware vote floors (channels AND the pre-filter). Measured on
-# a lower TV floor (100/200) widens series recall
-# but nets -0.2 (noise outweighs hits), so both stay 500 for now — the
-# plumbing remains so the split can be revisited with better tv embeddings.
+# Media-type-aware vote floors (channels AND the pre-filter). The split
+# exists so a tv-specific floor can diverge if the catalogs ever warrant
+# it; today both media share the same floor.
 VOTE_FLOOR_MOVIE: int = 500
 VOTE_FLOOR_TV: int = 500
 

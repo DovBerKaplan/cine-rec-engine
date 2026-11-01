@@ -1,0 +1,810 @@
+{
+ "logical_tables_sorted": [
+  "media_episodes",
+  "title_ratings",
+  "tmdb_cast",
+  "tmdb_cinematic",
+  "tmdb_crew",
+  "tmdb_genres",
+  "tmdb_keywords",
+  "tmdb_media",
+  "tmdb_media_companies",
+  "tmdb_media_genres",
+  "tmdb_media_keywords",
+  "tmdb_media_networks",
+  "tmdb_movie_cast",
+  "tmdb_movie_companies",
+  "tmdb_movie_crew",
+  "tmdb_movie_genres",
+  "tmdb_movie_genres_map",
+  "tmdb_movie_keywords",
+  "tmdb_movie_recommendations",
+  "tmdb_movies",
+  "tmdb_networks",
+  "tmdb_people",
+  "tmdb_production_companies",
+  "tmdb_recommendations",
+  "tmdb_tv",
+  "tmdb_tv_cast",
+  "tmdb_tv_companies",
+  "tmdb_tv_crew",
+  "tmdb_tv_genres",
+  "tmdb_tv_genres_map",
+  "tmdb_tv_keywords",
+  "tmdb_tv_networks_map",
+  "tmdb_tv_recommendations",
+  "user_feedback",
+  "user_genre_stats",
+  "user_searches",
+  "user_stats",
+  "user_title_stats",
+  "user_vectors",
+  "user_watch_events",
+  "user_watches"
+ ],
+ "cases": [
+  {
+   "map": {},
+   "template": "SELECT * FROM {t_tmdb_media} WHERE id = $1",
+   "ok": true,
+   "resolved": "SELECT * FROM tmdb_media WHERE id = $1"
+  },
+  {
+   "map": {},
+   "template": "SELECT 1 FROM {t_tmdb_media_genres} mg JOIN {t_tmdb_genres} g ON g.id = mg.genre_id",
+   "ok": true,
+   "resolved": "SELECT 1 FROM tmdb_media_genres mg JOIN tmdb_genres g ON g.id = mg.genre_id"
+  },
+  {
+   "map": {},
+   "template": "UPDATE {t_user_watch_events} SET x = 1",
+   "ok": true,
+   "resolved": "UPDATE user_watch_events SET x = 1"
+  },
+  {
+   "map": {},
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {},
+   "template": "{t_tmdb_media",
+   "ok": true,
+   "resolved": "{t_tmdb_media"
+  },
+  {
+   "map": {},
+   "template": "{t_1abc}",
+   "ok": true,
+   "resolved": "{t_1abc}"
+  },
+  {
+   "map": {},
+   "template": "{t_tmdb_media2}",
+   "ok": true,
+   "resolved": "{t_tmdb_media2}"
+  },
+  {
+   "map": {},
+   "template": "{t_Tmdb_Media}",
+   "ok": true,
+   "resolved": "{t_Tmdb_Media}"
+  },
+  {
+   "map": {},
+   "template": "{t_tmdb_media_extra}",
+   "ok": false,
+   "error_contains": "unknown logical table 'tmdb_media_extra'; valid names are de"
+  },
+  {
+   "map": {},
+   "template": "x{t_tmdb_media}y{t_tmdb_tv}z",
+   "ok": true,
+   "resolved": "xtmdb_mediaytmdb_tvz"
+  },
+  {
+   "map": {},
+   "template": "'{t_tmdb_media}'",
+   "ok": true,
+   "resolved": "'tmdb_media'"
+  },
+  {
+   "map": {},
+   "template": "{T_tmdb_media}",
+   "ok": true,
+   "resolved": "{T_tmdb_media}"
+  },
+  {
+   "map": {},
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {},
+   "template": "FROM {t_user_watches} , {t_tmdb_cast}",
+   "ok": true,
+   "resolved": "FROM user_watches , tmdb_cast"
+  },
+  {
+   "map": {},
+   "template": "SELECT '{t_tmdb_media}' || {t_tmdb_crew}.media_id",
+   "ok": true,
+   "resolved": "SELECT 'tmdb_media' || tmdb_crew.media_id"
+  },
+  {
+   "map": {},
+   "template": "",
+   "ok": true,
+   "resolved": ""
+  },
+  {
+   "map": {},
+   "template": "no placeholders at all",
+   "ok": true,
+   "resolved": "no placeholders at all"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "SELECT * FROM {t_tmdb_media} WHERE id = $1",
+   "ok": true,
+   "resolved": "SELECT * FROM app_media WHERE id = $1"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "SELECT 1 FROM {t_tmdb_media_genres} mg JOIN {t_tmdb_genres} g ON g.id = mg.genre_id",
+   "ok": true,
+   "resolved": "SELECT 1 FROM tmdb_media_genres mg JOIN tmdb_genres g ON g.id = mg.genre_id"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "UPDATE {t_user_watch_events} SET x = 1",
+   "ok": true,
+   "resolved": "UPDATE user_watch_events SET x = 1"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "{t_tmdb_media",
+   "ok": true,
+   "resolved": "{t_tmdb_media"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "{t_1abc}",
+   "ok": true,
+   "resolved": "{t_1abc}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "{t_tmdb_media2}",
+   "ok": true,
+   "resolved": "{t_tmdb_media2}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "{t_Tmdb_Media}",
+   "ok": true,
+   "resolved": "{t_Tmdb_Media}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "{t_tmdb_media_extra}",
+   "ok": false,
+   "error_contains": "unknown logical table 'tmdb_media_extra'; valid names are de"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "x{t_tmdb_media}y{t_tmdb_tv}z",
+   "ok": true,
+   "resolved": "xapp_mediaytmdb_tvz"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "'{t_tmdb_media}'",
+   "ok": true,
+   "resolved": "'app_media'"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "{T_tmdb_media}",
+   "ok": true,
+   "resolved": "{T_tmdb_media}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "FROM {t_user_watches} , {t_tmdb_cast}",
+   "ok": true,
+   "resolved": "FROM user_watches , tmdb_cast"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "SELECT '{t_tmdb_media}' || {t_tmdb_crew}.media_id",
+   "ok": true,
+   "resolved": "SELECT 'app_media' || tmdb_crew.media_id"
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "",
+   "ok": true,
+   "resolved": ""
+  },
+  {
+   "map": {
+    "tmdb_media": "app_media"
+   },
+   "template": "no placeholders at all",
+   "ok": true,
+   "resolved": "no placeholders at all"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "SELECT * FROM {t_tmdb_media} WHERE id = $1",
+   "ok": true,
+   "resolved": "SELECT * FROM app.media WHERE id = $1"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "SELECT 1 FROM {t_tmdb_media_genres} mg JOIN {t_tmdb_genres} g ON g.id = mg.genre_id",
+   "ok": true,
+   "resolved": "SELECT 1 FROM tmdb_media_genres mg JOIN tmdb_genres g ON g.id = mg.genre_id"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "UPDATE {t_user_watch_events} SET x = 1",
+   "ok": true,
+   "resolved": "UPDATE user_watch_events SET x = 1"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "{t_tmdb_media",
+   "ok": true,
+   "resolved": "{t_tmdb_media"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "{t_1abc}",
+   "ok": true,
+   "resolved": "{t_1abc}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "{t_tmdb_media2}",
+   "ok": true,
+   "resolved": "{t_tmdb_media2}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "{t_Tmdb_Media}",
+   "ok": true,
+   "resolved": "{t_Tmdb_Media}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "{t_tmdb_media_extra}",
+   "ok": false,
+   "error_contains": "unknown logical table 'tmdb_media_extra'; valid names are de"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "x{t_tmdb_media}y{t_tmdb_tv}z",
+   "ok": true,
+   "resolved": "xapp.mediayapp_tvz"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "'{t_tmdb_media}'",
+   "ok": true,
+   "resolved": "'app.media'"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "{T_tmdb_media}",
+   "ok": true,
+   "resolved": "{T_tmdb_media}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "FROM {t_user_watches} , {t_tmdb_cast}",
+   "ok": true,
+   "resolved": "FROM user_watches , tmdb_cast"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "SELECT '{t_tmdb_media}' || {t_tmdb_crew}.media_id",
+   "ok": true,
+   "resolved": "SELECT 'app.media' || tmdb_crew.media_id"
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "",
+   "ok": true,
+   "resolved": ""
+  },
+  {
+   "map": {
+    "tmdb_media": "app.media",
+    "tmdb_tv": "app_tv"
+   },
+   "template": "no placeholders at all",
+   "ok": true,
+   "resolved": "no placeholders at all"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "SELECT * FROM {t_tmdb_media} WHERE id = $1",
+   "ok": true,
+   "resolved": "SELECT * FROM tmdb_media WHERE id = $1"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "SELECT 1 FROM {t_tmdb_media_genres} mg JOIN {t_tmdb_genres} g ON g.id = mg.genre_id",
+   "ok": true,
+   "resolved": "SELECT 1 FROM g mg JOIN g2 g ON g.id = mg.genre_id"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "UPDATE {t_user_watch_events} SET x = 1",
+   "ok": true,
+   "resolved": "UPDATE user_watch_events SET x = 1"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "{t_tmdb_media",
+   "ok": true,
+   "resolved": "{t_tmdb_media"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "{t_1abc}",
+   "ok": true,
+   "resolved": "{t_1abc}"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "{t_tmdb_media2}",
+   "ok": true,
+   "resolved": "{t_tmdb_media2}"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "{t_Tmdb_Media}",
+   "ok": true,
+   "resolved": "{t_Tmdb_Media}"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "{t_tmdb_media_extra}",
+   "ok": false,
+   "error_contains": "unknown logical table 'tmdb_media_extra'; valid names are de"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "x{t_tmdb_media}y{t_tmdb_tv}z",
+   "ok": true,
+   "resolved": "xtmdb_mediaytmdb_tvz"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "'{t_tmdb_media}'",
+   "ok": true,
+   "resolved": "'tmdb_media'"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "{T_tmdb_media}",
+   "ok": true,
+   "resolved": "{T_tmdb_media}"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "FROM {t_user_watches} , {t_tmdb_cast}",
+   "ok": true,
+   "resolved": "FROM u.w , tmdb_cast"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "SELECT '{t_tmdb_media}' || {t_tmdb_crew}.media_id",
+   "ok": true,
+   "resolved": "SELECT 'tmdb_media' || tmdb_crew.media_id"
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "",
+   "ok": true,
+   "resolved": ""
+  },
+  {
+   "map": {
+    "tmdb_media_genres": "g",
+    "tmdb_genres": "g2",
+    "user_watches": "u.w"
+   },
+   "template": "no placeholders at all",
+   "ok": true,
+   "resolved": "no placeholders at all"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "SELECT * FROM {t_tmdb_media} WHERE id = $1",
+   "ok": true,
+   "resolved": "SELECT * FROM tmdb_media WHERE id = $1"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "SELECT 1 FROM {t_tmdb_media_genres} mg JOIN {t_tmdb_genres} g ON g.id = mg.genre_id",
+   "ok": true,
+   "resolved": "SELECT 1 FROM tmdb_media_genres mg JOIN tmdb_genres g ON g.id = mg.genre_id"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "UPDATE {t_user_watch_events} SET x = 1",
+   "ok": true,
+   "resolved": "UPDATE user_watch_events SET x = 1"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "{t_tmdb_media",
+   "ok": true,
+   "resolved": "{t_tmdb_media"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "{t_1abc}",
+   "ok": true,
+   "resolved": "{t_1abc}"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "{t_tmdb_media2}",
+   "ok": true,
+   "resolved": "{t_tmdb_media2}"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "{t_Tmdb_Media}",
+   "ok": true,
+   "resolved": "{t_Tmdb_Media}"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "{t_tmdb_media_extra}",
+   "ok": false,
+   "error_contains": "unknown logical table 'tmdb_media_extra'; valid names are de"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "x{t_tmdb_media}y{t_tmdb_tv}z",
+   "ok": true,
+   "resolved": "xtmdb_mediaytz"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "'{t_tmdb_media}'",
+   "ok": true,
+   "resolved": "'tmdb_media'"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "{T_tmdb_media}",
+   "ok": true,
+   "resolved": "{T_tmdb_media}"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "{t_}",
+   "ok": true,
+   "resolved": "{t_}"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "FROM {t_user_watches} , {t_tmdb_cast}",
+   "ok": true,
+   "resolved": "FROM user_watches , tmdb_cast"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "SELECT '{t_tmdb_media}' || {t_tmdb_crew}.media_id",
+   "ok": true,
+   "resolved": "SELECT 'tmdb_media' || tmdb_crew.media_id"
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "",
+   "ok": true,
+   "resolved": ""
+  },
+  {
+   "map": {
+    "tmdb_movie_genres_map": "mgm",
+    "tmdb_tv_genres_map": "tgm",
+    "tmdb_movies": "m",
+    "tmdb_tv": "t"
+   },
+   "template": "no placeholders at all",
+   "ok": true,
+   "resolved": "no placeholders at all"
+  }
+ ],
+ "names": [
+  {
+   "logical": "tmdb_media",
+   "ok": true,
+   "name": "tmdb_media"
+  },
+  {
+   "logical": "unknown_table",
+   "ok": false
+  },
+  {
+   "logical": "TMDB_MEDIA",
+   "ok": false
+  }
+ ]
+}

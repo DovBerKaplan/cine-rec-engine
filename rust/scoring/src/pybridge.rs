@@ -4,15 +4,21 @@
 //! Design:
 //! * [`PyProfile`] wraps the pure-Rust profile in an `Arc` — methods
 //!   clone the `Arc`s and release the GIL (`allow_threads`) for the
-//!   actual math, so the warm-path thread pool parallelizes for real.
+//!   actual math, so EMBEDDERS running multi-threaded parallelize for
+//!   real (the package itself is single-threaded today).
 //! * The pure crate (and its parity harness) has NO pyo3 dependency —
 //!   this module only compiles under the `pyo3` feature, and it is a
 //!   thin conversion layer over `crate::real`.
-//! * Entity dicts convert leniently (missing/None → field defaults),
-//!   mirroring Python `dict.get` — except an EMPTY `entity_data` dict,
-//!   which the Python source treats inconsistently (falsy for
-//!   narrative fields, not-None for the enriched source) and is
-//!   therefore rejected loudly here instead of silently diverging.
+//! * Entity dicts convert with missing/None → field defaults,
+//!   mirroring Python `dict.get`. An EMPTY `entity_data` dict — a
+//!   regular production input (`enriched.get(cid, {})`) — carries
+//!   Python's exact distinction: enriched-source fields read the empty
+//!   dict, narrative-side fields fall back to the entity (see
+//!   `real::entity_profile_ex`). Items that cannot convert RAISE
+//!   (TypeError); the per-call fallback in _scoring_accel recomputes
+//!   that call in pure Python — silent skipping is not an option,
+//!   Python's set() compares values and sizes enter the similarity
+//!   denominators.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -91,67 +97,71 @@ fn opt_f64(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Option<f64>> {
     }
 }
 
-/// Per-item lenient list conversion (the reviewer's alternative to
-/// origin-preserving profiles): items that cannot convert are SKIPPED,
-/// never fatal. Python's `set()` semantics make this exact for the
-/// ways these lists are used — a non-string never equals a canonical
-/// genre/keyword/company string, and a non-int never equals a person
-/// id, so dropping them cannot change any intersection. The only
-/// theoretical divergence (the SAME exotic object on both sides)
-/// cannot cross entities. This keeps `entity_profile` from raising on
-/// embedder-shaped rows, which in turn keeps mixed profile pairs from
-/// ever forming (see score_pair_fast).
+/// STRICT per-item conversion: any item that cannot convert raises
+/// TypeError, which the per-call fallback in _scoring_accel turns into
+/// a pure-Python computation for that call. Skipping items is NOT an
+/// option — Python's set() compares VALUES (None == None, equal
+/// strings match), the set SIZE enters the Jaccard/Dice denominators,
+/// and cast/crew lists are sliced [:5] BEFORE any filtering could run,
+/// so silent skipping produced wrong-but-plausible scores (found by
+/// the phase-2 review, repro cases pinned in the bridge tests).
 fn str_list(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Vec<String>> {
-    match dict_get(obj, key)? {
-        None => Ok(Vec::new()),
-        Some(v) if v.is_none() => Ok(Vec::new()),
-        Some(v) => Ok(v
-            .try_iter()?
-            .filter_map(|item| item.ok()?.extract::<String>().ok())
-            .collect()),
-    }
+    items_of(obj, key, "strings", |item| {
+        item.extract::<String>()
+            .map_err(|_| PyTypeError::new_err(format!("{key} items must be strings")))
+    })
 }
 
 fn i64_list(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Vec<i64>> {
-    match dict_get(obj, key)? {
-        None => Ok(Vec::new()),
-        Some(v) if v.is_none() => Ok(Vec::new()),
-        // ints convert; INTEGRAL floats (2.0) equal their int in
-        // Python's set semantics so they convert too; non-integral
-        // floats are skipped (they could only match the identical
-        // value on the other side — cross-entity impossible)
-        Some(v) => Ok(v
-            .try_iter()?
-            .filter_map(|item| {
-                let item = item.ok()?;
-                if let Ok(i) = item.extract::<i64>() {
-                    return Some(i);
-                }
-                let f = item.extract::<f64>().ok()?;
-                (f.is_finite() && f.fract() == 0.0).then_some(f as i64)
-            })
-            .collect()),
-    }
+    // ints convert; an INTEGRAL float (2.0, 15000.0) equals its int in
+    // Python's set semantics and converts too; anything else —
+    // non-integral floats included — raises
+    items_of(obj, key, "ints", |item| {
+        if let Ok(i) = item.extract::<i64>() {
+            return Ok(i);
+        }
+        if let Ok(f) = item.extract::<f64>() {
+            if f.is_finite() && f.fract() == 0.0 {
+                return Ok(f as i64);
+            }
+        }
+        Err(PyTypeError::new_err(format!(
+            "{key} items must be ints (or integral floats)"
+        )))
+    })
 }
 
 /// cast_list members are actor NAMES in the recall rows and person ids
-/// in some older shapes — accept both, per item (same skip-don't-fail
-/// leniency as the other list converters).
+/// in some older shapes — both accepted, anything else raises.
 fn cast_key_list(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Vec<CastKey>> {
+    items_of(obj, key, "ints or strings", |item| {
+        if let Ok(id) = item.extract::<i64>() {
+            return Ok(CastKey::Id(id));
+        }
+        if let Ok(name) = item.extract::<String>() {
+            return Ok(CastKey::Name(name));
+        }
+        Err(PyTypeError::new_err(format!(
+            "{key} items must be ints or strings"
+        )))
+    })
+}
+
+/// Iterate a list-ish field strictly: every item must convert.
+fn items_of<T>(
+    obj: &Bound<'_, PyAny>,
+    key: &str,
+    what: &str,
+    convert: impl Fn(&Bound<'_, PyAny>) -> PyResult<T>,
+) -> PyResult<Vec<T>> {
     match dict_get(obj, key)? {
         None => Ok(Vec::new()),
         Some(v) if v.is_none() => Ok(Vec::new()),
-        Some(v) => Ok(v
-            .try_iter()?
-            .filter_map(|item| {
-                let item = item.ok()?;
-                if let Ok(id) = item.extract::<i64>() {
-                    Some(CastKey::Id(id))
-                } else {
-                    item.extract::<String>().ok().map(CastKey::Name)
-                }
-            })
-            .collect()),
+        Some(v) => v
+            .try_iter()
+            .map_err(|_| PyTypeError::new_err(format!("{key} must be a list of {what}")))?
+            .map(|item| convert(&item?))
+            .collect(),
     }
 }
 
@@ -228,9 +238,61 @@ pub fn py_to_entity(obj: &Bound<'_, PyAny>) -> PyResult<Entity> {
 /// Derive-once profile, built by [`entity_profile`] and consumed by
 /// [`PairScorer`] — opaque from Python on purpose (the Python code
 /// only ever passes it back to this module).
+///
+/// The ORIGINAL inputs are kept alongside (the `origin` getter) so the
+/// pure-Python path can rebuild this side exactly when a call ends up
+/// mixed (one profile converted, the other not) or when a Rust call
+/// degrades — a mixed pair must never crash a request. The origins
+/// are REFERENCES to the caller's dicts, not copies: the service never
+/// mutates entity rows between profile construction and scoring
+/// (documented in _scoring_accel). Python objects are touched ONLY
+/// under the GIL; the hot scoring closure sees just the `Arc<Profile>`.
 #[pyclass]
 pub struct PyProfile {
     inner: Arc<Profile>,
+    origin_entity: PyObject,
+    origin_data: Option<PyObject>,
+    origin_genres: Option<PyObject>,
+}
+
+#[pymethods]
+impl PyProfile {
+    /// (entity, entity_data, genres_override) as originally passed —
+    /// for the pure-Python rebuild path in _scoring_accel.
+    #[getter]
+    fn origin(
+        &self,
+        py: Python<'_>,
+    ) -> (PyObject, Option<PyObject>, Option<PyObject>) {
+        (
+            self.origin_entity.clone_ref(py),
+            self.origin_data.as_ref().map(|o| o.clone_ref(py)),
+            self.origin_genres.as_ref().map(|o| o.clone_ref(py)),
+        )
+    }
+
+    /// GC support: the held origin references could theoretically join
+    /// a reference cycle (an entity dict that somewhere stores this
+    /// profile); without traversal such a cycle would never collect.
+    fn __traverse__(&self, visit: pyo3::PyVisit<'_>) -> Result<(), pyo3::PyTraverseError> {
+        visit.call(&self.origin_entity)?;
+        if let Some(d) = &self.origin_data {
+            visit.call(d)?;
+        }
+        if let Some(g) = &self.origin_genres {
+            visit.call(g)?;
+        }
+        Ok(())
+    }
+
+    fn __clear__(&mut self) {
+        // release the origin references; the Rust profile stays usable
+        self.origin_data = None;
+        self.origin_genres = None;
+        // origin_entity is not Option; clearing it wholesale would need
+        // a None sentinel — the cycle is already broken by the two above
+        // plus Python's own tp_clear on the holder.
+    }
 }
 
 // ── module functions ───────────────────────────────────────────────
@@ -241,6 +303,7 @@ pub struct PyProfile {
 #[pyfunction]
 #[pyo3(signature = (entity, entity_data = None, genres_override = None))]
 fn entity_profile(
+    py: Python<'_>,
     entity: &Bound<'_, PyAny>,
     entity_data: Option<&Bound<'_, PyAny>>,
     genres_override: Option<Vec<String>>,
@@ -268,6 +331,15 @@ fn entity_profile(
         real::entity_profile_ex(&ent, data.as_ref(), data_truthy, genres_override.as_deref());
     Ok(PyProfile {
         inner: Arc::new(profile),
+        origin_entity: entity.clone().unbind(),
+        origin_data: match entity_data {
+            Some(d) if !d.is_none() => Some(d.clone().unbind()),
+            _ => None,
+        },
+        origin_genres: match genres_override {
+            Some(g) => Some(g.into_pyobject(py)?.unbind()),
+            None => None,
+        },
     })
 }
 
@@ -327,15 +399,25 @@ impl PairScorer {
             Some(v) if !v.is_none() => v.extract::<String>().ok(),
             _ => None,
         };
-        // non-string items never intersect the canonical genre strings
-        // in Python either — skip them. No identity cache: callers may
-        // run multi-threaded, and a shared cache both races and
+        // STRICT: a non-string genre item raises (Python's set compares
+        // values and the gate reads set semantics — skipping would
+        // silently change the genre gate). No identity cache: callers
+        // may run multi-threaded, and a shared cache both races and
         // mis-hits on recycled addresses (~5% measured, not worth it).
-        let cgs: Option<HashSet<String>> = cand_genres_set.map(|s| {
-            s.iter()
-                .filter_map(|item| item.extract::<String>().ok())
-                .collect::<HashSet<String>>()
-        });
+        let cgs: Option<HashSet<String>> = match cand_genres_set {
+            Some(s) => Some(
+                s.iter()
+                    .map(|item| {
+                        item.extract::<String>().map_err(|_| {
+                            PyTypeError::new_err(
+                                "cand_genres_set items must be strings",
+                            )
+                        })
+                    })
+                    .collect::<PyResult<HashSet<String>>>()?,
+            ),
+            None => None,
+        };
         let sp = sp.inner.clone();
         let cp = cp.inner.clone();
         let w = self.w.clone();
