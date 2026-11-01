@@ -369,13 +369,13 @@ HEURISTIC_WEIGHTS = {
 
 
 def _load_ensemble_config() -> None:
-    """Apply the Optuna-tuned ensemble profile when REC_ENSEMBLE_CONFIG points
-    at a saved config (per-model weights + heuristic knobs).
+    """Apply a saved ensemble profile when REC_ENSEMBLE_CONFIG points at
+    one (per-model weights + heuristic knobs).
 
-    Pattern: production-decision config file produced by
-    scripts/eval/tune_ensemble_optuna.py; sets the multi-column cosine blend
-    (config.COSINE_BLEND) and the tuned heuristic weights. Any failure leaves
-    the defaults untouched — a corrupt artifact must never break the engine.
+    Pattern: a production-decision config file; sets the multi-column
+    cosine blend (config.COSINE_BLEND) and the heuristic weights. Any
+    failure leaves the defaults untouched — a corrupt artifact must
+    never break the engine.
     """
     path = os.getenv("REC_ENSEMBLE_CONFIG", "")
     if not path:
