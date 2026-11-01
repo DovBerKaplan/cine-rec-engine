@@ -27,7 +27,8 @@ sys.path.insert(0, str(REPO_ROOT))
 import asyncpg  # noqa: E402
 
 from cine_rec_engine import user_stats, user_vector  # noqa: E402
-from datetime import datetime  # noqa: E402
+from cine_rec_engine import user_weights as uw  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
 
 
 def _ts(iso: str) -> datetime:
@@ -53,7 +54,8 @@ async def catalog_titles(conn) -> dict:
     return {"movie": movie["id"], "tv": tv["id"], "movie2": movie2["id"]}
 
 
-EVENTS = lambda t: [
+def EVENTS(t):
+    return [
     # completed movie
     {"tmdb_id": t["movie"], "media_type": "movie",
      "watched_at": _ts("2026-10-20T20:00:00+00:00"),
@@ -80,7 +82,7 @@ EVENTS = lambda t: [
      "watched_at": _ts("2026-10-17T20:00:00+00:00"),
      "watched_sec": 200, "duration_sec": 2400, "completed": False,
      "season": 1, "episode": 3},
-]
+    ]
 
 FEEDBACK = [
     # favorite the completed movie (engagement ×1.5)
@@ -113,7 +115,7 @@ async def main() -> None:
                 "SELECT tmdb_id, media_type, sessions, total_watched_sec, "
                 "max_ratio, pause_count_total, rewatch_count, episodes_watched, "
                 "last_season, last_episode, last_ep_watched_sec, "
-                "last_ep_duration_sec, dropped, w_item "
+                "last_ep_duration_sec, dropped, w_item, last_watched_at "
                 "FROM user_title_stats WHERE user_id = $1 ORDER BY tmdb_id", U)
             stats = await conn.fetchrow(
                 "SELECT titles_touched, titles_weighted, movies_completed, "
@@ -127,8 +129,60 @@ async def main() -> None:
             n_eps = await conn.fetchval(
                 "SELECT number_of_episodes FROM tmdb_tv WHERE id = $1", titles["tv"])
 
+        # H-2: recompute w at ONE recorded instant (py_now) through
+        # the Python formula — the DB-stored w used record_event's own
+        # now (a different moment), so it can never compare exactly.
+        # w_at_py_now + last_epoch + py_now give the Rust side
+        # identical inputs; the comparison is time-independent.
+        py_now = datetime.now(timezone.utc)
+        s_side = {}
+        for r in uts:
+            if r["media_type"] == "movie":
+                s = uw.s_movie(r["max_ratio"], r["pause_count_total"])
+            else:
+                sig = uw.SeriesSignals(
+                    episodes_watched=r["episodes_watched"],
+                    total_episodes=n_eps if r["tmdb_id"] == titles["tv"] else 0,
+                    last_ep_ratio=(
+                        (r["last_ep_watched_sec"] or 0) / (r["last_ep_duration_sec"] or 1)
+                        if (r["last_ep_watched_sec"] or 0) > 0
+                        and (r["last_ep_duration_sec"] or 0) > 0 else None),
+                    last_ep_watched_sec=r["last_ep_watched_sec"] or 0,
+                    total_watched_sec=r["total_watched_sec"],
+                )
+                s = uw.s_series(sig)
+            eng = 1.5 if (r["rewatch_count"] >= 1 or r["tmdb_id"] == titles["movie"]) else 1.0
+            last = r["last_watched_at"]
+            fav = r["tmdb_id"] == titles["movie"]
+            w_at_py_now = uw.w_item(
+                r["media_type"],
+                max_ratio=r["max_ratio"],
+                pause_count_total=r["pause_count_total"],
+                series=(uw.SeriesSignals(
+                    episodes_watched=r["episodes_watched"],
+                    total_episodes=n_eps if r["tmdb_id"] == titles["tv"] else 0,
+                    last_ep_ratio=(
+                        (r["last_ep_watched_sec"] or 0) / (r["last_ep_duration_sec"] or 1)
+                        if (r["last_ep_watched_sec"] or 0) > 0
+                        and (r["last_ep_duration_sec"] or 0) > 0 else None),
+                    last_ep_watched_sec=r["last_ep_watched_sec"] or 0,
+                    total_watched_sec=r["total_watched_sec"],
+                ) if r["media_type"] == "tv" else None),
+                last_watched_at=last,
+                now=py_now,
+                rewatch_count=r["rewatch_count"],
+                favorite=fav,
+            )
+            s_side[str(r["tmdb_id"])] = {
+                "s": s, "engagement": eng,
+                "w_at_py_now": w_at_py_now,
+                "last_epoch": last.timestamp() if last else None,
+            }
+
         payload = {
             "user": U,
+            "python_now_epoch": py_now.timestamp(),
+            "s_side": s_side,
             "emb_column": EMB,
             "titles": titles,
             "events": [
@@ -139,7 +193,9 @@ async def main() -> None:
                          "kind": "favorite"},
             "tv_total_episodes": n_eps,
             "title_stats": [
-                {k: (float(r[k]) if isinstance(r[k], float) else r[k]) for k in r.keys()}
+                {k: (r[k].timestamp() if k == "last_watched_at"
+                     else float(r[k]) if isinstance(r[k], float)
+                     else r[k]) for k in r.keys()}
                 for r in uts
             ],
             "user_stats": {k: stats[k] for k in stats.keys()},
@@ -147,6 +203,9 @@ async def main() -> None:
                 {k: r[k] for k in r.keys()} for r in genres
             ],
             "vector_dim": len(vec) if vec else 0,
+            # M-2: full vector (f32 bits, hex) — direction parity, not
+            # just "some 384-dim unit vector"
+            "vector_bits": ([f.hex() for f in vec] if vec else None),
             # a unit vector — the direction pins parity (component-wise
             # compare happens in Rust against its OWN build)
             "vector_norm": (

@@ -132,6 +132,7 @@ pub fn recency_decay(last_epoch: Option<f64>, now_epoch: f64) -> f64 {
 /// * `watchlist_only` — never watched: S = 0.7, engagement 1.2, recency
 ///   anchored to NOW (a watchlist entry is alive until watched).
 /// * `disliked` — 0, always; hard-filtered at retrieval too.
+#[allow(clippy::too_many_arguments)] // mirrors the Python keyword-argument list 1:1
 pub fn w_item(
     media_type: &str,
     max_ratio: Option<f64>,

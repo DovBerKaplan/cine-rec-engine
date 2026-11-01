@@ -565,7 +565,10 @@ pub async fn apply_skip_decay(
     factor: f64,
     skip_decay_floor: f64,
 ) -> Result<bool, DbError> {
-    if !(0.0..1.0).contains(&factor) {
+    // strictly (0, 1) like Python's `0.0 < factor < 1.0` — 0 would
+    // bury to the floor (the opposite of "a bounded nudge"), NaN fails
+    // both bounds
+    if !(factor > 0.0 && factor < 1.0) {
         return Err(DbError::Invalid(format!(
             "skip decay factor must be in (0, 1), got {factor}"
         )));

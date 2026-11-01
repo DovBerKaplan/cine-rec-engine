@@ -88,9 +88,15 @@ pub async fn get_title_rating(
             ],
         )
         .await;
-    Ok(rows
-        .ok()
-        .and_then(|rows| row::opt_text(&rows[0], "rating").ok().flatten()))
+    let Ok(rows) = rows else {
+        return Ok(None); // read failure degrades, never breaks a request
+    };
+    // no row = the user never rated this title (the COMMON case) —
+    // Python returns None; a panic here would break every card render
+    let Some(r) = rows.first() else {
+        return Ok(None);
+    };
+    Ok(row::opt_text(r, "rating").ok().flatten())
 }
 
 /// `get_user_title_progress` — the user's watch state for ONE title.

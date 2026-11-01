@@ -12,6 +12,12 @@ use crate::executor::{row, Bind, Db, DbError};
 /// Raises on dimension mismatch — a mixed-dimension sum is a
 /// configuration error (two encoders in one space), not silence.
 pub fn aggregate(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f32>> {
+    if dims_mismatch(vectors) {
+        // the caller turns this into an ERR before any write — a mixed
+        // dimension sum is a configuration error, not silence (Python
+        // raises ValueError before the write block too)
+        return None;
+    }
     if vectors.is_empty() || weights.is_empty() {
         return None;
     }
@@ -21,10 +27,6 @@ pub fn aggregate(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f32>> {
     for (vec, w) in vectors.iter().zip(weights) {
         if *w <= 0.0 {
             continue;
-        }
-        if vec.len() != dim {
-            // parity: Python raises ValueError on dimension mismatch
-            return None;
         }
         for (i, x) in vec.iter().enumerate() {
             acc[i] += w * *x as f64;
@@ -41,12 +43,24 @@ pub fn aggregate(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f32>> {
     Some(acc.iter().map(|x| (*x / norm) as f32).collect())
 }
 
+/// True when the vectors carry mixed dimensions (a configuration
+/// error — two encoders in one space).
+pub fn dims_mismatch(vectors: &[Vec<f32>]) -> bool {
+    match vectors.first() {
+        Some(first) => vectors.iter().any(|v| v.len() != first.len()),
+        None => false,
+    }
+}
+
 /// `build_user_vector` — rebuild and store the user's vector (persona
 /// 0). `None` if not buildable (missing column/extension, or nothing
 /// weighs in). Updates `user_stats.vector_updated_at` + persona_count.
 ///
-/// Degrades to `None` on ANY error — never raises on the request path
-/// (the Python body catches broadly around the build too).
+/// Degrades to `None` when the embedding column is missing or nothing
+/// weighs in; write failures propagate as `Err` (the NIGHTLY path in
+/// Python lets those rise too — only `ensure_user_vector` wraps them
+/// away). A dimension mismatch is `Err` BEFORE any write (the stored
+/// vector survives), mirroring Python's ValueError.
 pub async fn build_user_vector(
     db: &Db,
     user_id: i64,
@@ -80,14 +94,24 @@ pub async fn build_user_vector(
         Err(_) => return Ok(None),
     };
 
-    let vectors: Vec<Vec<f32>> = rows
-        .iter()
-        .filter_map(|r| row::opt_vector(r, "emb").ok().flatten())
-        .collect();
-    let weights: Vec<f64> = rows
-        .iter()
-        .filter_map(|r| row::opt_f64(r, "w_item").ok().flatten())
-        .collect();
+    // L-7: paired extraction — one pass over the rows so a decode
+    // failure drops BOTH fields of that row (two separate filter_maps
+    // could silently misalign weights to the wrong vectors)
+    let mut vectors: Vec<Vec<f32>> = Vec::with_capacity(rows.len());
+    let mut weights: Vec<f64> = Vec::with_capacity(rows.len());
+    for r in &rows {
+        if let (Ok(Some(v)), Ok(Some(w))) = (row::opt_vector(r, "emb"), row::opt_f64(r, "w_item")) {
+            vectors.push(v);
+            weights.push(w);
+        }
+    }
+    if dims_mismatch(&vectors) {
+        // Python raises ValueError BEFORE the write block: the stored
+        // vector survives, no delete/marker happens
+        return Err(DbError::Invalid(
+            "user vector: embedding dimension mismatch".to_string(),
+        ));
+    }
     let vec = aggregate(&vectors, &weights);
 
     let delete_sql =
@@ -178,7 +202,12 @@ pub async fn ensure_user_vector(
             return Ok(Some(v));
         }
     }
-    build_user_vector(db, user_id, space, emb_column).await
+    // never raises on the request path — the rebuild degrades to None
+    // on ANY error, exactly like the Python except Exception
+    Ok(build_user_vector(db, user_id, space, emb_column)
+        .await
+        .ok()
+        .flatten())
 }
 
 /// `load_user_vector` — the stored vector for retrieval (None absent).

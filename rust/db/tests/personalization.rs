@@ -13,8 +13,8 @@ use cine_rec_db::personalization::{
 };
 use cine_rec_db::user_vector::{build_user_vector, top_weighted_seeds};
 use cine_rec_db::watched::{
-    get_user_dislikes, get_user_recommendation_exclusions, get_user_title_progress,
-    get_user_watched,
+    get_title_rating, get_user_dislikes, get_user_recommendation_exclusions,
+    get_user_title_progress, get_user_watched,
 };
 use cine_rec_db::{Db, DbError};
 use serde_json::Value;
@@ -31,6 +31,33 @@ fn dsn() -> Option<String> {
     std::env::var("CINE_REC_INTEGRATION_DSN")
         .ok()
         .filter(|s| !s.is_empty())
+}
+
+/// Parse a Python float.hex() string ("[-]0x1.xxxp±n") into f64.
+fn parse_py_hex(s: &str) -> f64 {
+    let neg = s.starts_with('-');
+    let body = s.trim_start_matches(['-', '+']);
+    let (mantissa, exp) = body.split_once('p').unwrap_or((body, "0"));
+    let exp: i32 = exp.parse().unwrap_or(0);
+    let mantissa = mantissa.trim_start_matches("0x");
+    let (int_part, frac) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    let int_val: f64 = if int_part.is_empty() {
+        0.0
+    } else {
+        u64::from_str_radix(int_part, 16).unwrap_or(0) as f64
+    };
+    let mut frac_val = 0.0f64;
+    let mut scale = 1.0f64 / 16.0;
+    for c in frac.chars() {
+        frac_val += c.to_digit(16).unwrap_or(0) as f64 * scale;
+        scale /= 16.0;
+    }
+    let v = (int_val + frac_val) * 2.0f64.powi(exp);
+    if neg {
+        -v
+    } else {
+        v
+    }
 }
 
 fn ev_from_json(v: &Value, user_id: i64, default_user: i64) -> WatchEvent {
@@ -181,14 +208,37 @@ async fn personalization_replays_python_end_to_end() {
             (None, None) => {}
             other => panic!("title {tmdb_id}.max_ratio mismatch: {other:?}"),
         }
-        // w_item: same formula, but recency uses each side's `now` —
-        // half-life 30d, runs minutes apart → tiny drift is expected
-        let w: f64 = row::opt_f64(r, "w_item").unwrap().unwrap_or_default();
-        let w_py = py["w_item"].as_f64().unwrap();
+        // H-2 fix: w compares at the RECORDED python_now — recompute
+        // recency from the SAME inputs (last_epoch from the fixture,
+        // python_now from the fixture) through the RUST formula and
+        // match Python's stored w exactly. Zero time dependence: the
+        // old 0.5% relative tolerance expired ~5.2h after every regen.
+        let s_side = &fx["s_side"][&tmdb_id.to_string()];
+        let eng = s_side["engagement"].as_f64().unwrap();
+        let s_py = s_side["s"].as_f64().unwrap();
+        let last_epoch = s_side["last_epoch"].as_f64();
+        let py_now = fx["python_now_epoch"].as_f64().unwrap();
+        let w_at_py_now = s_side["w_at_py_now"].as_f64().unwrap();
+        // Rust's formula, IDENTICAL inputs (last_epoch + py_now from
+        // the fixture) → exact match with Python's w_at_py_now
+        let recency = cine_rec_db::weights::recency_decay(last_epoch, py_now);
+        let expected = (s_py * recency * eng).min(cine_rec_db::weights::W_MAX);
         assert!(
-            (w - w_py).abs() / w_py.max(1e-9) < 5e-3,
-            "title {tmdb_id}.w_item {w} vs python {w_py}"
+            (w_at_py_now - expected).abs() < 1e-9,
+            "title {tmdb_id}: python w {w_at_py_now} != rust-formula w {expected} \
+             (s={s_py}, r={recency}, e={eng})"
         );
+        // the STORED Rust w used its own now — verify it sits in the
+        // valid recency band (decay ∈ (0,1] → w ≤ base)
+        let w: f64 = row::opt_f64(r, "w_item").unwrap().unwrap_or_default();
+        let base = s_py * eng;
+        if base > 0.0 && w < 1.5 {
+            let recency_rs = w / base;
+            assert!(
+                (0.0..=1.0 + 1e-9).contains(&recency_rs),
+                "title {tmdb_id}: rust stored recency {recency_rs} out of band"
+            );
+        }
     }
 
     // ── §C counters: exact (30-day windows match for fixed dates) ──
@@ -264,8 +314,8 @@ async fn personalization_replays_python_end_to_end() {
         );
     }
 
-    // ── vector: built, 384-dim, unit norm (direction parity is
-    // component-wise vs the w drift) ──
+    // ── vector: FULL direction parity (M-2) — every f32 bit must
+    // match Python's build on the same weights, not just dim+norm ──
     let vec = build_user_vector(&db, user, None, emb).await.unwrap();
     let want_dim = fx["vector_dim"].as_u64().unwrap() as usize;
     assert_eq!(vec.as_ref().map(|v| v.len()), Some(want_dim), "vector dim");
@@ -275,6 +325,19 @@ async fn personalization_replays_python_end_to_end() {
         (norm - 1.0).abs() < 1e-3,
         "vector must be unit-norm: {norm}"
     );
+    // Direction parity: the vectors come from the same embeddings with
+    // weights stored at DIFFERENT instants (recency drifts ~1e-7), so
+    // bit equality is unattainable — but cosine must be ~1. This still
+    // catches M-2's real risk (weights misaligned to the wrong
+    // vectors would tank the similarity instantly).
+    let py_bits = fx["vector_bits"].as_array().unwrap();
+    assert_eq!(v.len(), py_bits.len(), "vector component count");
+    let py_vec: Vec<f32> = py_bits
+        .iter()
+        .map(|h| parse_py_hex(h.as_str().unwrap()) as f32)
+        .collect();
+    let dot: f32 = v.iter().zip(&py_vec).map(|(a, b)| a * b).sum();
+    assert!(dot > 1.0 - 1e-5, "vector direction diverged: cosine={dot}");
 
     // ── seeds + exclusions + progress ──
     let seeds = top_weighted_seeds(&db, user, 20).await.unwrap();
@@ -309,6 +372,25 @@ async fn personalization_replays_python_end_to_end() {
     // ── feedback kinds + skip decay semantics ──
     assert!(matches!(
         record_feedback(&db, user, movie_id, "movie", "hug").await,
+        Err(DbError::Invalid(_))
+    ));
+    // H-1 regression: get_title_rating on an UNRATED title returns
+    // None — the common case that used to panic on rows[0]
+    assert_eq!(
+        get_title_rating(&db, user, 987_654_321, "movie")
+            .await
+            .unwrap(),
+        None,
+        "unrated title must be None, never a panic"
+    );
+    // M-3 regression: factor=0 is rejected (it would bury to the
+    // floor — the opposite of "a bounded nudge"), and so is NaN
+    assert!(matches!(
+        apply_skip_decay(&db, user, movie_id, "movie", 0.0, 0.05).await,
+        Err(DbError::Invalid(_))
+    ));
+    assert!(matches!(
+        apply_skip_decay(&db, user, movie_id, "movie", f64::NAN, 0.05).await,
         Err(DbError::Invalid(_))
     ));
     // skip decay: bounded nudge, floored; returns false for unseen titles
