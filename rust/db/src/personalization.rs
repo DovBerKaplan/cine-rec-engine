@@ -293,8 +293,10 @@ async fn recompute_on_conn(
 }
 
 /// `_catalog_episode_count` — total episodes for a series from the
-/// catalog (0 when unknown).
-async fn catalog_episode_count(
+/// catalog (0 when unknown). pub: the parity test pins this FETCH
+/// against the fixture value — passing the fixture number straight
+/// into `title_w` left the fetch itself uncovered (review L-ε).
+pub async fn catalog_episode_count(
     conn: &mut sqlx::postgres::PgConnection,
     db: &Db,
     tmdb_id: i64,

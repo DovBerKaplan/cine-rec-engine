@@ -11,7 +11,8 @@ use std::path::Path;
 
 use cine_rec_db::executor::row;
 use cine_rec_db::personalization::{
-    apply_skip_decay, record_event, record_feedback, refresh_user_stats, title_w, WatchEvent,
+    apply_skip_decay, catalog_episode_count, record_event, record_feedback, refresh_user_stats,
+    title_w, WatchEvent,
 };
 use cine_rec_db::schema_map::SchemaMap;
 use cine_rec_db::user_vector::{aggregate_f64, build_user_vector, top_weighted_seeds};
@@ -252,6 +253,17 @@ async fn personalization_replays_python_end_to_end() {
     // (Python included), so the other 1.5 always masks the drift. The
     // corpus above pins the FLAG logic (each path on its own title);
     // a BOTH-constants drift is caught by the 1e-9 w gate below.
+    //
+    // L-ε: pin the PRODUCTION episode-count fetch itself — the exact
+    // gate below feeds `title_w` the fixture number, so a broken fetch
+    // (wrong table/decode) would otherwise ride only the coarse band
+    {
+        let tv_id = fx["titles"]["tv"].as_i64().unwrap();
+        let want = fx["tv_total_episodes"].as_i64().unwrap_or_default();
+        let mut conn = db.pool().acquire().await.unwrap();
+        let fetched = catalog_episode_count(&mut conn, &db, tv_id).await.unwrap();
+        assert_eq!(fetched, want, "catalog_episode_count vs fixture");
+    }
     for (r, py) in rows.iter().zip(&py_rows) {
         let tmdb_id: i64 = row::opt_i64(r, "tmdb_id").unwrap().unwrap_or_default();
         for col in [
