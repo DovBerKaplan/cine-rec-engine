@@ -1,0 +1,915 @@
+{
+ "payloads": [
+  {
+   "name": "movie-full",
+   "medium": "movie",
+   "payload": {
+    "id": 155,
+    "title": "The North Star",
+    "original_title": "Nordstern",
+    "original_language": "en",
+    "overview": "A movie overview.",
+    "release_date": "2018-05-04",
+    "runtime": 109,
+    "status": "Released",
+    "adult": false,
+    "vote_average": 7.834,
+    "vote_count": 1200,
+    "popularity": 15.237,
+    "poster_path": "/x.jpg",
+    "backdrop_path": "/y.jpg",
+    "belongs_to_collection": {
+     "id": 448290,
+     "name": "Collection"
+    },
+    "imdb_id": "tt1234567",
+    "budget": 15000000,
+    "revenue": 40120000,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     },
+     {
+      "id": 12,
+      "name": "Adventure"
+     },
+     {
+      "id": 878,
+      "name": "Science Fiction"
+     }
+    ],
+    "keywords": {
+     "keywords": [
+      {
+       "id": 818,
+       "name": "based on novel"
+      },
+      {
+       "id": 9840,
+       "name": "space"
+      },
+      {
+       "id": 10183,
+       "name": "quiet"
+      }
+     ]
+    },
+    "credits": {
+     "cast": [
+      {
+       "id": 11,
+       "name": "Al Cast",
+       "character": "Hero",
+       "order": 0
+      },
+      {
+       "id": 12,
+       "name": "Bea Cast",
+       "character": null,
+       "order": 1
+      },
+      {
+       "id": 13,
+       "name": "Cee Cast",
+       "order": 2
+      },
+      {
+       "id": 14,
+       "name": "Dee Cast",
+       "character": "D",
+       "order": 3
+      },
+      {
+       "id": 15,
+       "name": "Eee Cast",
+       "character": "E",
+       "order": 3
+      },
+      {
+       "id": 16,
+       "name": "Eff Cast",
+       "character": "F",
+       "order": 4
+      },
+      {
+       "id": 17,
+       "name": "Gee Cast",
+       "character": "G",
+       "order": 5
+      },
+      {
+       "id": 18,
+       "name": "Aitch Cast",
+       "character": "H"
+      }
+     ],
+     "crew": [
+      {
+       "id": 21,
+       "name": "Al Director",
+       "job": "Director",
+       "department": "Directing"
+      },
+      {
+       "id": 22,
+       "name": "Be Writer",
+       "job": "Writer",
+       "department": "Writing"
+      },
+      {
+       "id": 22,
+       "name": "Be Writer",
+       "job": "Writer",
+       "department": "Story"
+      },
+      {
+       "id": 23,
+       "name": "See Music",
+       "job": "Original Music Composer"
+      },
+      {
+       "id": 24,
+       "name": "Dee Cam",
+       "job": "Director of Photography",
+       "department": "Camera"
+      },
+      {
+       "id": 25,
+       "name": "Eee Creator",
+       "job": "Creator"
+      },
+      {
+       "id": 26,
+       "name": "Eff Sound",
+       "job": "Sound Re-recording Mixer"
+      },
+      {
+       "id": 27,
+       "name": "Gee NoJob",
+       "department": "Directing"
+      }
+     ]
+    },
+    "production_companies": [
+     {
+      "id": 9993,
+      "name": "Night Owl Media"
+     },
+     {
+      "id": 882,
+      "name": "Film Four"
+     }
+    ],
+    "recommendations": {
+     "results": [
+      {
+       "id": 603,
+       "popularity": 44.5
+      },
+      {
+       "id": 680,
+       "popularity": "51.3"
+      },
+      {
+       "id": 13,
+       "popularity": 0.0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-shrink",
+   "medium": "movie",
+   "payload": {
+    "id": 155,
+    "title": "The North Star",
+    "original_language": "en",
+    "overview": "Recut overview.",
+    "release_date": "2018-05-11",
+    "runtime": 112,
+    "status": "Released",
+    "adult": false,
+    "vote_average": 7.9,
+    "vote_count": 1400,
+    "popularity": 9.5,
+    "imdb_id": "tt1234567",
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ],
+    "keywords": {
+     "keywords": [
+      {
+       "id": 818,
+       "name": "based on novel"
+      },
+      {
+       "id": 9840,
+       "name": "space"
+      }
+     ]
+    },
+    "credits": {
+     "cast": [
+      {
+       "id": 40,
+       "name": "New Lead",
+       "character": "Hero",
+       "order": 0
+      },
+      {
+       "id": 41,
+       "name": "New Second",
+       "character": "Pal",
+       "order": 1
+      }
+     ],
+     "crew": [
+      {
+       "id": 21,
+       "name": "Al Director",
+       "job": "Director",
+       "department": "Directing"
+      }
+     ]
+    },
+    "production_companies": [],
+    "recommendations": {
+     "results": [
+      {
+       "id": 603,
+       "popularity": 45.0
+      },
+      {
+       "id": 695,
+       "popularity": 2.0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "tv-full",
+   "medium": "tv",
+   "payload": {
+    "id": 155,
+    "name": "Echoes",
+    "original_name": "\u05d4\u05d3\u05d9\u05dd",
+    "original_language": "he",
+    "overview": "A series overview.",
+    "first_air_date": "2021-06-02",
+    "last_air_date": "2022-04-08",
+    "status": "Ended",
+    "in_production": false,
+    "number_of_seasons": 2,
+    "number_of_episodes": 16,
+    "adult": false,
+    "vote_average": 8.1,
+    "vote_count": 340,
+    "popularity": 22.75,
+    "poster_path": "/tv.jpg",
+    "backdrop_path": "/tvb.jpg",
+    "external_ids": {
+     "imdb_id": "tt9801234"
+    },
+    "genres": [
+     {
+      "id": 18,
+      "name": "Drama"
+     },
+     {
+      "id": 9648,
+      "name": "Mystery"
+     }
+    ],
+    "keywords": {
+     "results": [
+      {
+       "id": 1305,
+       "name": "memory"
+      },
+      {
+       "id": 2085,
+       "name": "small town"
+      }
+     ]
+    },
+    "credits": {
+     "cast": [
+      {
+       "id": 51,
+       "name": "Tee Vee",
+       "character": "Lead",
+       "order": 0
+      },
+      {
+       "id": 52,
+       "name": "Yu Vee",
+       "character": "",
+       "order": 1
+      }
+     ],
+     "crew": [
+      {
+       "id": 53,
+       "name": "Show Creator",
+       "job": "Creator",
+       "department": "Production"
+      },
+      {
+       "id": 54,
+       "name": "Tv Writer",
+       "job": "Writer",
+       "department": null
+      }
+     ]
+    },
+    "production_companies": [
+     {
+      "id": 882,
+      "name": "Film Four"
+     }
+    ],
+    "networks": [
+     {
+      "id": 49,
+      "name": "HBO"
+     },
+     {
+      "id": 2552,
+      "name": "Kan 11"
+     }
+    ],
+    "recommendations": {
+     "results": [
+      {
+       "id": 94602,
+       "popularity": 30.1
+      },
+      {
+       "id": 82856,
+       "popularity": 12.2
+      },
+      {
+       "id": 71912,
+       "popularity": 8.8
+      },
+      {
+       "id": 60622,
+       "popularity": 5.5
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-minimal",
+   "medium": "movie",
+   "payload": {
+    "id": 900,
+    "title": ""
+   }
+  },
+  {
+   "name": "movie-adult",
+   "medium": "movie",
+   "payload": {
+    "id": 901,
+    "title": "Adults Only",
+    "adult": true,
+    "belongs_to_collection": null,
+    "release_date": "",
+    "overview": null,
+    "popularity": 3.0
+   }
+  },
+  {
+   "name": "movie-int-votes",
+   "medium": "movie",
+   "payload": {
+    "id": 902,
+    "title": "Ints",
+    "vote_average": 7,
+    "popularity": 0,
+    "budget": 15000,
+    "revenue": 0,
+    "vote_count": 99,
+    "runtime": 0
+   }
+  },
+  {
+   "name": "movie-recs-empty",
+   "medium": "movie",
+   "payload": {
+    "id": 904,
+    "title": "No Recs",
+    "popularity": 1.0,
+    "recommendations": {
+     "results": []
+    }
+   }
+  },
+  {
+   "name": "tv-external-str",
+   "medium": "tv",
+   "payload": {
+    "id": 903,
+    "name": "Ext Str",
+    "external_ids": "tt0000000",
+    "popularity": 1.0
+   }
+  },
+  {
+   "name": "movie-pop-str",
+   "medium": "movie",
+   "payload": {
+    "id": 905,
+    "title": "String Pop",
+    "popularity": "23.5",
+    "genres": [
+     {
+      "id": 35,
+      "name": "Comedy"
+     }
+    ]
+   }
+  },
+  {
+   "name": "movie-success-false",
+   "medium": "movie",
+   "payload": {
+    "id": 906,
+    "title": "Rejected",
+    "success": false,
+    "popularity": 5.0
+   }
+  },
+  {
+   "name": "movie-float-id",
+   "medium": "movie",
+   "payload": {
+    "id": 907.0,
+    "title": "Float Id",
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-bad-date",
+   "medium": "movie",
+   "payload": {
+    "id": 908,
+    "title": "Bad Date",
+    "release_date": "2024-13-45"
+   }
+  },
+  {
+   "name": "movie-missing-id",
+   "medium": "movie",
+   "payload": {
+    "title": "No Id"
+   }
+  },
+  {
+   "name": "movie-rec-missing-id",
+   "medium": "movie",
+   "payload": {
+    "id": 909,
+    "title": "Broken Rec",
+    "recommendations": {
+     "results": [
+      {
+       "popularity": 1.0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-credited-noid",
+   "medium": "movie",
+   "payload": {
+    "id": 910,
+    "title": "Broken Credits",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 31,
+       "name": "Ok Lead",
+       "character": "L",
+       "order": 0
+      },
+      {
+       "name": "Ghost Extra",
+       "character": "G",
+       "order": 1
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-runtime-str",
+   "medium": "movie",
+   "payload": {
+    "id": 920,
+    "title": "Runtime Str",
+    "runtime": "120",
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-genre-id-str",
+   "medium": "movie",
+   "payload": {
+    "id": 921,
+    "title": "Genre Id Str",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": "18",
+      "name": "Drama"
+     }
+    ]
+   }
+  },
+  {
+   "name": "movie-voteavg-true",
+   "medium": "movie",
+   "payload": {
+    "id": 922,
+    "title": "Voteavg True",
+    "vote_average": true,
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-pop-str-bad",
+   "medium": "movie",
+   "payload": {
+    "id": 923,
+    "title": "Pop Abc",
+    "popularity": "abc"
+   }
+  },
+  {
+   "name": "movie-collection-false",
+   "medium": "movie",
+   "payload": {
+    "id": 924,
+    "title": "Collection False",
+    "belongs_to_collection": false,
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-genres-null",
+   "medium": "movie",
+   "payload": {
+    "id": 925,
+    "title": "Genres Null",
+    "genres": null,
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-kw-midfail",
+   "medium": "movie",
+   "payload": {
+    "id": 926,
+    "title": "Kw Midfail",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ],
+    "credits": {
+     "cast": [
+      {
+       "id": 61,
+       "name": "Mid Lead",
+       "character": "M",
+       "order": 0
+      }
+     ],
+     "crew": []
+    },
+    "keywords": {
+     "keywords": [
+      {
+       "id": 5001
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-co-midfail",
+   "medium": "movie",
+   "payload": {
+    "id": 927,
+    "title": "Co Midfail",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ],
+    "credits": {
+     "cast": [
+      {
+       "id": 61,
+       "name": "Mid Lead",
+       "character": "M",
+       "order": 0
+      }
+     ],
+     "crew": []
+    },
+    "keywords": {
+     "keywords": [
+      {
+       "id": 5002,
+       "name": "ok"
+      }
+     ]
+    },
+    "production_companies": [
+     {
+      "name": "NoId Co"
+     }
+    ]
+   }
+  },
+  {
+   "name": "movie-155-again",
+   "medium": "movie",
+   "payload": {
+    "id": 155,
+    "title": "The North Star",
+    "popularity": 3.0
+   }
+  },
+  {
+   "name": "movie-order-huge",
+   "medium": "movie",
+   "payload": {
+    "id": 928,
+    "title": "Order Huge",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 71,
+       "name": "Huge Order",
+       "character": "H",
+       "order": 3000000000
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-character-float",
+   "medium": "movie",
+   "payload": {
+    "id": 929,
+    "title": "Character Float",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 72,
+       "name": "Floaty",
+       "character": 5.0,
+       "order": 0
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-crew-unhashable-job",
+   "medium": "movie",
+   "payload": {
+    "id": 930,
+    "title": "Crew Unhashable",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [],
+     "crew": [
+      {
+       "id": 73,
+       "job": [
+        "Director"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-recs-list",
+   "medium": "movie",
+   "payload": {
+    "id": 931,
+    "title": "Recs List",
+    "popularity": 2.0,
+    "recommendations": [
+     1
+    ]
+   }
+  },
+  {
+   "name": "movie-round-floats",
+   "medium": "movie",
+   "payload": {
+    "id": 942,
+    "title": "Round Floats",
+    "vote_average": 7.0,
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-cast-pre",
+   "medium": "movie",
+   "payload": {
+    "id": 940,
+    "title": "Cast Pre",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 81,
+       "name": "Pre Cast",
+       "character": "Origin",
+       "order": 0
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-cast-huge",
+   "medium": "movie",
+   "payload": {
+    "id": 940,
+    "title": "Cast Huge",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 82,
+       "name": "Huge Cast",
+       "character": "H",
+       "order": 3000000000
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-crew-pre",
+   "medium": "movie",
+   "payload": {
+    "id": 941,
+    "title": "Crew Pre",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [],
+     "crew": [
+      {
+       "id": 83,
+       "name": "Pre Crew",
+       "job": "Director",
+       "department": "Directing"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-crew-dept-int",
+   "medium": "movie",
+   "payload": {
+    "id": 941,
+    "title": "Crew Dept Int",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [],
+     "crew": [
+      {
+       "id": 84,
+       "name": "Crew Int",
+       "job": "Director",
+       "department": 5
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-kw-results-null",
+   "medium": "movie",
+   "payload": {
+    "id": 943,
+    "title": "Kw Results Null",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ],
+    "credits": {
+     "cast": [
+      {
+       "id": 85,
+       "name": "Kw Null Lead",
+       "character": "N",
+       "order": 0
+      }
+     ],
+     "crew": []
+    },
+    "keywords": {
+     "keywords": [],
+     "results": null
+    }
+   }
+  },
+  {
+   "name": "movie-kw-results-0",
+   "medium": "movie",
+   "payload": {
+    "id": 944,
+    "title": "Kw Results Zero",
+    "popularity": 2.0,
+    "keywords": {
+     "keywords": [],
+     "results": 0
+    }
+   }
+  },
+  {
+   "name": "movie-kw-results-false",
+   "medium": "movie",
+   "payload": {
+    "id": 945,
+    "title": "Kw Results False",
+    "popularity": 2.0,
+    "keywords": {
+     "keywords": [],
+     "results": false
+    }
+   }
+  },
+  {
+   "name": "movie-genres-pre",
+   "medium": "movie",
+   "payload": {
+    "id": 946,
+    "title": "Genres Pre",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ]
+   }
+  },
+  {
+   "name": "movie-genres-empty-str",
+   "medium": "movie",
+   "payload": {
+    "id": 946,
+    "title": "Genres Empty Str",
+    "popularity": 2.0,
+    "genres": ""
+   }
+  },
+  {
+   "name": "movie-genres-empty-dict",
+   "medium": "movie",
+   "payload": {
+    "id": 946,
+    "title": "Genres Empty Dict",
+    "popularity": 2.0,
+    "genres": {}
+   }
+  }
+ ]
+}
