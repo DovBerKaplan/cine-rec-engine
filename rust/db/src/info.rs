@@ -265,7 +265,7 @@ pub async fn fetch_cinematic_tags(
 
 /// The RFC §3 session filter set (validated upstream by the caller —
 /// `normalize_filters` is a Python-boundary concern).
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct RecallFilters {
     pub year_min: Option<i64>,
     pub year_max: Option<i64>,
