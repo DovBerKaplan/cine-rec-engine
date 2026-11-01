@@ -7,30 +7,32 @@ versions follow [SemVer](https://semver.org/).
 ## [0.16.1] — 2026-11-01
 
 LTS bugfix release on the 0.16 line (pure-Python wheel). Three real
-bugs found by the Rust-port parity reviews, fixed here first — each
-locked by a no-DB test and, for the loader, a live-Postgres regression
-proof.
+bugs, each locked by a no-DB test; the loader fix was additionally
+verified live against a throwaway Postgres.
 
 ### Fixed
 - **ingest — data loss:** the networks bridge mirrored on EVERY
   medium, so ingesting a movie that shares a TMDB id with a series
-  DELETEd the series' networks rows by that id (movie 155 ≠ tv 155 —
-  ids collide across media). The networks dim+bridge sync is now
-  tv-only; a movie payload that carries networks (TMDB attaches them
-  to movie responses too) touches neither networks table. Locked by a
-  recording fake-pool test and a live regression script (tv 155
-  ingested, then movie 155 with networks: the bridge rows survive).
+  DELETEd the series' networks rows by that id (ids collide across
+  media — 69557 is both the movie *The Pumpkin Eater* and the series
+  *Fauda*). The networks dim+bridge sync is now tv-only; a movie
+  payload that carries networks touches neither networks table.
+  Locked by a recording fake-pool test and verified live against a
+  throwaway Postgres: a series ingested, then a movie carrying
+  networks under the same id — the series' bridge rows survive.
 - **personalization — progress always False:** `get_user_title_progress`
   bound `tmdb_id` as `str()` against `$2::bigint`; asyncpg types the
   parameter INT8 and rejects the str, the broad except swallowed it,
   and progress ALWAYS returned `watched=False`. Binds the int
   directly.
-- **personalization — reached_last fabrication:** without an
-  integrator episodes table (empty or missing) the catalog end is
-  NULL; the tuple compare raised a TypeError the broad except
-  swallowed, hiding episodes that WERE seen. An unknown end now
-  reports `watched=True, reached_last=False` — it must not fabricate
-  completion either.
+- **personalization — reached_last without an episodes table:** the
+  tv progress read derives the catalog end from the integrator-supplied
+  episodes table; when that end came back NULL the tuple compare
+  raised a TypeError that the broad except swallowed, so episodes that
+  WERE seen came back as `watched=False`. Now, verified live: an EMPTY
+  episodes table reports `watched=True, reached_last=False`; a MISSING
+  episodes table keeps the read's degrade contract (`watched=False`,
+  never raises).
 
 ## [0.16.0] — 2026-10-30
 
