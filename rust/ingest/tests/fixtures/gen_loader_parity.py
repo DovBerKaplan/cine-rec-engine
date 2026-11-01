@@ -32,7 +32,13 @@ cases (string runtime/genre-id rejected at the bind, bool
 vote_average stored as 1), gate errors (float("abc")), falsy
 belongs_to_collection, null genres, mid-batch conversion failures,
 INT4-busting cast order, float character repr, unhashable crew job
-and a non-dict recommendations container.
+and a non-dict recommendations container — and the review-round-2
+families: round floats (Decimal(7.0) is '7' — the stored ::text is
+compared live), cast/crew pre-then-failing-reingest pairs (the
+delete runs BEFORE the executemany bind fails, so the bridge ends
+empty), keywords falling back to falsy NON-iterables (dim skipped,
+TypeError at the sync args) and genres as empty iterables ("" / {}
+iterate to nothing — the title ingests, the genre map empties).
 
 Run from the repo root with the wt3 venv:
     .venv/bin/python rust/ingest/tests/fixtures/gen_loader_parity.py
@@ -277,7 +283,9 @@ CASES = [
         "id": 155, "title": "The North Star", "popularity": 3.0,
     }),
     # M-2: a cast order beyond INT4 — int() succeeds at the builder
-    # (bignum), the INT4 bind fails AFTER the cast DELETE (live).
+    # (bignum), the INT4 bind fails inside executemany. Runs on a
+    # FRESH id (the delete is a no-op); the movie-cast-pre/huge pair
+    # below pins the delete-first order on an id that HAS rows.
     ("movie-order-huge", "movie", {
         "id": 928, "title": "Order Huge", "popularity": 2.0,
         "credits": {"cast": [
@@ -302,6 +310,79 @@ CASES = [
     ("movie-recs-list", "movie", {
         "id": 931, "title": "Recs List", "popularity": 2.0,
         "recommendations": [1],
+    }),
+    # ── review round 2 ────────────────────────────────────────────
+    # M-A: ROUND floats — Decimal(7.0) is '7', Decimal(2.0) is '2';
+    # the stored ::text is compared live (a scale divergence hides
+    # from a value-level EXCEPT).
+    ("movie-round-floats", "movie", {
+        "id": 942, "title": "Round Floats", "vote_average": 7.0,
+        "popularity": 2.0,
+    }),
+    # M-2′: pre-ingest so the id HAS cast/crew rows, then re-ingest
+    # with a bind that fails at executemany — Python deletes the
+    # stale rows FIRST, so the bridge must end EMPTY (pinned live).
+    ("movie-cast-pre", "movie", {
+        "id": 940, "title": "Cast Pre", "popularity": 2.0,
+        "credits": {"cast": [
+            {"id": 81, "name": "Pre Cast", "character": "Origin", "order": 0},
+        ], "crew": []},
+    }),
+    ("movie-cast-huge", "movie", {
+        "id": 940, "title": "Cast Huge", "popularity": 2.0,
+        "credits": {"cast": [
+            {"id": 82, "name": "Huge Cast", "character": "H", "order": 3000000000},
+        ], "crew": []},
+    }),
+    ("movie-crew-pre", "movie", {
+        "id": 941, "title": "Crew Pre", "popularity": 2.0,
+        "credits": {"cast": [], "crew": [
+            {"id": 83, "name": "Pre Crew", "job": "Director", "department": "Directing"},
+        ]},
+    }),
+    # department stays RAW at the builder; a non-string fails at the
+    # text bind INSIDE executemany — after the crew DELETE (M-2′).
+    ("movie-crew-dept-int", "movie", {
+        "id": 941, "title": "Crew Dept Int", "popularity": 2.0,
+        "credits": {"cast": [], "crew": [
+            {"id": 84, "name": "Crew Int", "job": "Director", "department": 5},
+        ]},
+    }),
+    # M-3′: keywords results FALLS BACK to a falsy NON-iterable —
+    # Python keeps it, skips the keywords dim (`if kw:`) and raises
+    # TypeError at the _sync_bridge args (title fails AFTER people
+    # and genres were written; the keywords delete never runs).
+    ("movie-kw-results-null", "movie", {
+        "id": 943, "title": "Kw Results Null", "popularity": 2.0,
+        "genres": [{"id": 28, "name": "Action"}],
+        "credits": {"cast": [
+            {"id": 85, "name": "Kw Null Lead", "character": "N", "order": 0},
+        ], "crew": []},
+        "keywords": {"keywords": [], "results": None},
+    }),
+    ("movie-kw-results-0", "movie", {
+        "id": 944, "title": "Kw Results Zero", "popularity": 2.0,
+        "keywords": {"keywords": [], "results": 0},
+    }),
+    ("movie-kw-results-false", "movie", {
+        "id": 945, "title": "Kw Results False", "popularity": 2.0,
+        "keywords": {"keywords": [], "results": False},
+    }),
+    # M-3′: genres as an EMPTY Python-iterable — "" and {} iterate to
+    # NOTHING (str yields chars, dict yields keys): the title INGESTS
+    # and the genre map mirrors to empty. The pre-step seeds a genre
+    # so the delete-all is visible in the live comparison.
+    ("movie-genres-pre", "movie", {
+        "id": 946, "title": "Genres Pre", "popularity": 2.0,
+        "genres": [{"id": 28, "name": "Action"}],
+    }),
+    ("movie-genres-empty-str", "movie", {
+        "id": 946, "title": "Genres Empty Str", "popularity": 2.0,
+        "genres": "",
+    }),
+    ("movie-genres-empty-dict", "movie", {
+        "id": 946, "title": "Genres Empty Dict", "popularity": 2.0,
+        "genres": {},
     }),
 ]
 

@@ -729,6 +729,187 @@
      1
     ]
    }
+  },
+  {
+   "name": "movie-round-floats",
+   "medium": "movie",
+   "payload": {
+    "id": 942,
+    "title": "Round Floats",
+    "vote_average": 7.0,
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-cast-pre",
+   "medium": "movie",
+   "payload": {
+    "id": 940,
+    "title": "Cast Pre",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 81,
+       "name": "Pre Cast",
+       "character": "Origin",
+       "order": 0
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-cast-huge",
+   "medium": "movie",
+   "payload": {
+    "id": 940,
+    "title": "Cast Huge",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 82,
+       "name": "Huge Cast",
+       "character": "H",
+       "order": 3000000000
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-crew-pre",
+   "medium": "movie",
+   "payload": {
+    "id": 941,
+    "title": "Crew Pre",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [],
+     "crew": [
+      {
+       "id": 83,
+       "name": "Pre Crew",
+       "job": "Director",
+       "department": "Directing"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-crew-dept-int",
+   "medium": "movie",
+   "payload": {
+    "id": 941,
+    "title": "Crew Dept Int",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [],
+     "crew": [
+      {
+       "id": 84,
+       "name": "Crew Int",
+       "job": "Director",
+       "department": 5
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-kw-results-null",
+   "medium": "movie",
+   "payload": {
+    "id": 943,
+    "title": "Kw Results Null",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ],
+    "credits": {
+     "cast": [
+      {
+       "id": 85,
+       "name": "Kw Null Lead",
+       "character": "N",
+       "order": 0
+      }
+     ],
+     "crew": []
+    },
+    "keywords": {
+     "keywords": [],
+     "results": null
+    }
+   }
+  },
+  {
+   "name": "movie-kw-results-0",
+   "medium": "movie",
+   "payload": {
+    "id": 944,
+    "title": "Kw Results Zero",
+    "popularity": 2.0,
+    "keywords": {
+     "keywords": [],
+     "results": 0
+    }
+   }
+  },
+  {
+   "name": "movie-kw-results-false",
+   "medium": "movie",
+   "payload": {
+    "id": 945,
+    "title": "Kw Results False",
+    "popularity": 2.0,
+    "keywords": {
+     "keywords": [],
+     "results": false
+    }
+   }
+  },
+  {
+   "name": "movie-genres-pre",
+   "medium": "movie",
+   "payload": {
+    "id": 946,
+    "title": "Genres Pre",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ]
+   }
+  },
+  {
+   "name": "movie-genres-empty-str",
+   "medium": "movie",
+   "payload": {
+    "id": 946,
+    "title": "Genres Empty Str",
+    "popularity": 2.0,
+    "genres": ""
+   }
+  },
+  {
+   "name": "movie-genres-empty-dict",
+   "medium": "movie",
+   "payload": {
+    "id": 946,
+    "title": "Genres Empty Dict",
+    "popularity": 2.0,
+    "genres": {}
+   }
   }
  ]
 }

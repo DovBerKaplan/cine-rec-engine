@@ -360,10 +360,20 @@ fn parse_iso_date(s: &str) -> Result<NaiveDate, String> {
 /// non-array → carried as [`MaybeBad::Bad`] so the failure fires at
 /// the STATEMENT Python evaluates it at (inside the batch), not at
 /// extraction time (review M-2).
+///
+/// [`MaybeBad::Falsy`] is the keywords FALLBACK slot only (review
+/// M-3′): `.get("results", [])` has no `or []` behind it, so a falsy
+/// NON-iterable result (null/0/false) is kept as-is by Python — the
+/// `if kw:` dim skips it, and the `_sync_bridge` args then raise
+/// TypeError iterating it. The dim point and the sync point are
+/// different statements, so the two failures must be carried apart.
 #[derive(Debug, Clone)]
 enum MaybeBad {
     List(Vec<Value>),
     Bad(Value),
+    /// falsy AND not Python-iterable: skip the dim (`if kw:`), raise
+    /// at the sync args — see the enum docs.
+    Falsy(Value),
 }
 
 fn extract_list(v: Option<&Value>) -> MaybeBad {
@@ -375,6 +385,24 @@ fn extract_list(v: Option<&Value>) -> MaybeBad {
     }
 }
 
+/// The keywords fallback slot (`.get("results", [])`): absent key →
+/// the `[]` default; falsy ITERABLES (""/{}/[]) iterate empty (the
+/// bridge mirrors to empty); falsy NON-iterables stay falsy-but-kept
+/// (Python skips the dim and raises at the sync — review M-3′);
+/// truthy non-arrays fail at the dim like every other container.
+fn kw_results(v: Option<&Value>) -> MaybeBad {
+    match v {
+        None => MaybeBad::List(Vec::new()),
+        Some(Value::Array(a)) => MaybeBad::List(a.clone()),
+        Some(v) if !is_truthy(v) => match v {
+            Value::String(s) if s.is_empty() => MaybeBad::List(Vec::new()),
+            Value::Object(o) if o.is_empty() => MaybeBad::List(Vec::new()),
+            other => MaybeBad::Falsy(other.clone()),
+        },
+        Some(v) => MaybeBad::Bad(v.clone()),
+    }
+}
+
 impl MaybeBad {
     fn bad(&self, ctx: &str) -> Option<PyConvError> {
         match self {
@@ -382,7 +410,7 @@ impl MaybeBad {
                 "{ctx}: iterating {} is a TypeError in Python",
                 crate::pyval::py_type_name(v)
             ))),
-            MaybeBad::List(_) => None,
+            MaybeBad::List(_) | MaybeBad::Falsy(_) => None,
         }
     }
 }
@@ -520,12 +548,17 @@ fn decimal_from_str(s: &str) -> Result<bigdecimal::BigDecimal, PyConvError> {
         .map_err(|_| PyConvError::Value(format!("could not convert string to numeric: {s:?}")))
 }
 
-/// The EXACT decimal expansion of an f64, as asyncpg's numeric codec
-/// produces via `Decimal(float)`: decompose m×2^e; for e ≥ 0 the
-/// integer m≪e; for e < 0 the digits m×5^(-e) at scale -e (because
-/// m/2^(-e) = (m·5^(-e))/10^(-e)). PG's float8→numeric cast is NOT
-/// this (it rounds differently) — the difference is visible in stored
-/// rows and pinned by the live parity test.
+/// The EXACT decimal expansion of an f64 in its MINIMAL form, as
+/// asyncpg's numeric codec produces via `Decimal(float)`: decompose
+/// m×2^e with m ODD; for e ≥ 0 the integer m≪e; for e < 0 the digits
+/// m×5^(-e) at scale -e (because m/2^(-e) = (m·5^(-e))/10^(-e)).
+/// Stripping the mantissa's trailing zero bits into the exponent is
+/// what makes the form minimal — `Decimal(7.0)` is '7', never
+/// '7.000…0' — and an odd m·5^k can never end in a decimal zero
+/// (review M-A: round doubles are everywhere in TMDB, and the stored
+/// ::text differs even where the numeric VALUE compares equal). PG's
+/// float8→numeric cast is NOT this (it rounds differently) — pinned
+/// by the live parity test's ::text comparison.
 fn decimal_exact(f: f64) -> Result<bigdecimal::BigDecimal, PyConvError> {
     use num_bigint::BigInt;
     if !f.is_finite() {
@@ -546,6 +579,12 @@ fn decimal_exact(f: f64) -> Result<bigdecimal::BigDecimal, PyConvError> {
     } else {
         ((frac | (1_u64 << 52)) as i64, raw_exp - 1075)
     };
+    // Minimal form: fold the mantissa's trailing zero bits into the
+    // exponent (7.0 is 7×2^0, never 7×2^50 — the raw decomposition
+    // would store 7×10^50 at scale 50).
+    let zeros = mantissa.trailing_zeros() as i64;
+    let mantissa = mantissa >> zeros;
+    let exp = exp + zeros;
     let m_abs = BigInt::from(mantissa);
     let big = if exp >= 0 {
         bigdecimal::BigDecimal::new(m_abs << (exp as usize), 0)
@@ -595,9 +634,10 @@ pub fn keep_cast(cast: &[Value]) -> Result<Vec<CastRow>, PyConvError> {
         };
         let id = crate::pyval::py_int(id_v)?;
         // Python's int() is arbitrary-precision: a huge order builds a
-        // row fine and only the INT4 BIND fails later (after the cast
-        // DELETE — pinned by review M-2). Keep the full i64 here; the
-        // range check lives at the bind site.
+        // row fine and only the INT4 BIND fails later — INSIDE the
+        // sync_bridge row builder, i.e. after the cast DELETE has run
+        // (review M-2′). Keep the full i64 here; the range check
+        // lives at the bind site.
         let order = crate::pyval::py_int(order_v)?;
         let character = py_str_or_empty(c.get("character"));
         rows.push(CastRow {
@@ -978,6 +1018,14 @@ async fn executemany(
 /// resolved too. `current_ids` stays RAW — genres pass their payload
 /// ids untouched in Python, and the id→bigint conversion fails at the
 /// DELETE bind exactly where asyncpg fails it.
+///
+/// The ROW BINDS are built by `build_rows` AFTER the delete (review
+/// M-2′): Python builds the row tuples at the call site — infallible,
+/// every value already converted by the builders — and the asyncpg
+/// ENCODER fires inside executemany, i.e. after the DELETE has run.
+/// The binds here ARE the encode step (INT4 range checks, text type
+/// checks), so they must run post-delete too: a failing bind leaves
+/// the bridge MIRRORED (stale rows already gone), never intact.
 // The arity mirrors `_sync_bridge` in loader.py argument-for-argument;
 // collapsing parameters would obscure the 1:1 port.
 #[allow(clippy::too_many_arguments)]
@@ -989,7 +1037,7 @@ async fn sync_bridge(
     other_col: &str,
     current_ids: &[Value],
     insert_sql: Option<&str>,
-    rows: &[Vec<LBind>],
+    build_rows: impl FnOnce() -> Result<Vec<Vec<LBind>>, PyConvError>,
 ) -> Result<(), LoaderError> {
     if !current_ids.is_empty() {
         // bigint[] encoding is element-wise asyncpg: strings rejected,
@@ -1011,9 +1059,10 @@ async fn sync_bridge(
             .execute(&mut *conn)
             .await?;
     }
+    let rows = build_rows()?;
     if !rows.is_empty() {
         let sql = insert_sql.expect("rows require insert_sql (Python asserts the same)");
-        executemany(conn, sql, rows).await?;
+        executemany(conn, sql, &rows).await?;
     }
     Ok(())
 }
@@ -1190,8 +1239,16 @@ impl TmdbIngest {
         // payload.get("genres", [])]` — eager, both slots raw. A
         // PRESENT null / truthy non-list is a TypeError in Python
         // (iterating None / a scalar); absent → [] (review M-3).
+        // Python ITERATES strings (chars) and dicts (keys): an EMPTY
+        // one yields nothing → the title ingests and the genre map
+        // mirrors to empty (review M-3′, round 2). A NON-empty
+        // str/dict still fails at this same statement (Python at
+        // element access, `string indices must be integers`; coarser
+        // message here — documented divergence).
         let genres: Vec<(Value, Value)> = match payload.get("genres") {
             None => Vec::new(),
+            Some(Value::String(s)) if s.is_empty() => Vec::new(),
+            Some(Value::Object(o)) if o.is_empty() => Vec::new(),
             Some(Value::Array(a)) => a
                 .iter()
                 .map(|g| Ok((req_raw(g, "id")?.clone(), req_raw(g, "name")?.clone())))
@@ -1222,11 +1279,15 @@ impl TmdbIngest {
         };
         // The keyword LIST is extracted eagerly (with the results
         // fallback), but its id/name conversion is DEFERRED to the
-        // keywords statement inside the batch.
+        // keywords statement inside the batch. The fallback slot is
+        // `kw_results`, not extract_list: a falsy NON-iterable result
+        // (null/0/false) is KEPT by Python (no `or []` behind
+        // `.get("results", [])`) — the dim skips it and the sync args
+        // raise iterating it (review M-3′).
         let kw_list: MaybeBad = extract_list(kw_container.and_then(|c| c.get("keywords")));
         let kw_list = match &kw_list {
             MaybeBad::List(items) if items.is_empty() => {
-                extract_list(kw_container.and_then(|c| c.get("results")))
+                kw_results(kw_container.and_then(|c| c.get("results")))
             }
             other => other.clone(),
         };
@@ -1348,25 +1409,31 @@ impl TmdbIngest {
             Some(&format!(
                 "INSERT INTO {gmap} ({col}, genre_id) VALUES ($1, $2) ON CONFLICT DO NOTHING"
             )),
-            &genres
-                .iter()
-                .map(|(gid, _)| {
-                    Ok(vec![
-                        LBind::I64(media_id),
-                        bind_i32(&Some(gid.clone()), "genre_id")?,
-                    ])
-                })
-                .collect::<Result<Vec<_>, PyConvError>>()?,
+            || {
+                genres
+                    .iter()
+                    .map(|(gid, _)| {
+                        Ok(vec![
+                            LBind::I64(media_id),
+                            bind_i32(&Some(gid.clone()), "genre_id")?,
+                        ])
+                    })
+                    .collect::<Result<Vec<_>, PyConvError>>()
+            },
         )
         .await?;
 
         // keywords: the id/name conversion runs HERE (Python's
         // `[(int(k["id"]), k["name"]) for k in kw]` inside the batch)
         // — after people and genres have been written (review M-2).
+        // A FALSY NON-iterable kw (results: null/0/false) converts to
+        // nothing here — Python's `if kw:` skips the dim — and fails
+        // at the sync below (review M-3′).
         let kw_ids_names: Vec<(i64, Value)> = match &kw_list {
             MaybeBad::Bad(_) => {
                 return Err(kw_list.bad("keywords").unwrap().into());
             }
+            MaybeBad::Falsy(_) => Vec::new(),
             MaybeBad::List(items) => items
                 .iter()
                 .map(|k| Ok((req_int(k, "id")?, req_raw(k, "name")?.clone())))
@@ -1385,6 +1452,19 @@ impl TmdbIngest {
             "{t_tmdb_tv_keywords}"
         })?;
         let kw_ids: Vec<i64> = kw_ids_names.iter().map(|(id, _)| *id).collect();
+        // The sync args (`[int(k["id"]) for k in kw]`) iterate kw once
+        // more: a falsy NON-iterable (results: null/0/false) raises
+        // HERE — after the dim was skipped, after people and genres
+        // were written, and BEFORE the keywords delete runs (Python
+        // evaluates the args before calling _sync_bridge) — review
+        // M-3′, pinned live by movie-kw-results-null.
+        if let MaybeBad::Falsy(v) = &kw_list {
+            return Err(PyConvError::Type(format!(
+                "'{}' object is not iterable",
+                crate::pyval::py_type_name(v)
+            ))
+            .into());
+        }
         sync_bridge(
             &mut conn,
             &kw_tbl,
@@ -1398,10 +1478,12 @@ impl TmdbIngest {
             Some(&format!(
                 "INSERT INTO {kw_tbl} ({col}, keyword_id) VALUES ($1, $2) ON CONFLICT DO NOTHING"
             )),
-            &kw_ids
-                .iter()
-                .map(|id| vec![LBind::I64(media_id), LBind::I64(*id)])
-                .collect::<Vec<_>>(),
+            || {
+                Ok(kw_ids
+                    .iter()
+                    .map(|id| vec![LBind::I64(media_id), LBind::I64(*id)])
+                    .collect::<Vec<_>>())
+            },
         )
         .await?;
 
@@ -1411,6 +1493,9 @@ impl TmdbIngest {
             MaybeBad::Bad(_) => {
                 return Err(companies_m.bad("production_companies").unwrap().into());
             }
+            // `or []` swallows falsy before extract_list ever runs —
+            // Falsy is the keywords-fallback-only variant.
+            MaybeBad::Falsy(_) => unreachable!("extract_list never yields Falsy"),
             MaybeBad::List(items) => items
                 .iter()
                 .map(|c| Ok((req_int(c, "id")?, req_raw(c, "name")?.clone())))
@@ -1442,10 +1527,12 @@ impl TmdbIngest {
             Some(&format!(
                 "INSERT INTO {comp_tbl} ({col}, company_id) VALUES ($1, $2) ON CONFLICT DO NOTHING"
             )),
-            &comp_ids
-                .iter()
-                .map(|id| vec![LBind::I64(media_id), LBind::I64(*id)])
-                .collect::<Vec<_>>(),
+            || {
+                Ok(comp_ids
+                    .iter()
+                    .map(|id| vec![LBind::I64(media_id), LBind::I64(*id)])
+                    .collect::<Vec<_>>())
+            },
         )
         .await?;
 
@@ -1458,6 +1545,7 @@ impl TmdbIngest {
                 MaybeBad::Bad(_) => {
                     return Err(networks_m.bad("networks").unwrap().into());
                 }
+                MaybeBad::Falsy(_) => unreachable!("extract_list never yields Falsy"),
                 MaybeBad::List(items) => items
                     .iter()
                     .map(|n| Ok((req_int(n, "id")?, req_raw(n, "name")?.clone())))
@@ -1487,10 +1575,12 @@ impl TmdbIngest {
                 Some(&format!(
                     "INSERT INTO {net_tbl} (tv_id, network_id) VALUES ($1, $2) ON CONFLICT DO NOTHING"
                 )),
-                &net_ids
-                    .iter()
-                    .map(|id| vec![LBind::I64(media_id), LBind::I64(*id)])
-                    .collect::<Vec<_>>(),
+                || {
+                    Ok(net_ids
+                        .iter()
+                        .map(|id| vec![LBind::I64(media_id), LBind::I64(*id)])
+                        .collect::<Vec<_>>())
+                },
             )
             .await?;
         }
@@ -1521,22 +1611,26 @@ impl TmdbIngest {
                  VALUES ($1, $2, $3, $4) ON CONFLICT ({col}, person_id, cast_order) \
                  DO UPDATE SET character = EXCLUDED.character"
             )),
-            &cast
-                .iter()
-                .map(|c| {
-                    Ok(vec![
-                        LBind::I64(media_id),
-                        LBind::I64(c.person_id),
-                        LBind::Str(c.character.clone()),
-                        // INT4 range checked at the BIND (asyncpg
-                        // parity; the builder keeps the full int).
-                        bind_i32(
-                            &Some(Value::Number(serde_json::Number::from(c.cast_order))),
-                            "cast_order",
-                        )?,
-                    ])
-                })
-                .collect::<Result<Vec<_>, PyConvError>>()?,
+            // The INT4 range check runs INSIDE the builder closure —
+            // i.e. after the DELETE — exactly where asyncpg's encoder
+            // fails in Python's executemany (review M-2′: re-ingesting
+            // an id with a huge order must leave the bridge EMPTY,
+            // stale rows deleted, not intact).
+            || {
+                cast.iter()
+                    .map(|c| {
+                        Ok(vec![
+                            LBind::I64(media_id),
+                            LBind::I64(c.person_id),
+                            LBind::Str(c.character.clone()),
+                            bind_i32(
+                                &Some(Value::Number(serde_json::Number::from(c.cast_order))),
+                                "cast_order",
+                            )?,
+                        ])
+                    })
+                    .collect::<Result<Vec<_>, PyConvError>>()
+            },
         )
         .await?;
 
@@ -1566,17 +1660,21 @@ impl TmdbIngest {
                  VALUES ($1, $2, $3, $4) ON CONFLICT ({col}, person_id, job) \
                  DO UPDATE SET department = EXCLUDED.department"
             )),
-            &crew
-                .iter()
-                .map(|c| {
-                    Ok(vec![
-                        LBind::I64(media_id),
-                        LBind::I64(c.person_id),
-                        LBind::Str(c.job.clone()),
-                        bind_text(&c.department, "department")?,
-                    ])
-                })
-                .collect::<Result<Vec<_>, PyConvError>>()?,
+            // department stays RAW until this bind (the conversion
+            // rule); a non-string department fails here, AFTER the
+            // delete — Python's executemany encoder point (M-2′).
+            || {
+                crew.iter()
+                    .map(|c| {
+                        Ok(vec![
+                            LBind::I64(media_id),
+                            LBind::I64(c.person_id),
+                            LBind::Str(c.job.clone()),
+                            bind_text(&c.department, "department")?,
+                        ])
+                    })
+                    .collect::<Result<Vec<_>, PyConvError>>()
+            },
         )
         .await?;
 
@@ -1870,5 +1968,38 @@ mod encoder_tests {
             }
             other => panic!("expected exact BigDecimal, got {other:?}"),
         }
+    }
+
+    /// `Decimal(float)` is the exact expansion in MINIMAL form (review
+    /// M-A): a round double stores NO trailing zeros — Decimal(7.0)
+    /// is '7' — while full-mantissa doubles keep every digit. The raw
+    /// m×2^e decomposition would scale 7.0 to 7.000…0 (50 zeros);
+    /// folding the mantissa's trailing zero bits into the exponent is
+    /// what makes it minimal.
+    #[test]
+    fn decimal_exact_is_minimal_like_python() {
+        for (f, want) in [
+            (7.0, "7"),
+            (3.0, "3"),
+            (100.0, "100"),
+            (2.5, "2.5"),
+            (0.5, "0.5"),
+            (120.5, "120.5"),
+            // e ≥ 0 after the fold: an odd mantissa shifted up is an
+            // integer with no trailing decimal zero possible.
+            (1e22, "10000000000000000000000"),
+        ] {
+            assert_eq!(decimal_exact(f).unwrap().to_string(), want, "{f}");
+        }
+        // Full-mantissa doubles are unchanged — every digit still
+        // there, exactly like Decimal(0.1).
+        assert_eq!(
+            decimal_exact(0.1).unwrap().to_string(),
+            "0.1000000000000000055511151231257827021181583404541015625"
+        );
+        assert_eq!(
+            decimal_exact(7.9).unwrap().to_string(),
+            "7.9000000000000003552713678800500929355621337890625"
+        );
     }
 }

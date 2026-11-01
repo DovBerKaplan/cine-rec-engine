@@ -44,6 +44,11 @@ import ingest.loader as L  # noqa: E402
 #   numeric (never was a bind failure).
 # * fetch_none steps simulate a fetch error (the patched fetch
 #   returns None / Rust returns None) → failed (review L-5).
+# * the round-2 pre/re-ingest PAIRS are order-sensitive: cast-pre
+#   seeds 940's rows before cast-huge's bind failure must DELETE
+#   them (M-2′), likewise crew-pre/dept-int (941) and
+#   genres-pre/empty-str/empty-dict (946, M-3′) — keep the pairs
+#   adjacent and ordered.
 PLAN = [
     ("movie-full", "movie", 0.0, False, False),
     ("movie-shrink", "movie", 0.0, False, False),   # mirror: shrunk bridges
@@ -71,10 +76,22 @@ PLAN = [
     ("movie-genres-null", "movie", 0.0, False, False),   # M-3: TypeError → fact row only
     ("movie-kw-midfail", "movie", 0.0, False, False),    # M-2: fails after people+genres
     ("movie-co-midfail", "movie", 0.0, False, False),    # M-2: fails after keywords
-    ("movie-order-huge", "movie", 0.0, False, False),    # M-2: INT4 bind after cast DELETE
+    ("movie-order-huge", "movie", 0.0, False, False),    # M-2′: INT4 bind, fresh id (no-op delete)
     ("movie-crew-unhashable-job", "movie", 0.0, False, False),  # L-1: TypeError in keep_crew
     ("movie-recs-list", "movie", 0.0, False, False),     # L-1: AttributeError at recs
     ("movie-fetch-error", "movie", 0.0, False, True),    # L-5: fetch → None → failed
+    # ── review round 2 ────────────────────────────────────────────
+    ("movie-round-floats", "movie", 0.0, False, False),  # M-A: Decimal(7.0)='7' (::text compared)
+    ("movie-cast-pre", "movie", 0.0, False, False),      # M-2′: seed cast rows for 940
+    ("movie-cast-huge", "movie", 0.0, False, False),     # M-2′: bind fails AFTER the delete → empty
+    ("movie-crew-pre", "movie", 0.0, False, False),      # M-2′: seed crew rows for 941
+    ("movie-crew-dept-int", "movie", 0.0, False, False),  # M-2′: dept 5 → text bind fails post-delete
+    ("movie-kw-results-null", "movie", 0.0, False, False),   # M-3′: TypeError at the kw sync args
+    ("movie-kw-results-0", "movie", 0.0, False, False),      # M-3′: 'int' not iterable, same point
+    ("movie-kw-results-false", "movie", 0.0, False, False),  # M-3′: 'bool' not iterable, same point
+    ("movie-genres-pre", "movie", 0.0, False, False),    # M-3′: seed a genre for 946
+    ("movie-genres-empty-str", "movie", 0.0, False, False),  # M-3′: genres "" INGESTS, map empties
+    ("movie-genres-empty-dict", "movie", 0.0, False, False),  # M-3′: genres {} INGESTS, map empties
 ]
 
 SCHEMA = "pyload"

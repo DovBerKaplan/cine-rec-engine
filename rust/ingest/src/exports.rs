@@ -221,8 +221,12 @@ pub fn parse_export(gz_bytes: &[u8]) -> Result<Vec<ExportEntry>, ExportError> {
 }
 
 /// `_parse_line(line)` — the lenient streaming-path line parser.
-/// `KeyError`/`ValueError` → `Ok(None)` (skip); `TypeError` → loud
-/// error, exactly like `except (KeyError, ValueError): return None`.
+/// `KeyError`/`ValueError` → `Ok(None)` (skip); everything else —
+/// `TypeError` AND `AttributeError` — is loud, exactly like Python's
+/// `except (KeyError, ValueError): return None`, which catches ONLY
+/// those two (review round-2 L-1: no exports path raises Attr today,
+/// but classifying it as skip would silently swallow it the day one
+/// appears — the opposite direction of the Python source).
 pub fn parse_line(line: &[u8]) -> Result<Option<ExportEntry>, ExportError> {
     // errors="replace" — from_utf8_lossy uses the same maximal-subpart
     // replacement algorithm as CPython's utf-8 error handler.
@@ -237,8 +241,8 @@ pub fn parse_line(line: &[u8]) -> Result<Option<ExportEntry>, ExportError> {
     };
     match entry_from_value(&obj) {
         Ok(entry) => Ok(Some(entry)),
-        Err(PyConvError::Key(_) | PyConvError::Value(_) | PyConvError::Attr(_)) => Ok(None),
-        Err(type_err @ PyConvError::Type(_)) => Err(ExportError::Conv(type_err)),
+        Err(PyConvError::Key(_) | PyConvError::Value(_)) => Ok(None),
+        Err(loud @ (PyConvError::Type(_) | PyConvError::Attr(_))) => Err(ExportError::Conv(loud)),
     }
 }
 

@@ -38,7 +38,19 @@ branch verified live):
 | Param | asyncpg accepts | asyncpg rejects |
 |---|---|---|
 | int4/int8 (+`bigint[]` elements) | int, float (truncated toward zero: 120.5→120, -0.7→0), bool (0/1) | **strings** (`int("120")` would succeed at a builder site — the bind must not) |
-| numeric | int (exact), float as `Decimal(float)` — the EXACT decimal expansion of the double (`decimal_exact()` builds the BigDecimal from the f64 bits; PG's own `float8::numeric` rounds differently) — bool (0/1), and strings via `Decimal(str)`: whitespace/underscores/exponents, ARBITRARY precision kept | unparseable strings, list/dict |
+| numeric | int (exact), float as `Decimal(float)` — the EXACT decimal expansion of the double in MINIMAL form (`decimal_exact()` builds the BigDecimal from the f64 bits with the mantissa's trailing zero bits folded into the exponent: `Decimal(7.0)` is '7', never '7.000…0'; PG's own `float8::numeric` rounds differently) — bool (0/1), and strings via `Decimal(str)`: whitespace/underscores/exponents, ARBITRARY precision kept | unparseable strings, list/dict |
+
+Two more Python-evaluation-order pins from the same reviews: the
+bridge **DELETE runs before the row binds** (Python builds infallible
+tuples at the call site; the asyncpg ENCODER fires inside
+`executemany`, after the delete — so a huge `cast_order` or a
+non-string `department` fails with the bridge already mirrored to
+the new payload), and the keywords **fallback slot keeps a falsy
+NON-iterable** (`results: null/0/false` — no `or []` behind
+`.get("results", [])`: the dim is skipped and the `_sync_bridge` args
+raise `TypeError`), while falsy ITERABLES (`""`/`{}`/`[]`) — there
+and in `genres` — iterate empty and INGEST with the bridge mirrored
+to empty.
 
 ## Parity model
 
@@ -54,27 +66,33 @@ The loader is pinned at two levels:
 
 * **Offline** (`tests/loader_parity.rs`) — the real PURE functions
   (row builders, keep_cast/keep_crew, rec rows, gate matrix incl.
-  gate RAISES, completeness, error texts) over a 28-case corpus: a
+  gate RAISES, completeness, error texts) over a 39-case corpus: a
   full movie touching every table, the shrink/mirror re-ingest,
   movie 155 + tv 155 together, the asyncpg-encoder cases, mid-batch
   failure shapes, INT4-busting cast order, float character repr,
-  unhashable crew job, non-dict recommendations. Regeneration is
-  bit-identical.
+  unhashable crew job, non-dict recommendations — plus the round-2
+  families: round floats, cast/crew pre-then-failing-re-ingest
+  pairs, keywords falsy-non-iterable results, genres as empty
+  iterables. Regeneration is bit-identical.
 * **Live** (`tests/loader_live.rs`, `CINE_REC_S3_DSN`) — the REAL
   `TmdbIngest` (fetch patched per case; the patch bypass is
   documented, and `fetch_none` steps exercise the fetch-error →
   failed path explicitly) writes schema `pyload`; the Rust loader
-  replays the same 28-step plan into `rsload` (all 20 tables remapped
+  replays the same 40-step plan into `rsload` (all 20 tables remapped
   through SchemaMap — the integrator path). Comparison: symmetric
-  EXCEPT on every table (updated_at/synced_at excluded), stats
-  field-for-field, an explicit H-1 invariant assertion (movie 155
-  ingested AFTER tv 155 must leave the series' networks in place —
-  a bug both sides shared would pass EXCEPT and only this catches),
-  and a must-be-non-empty list. Failure paths are part of the plan:
-  both sides must reach the SAME partial state (e.g. a credited
-  person without an id leaves the fact row committed and the people
-  batch unwritten; a keyword missing its name fails AFTER
-  people+genres — Python's evaluation order, replicated).
+  EXCEPT on every table (updated_at/synced_at excluded), numeric
+  columns compared additionally AS `::text` (scale is part of the
+  stored representation — see below), stats field-for-field, an
+  explicit H-1 invariant assertion (movie 155 ingested AFTER tv 155
+  must leave the series' networks in place — a bug both sides shared
+  would pass EXCEPT and only this catches), and a must-be-non-empty
+  list. Failure paths are part of the plan: both sides must reach
+  the SAME partial state (e.g. a credited person without an id
+  leaves the fact row committed and the people batch unwritten; a
+  keyword missing its name fails AFTER people+genres — Python's
+  evaluation order, replicated; a huge cast order / non-string
+  department fails AFTER the bridge delete — the executemany
+  encoder's point).
 
 **H-1 (source bug, fixed on BOTH sides in one change):** the networks
 bridge synced on EVERY medium, so ingesting a movie deleted the
@@ -86,11 +104,15 @@ pinning it forever.
 ## Portability discoveries worth remembering
 
 1. **asyncpg's numeric codec is `Decimal`, three ways** (all verified
-   live): float → `Decimal(float)` = the exact binary expansion
-   (7.9 → 7.9000000000000003552713678800500929355621337890625; PG's
-   `float8::numeric` gives 7.9 — NOT the same); str → `Decimal(str)`
+   live): float → `Decimal(float)` = the exact binary expansion in
+   MINIMAL form (7.9 → 7.9000000000000003552713678800500929355621337890625,
+   7.0 → '7' — strip the mantissa's trailing zero bits, or every
+   round double stores ~50 phantom zeros; PG's `float8::numeric`
+   gives 7.9 — NOT the same); str → `Decimal(str)`
    with Python's acceptance rules; bool → 0/1. Int params truncate
    floats and REJECT strings; `bigint[]` encodes element-wise.
+   And SQL `EXCEPT` compares numeric BY VALUE — `7 = 7.000…0` — so a
+   scale divergence is invisible to it; compare `::text` too.
 2. **The float black hole** (rate): a sub-ulp wait is absorbed by the
    clock (`t + d == t`) — the wrapper floors sleeps at 1ns to
    reproduce a real clock's self-healing under paused/virtual time.
@@ -125,9 +147,12 @@ pinning it forever.
   (Python would render a repr).
 * **Python-json NaN/Infinity LITERALS**; bignum ids beyond i64;
   non-ASCII decimal digits — as in wave C (see `pyval` docs).
-* **genres as an iterable non-list** (string/dict): Python fails with
-  a type-specific message at element access; here a not-iterable
-  TypeError — same failure point, coarser message.
+* **genres as an iterable non-list** (string/dict): EMPTY ones
+  (`""`/`{}`) iterate to nothing in Python and INGEST with the genre
+  map mirrored to empty — replicated exactly (round-2 M-3′). A
+  NON-empty one fails in Python at element access
+  (`string indices must be integers`); here a not-iterable TypeError
+  — same failure point, coarser message.
 
 ## Run
 

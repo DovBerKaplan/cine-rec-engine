@@ -1352,6 +1352,498 @@
     "0.0/True": true,
     "10.0/True": false
    }
+  },
+  {
+   "name": "movie-round-floats",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     942,
+     "Round Floats",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     7.0,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-cast-pre",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     940,
+     "Cast Pre",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": [
+     [
+      81,
+      "Origin",
+      0
+     ]
+    ]
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-cast-huge",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     940,
+     "Cast Huge",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": [
+     [
+      82,
+      "H",
+      3000000000
+     ]
+    ]
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-crew-pre",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     941,
+     "Crew Pre",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": [
+     [
+      83,
+      "Director",
+      "Directing"
+     ]
+    ]
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-crew-dept-int",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     941,
+     "Crew Dept Int",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": [
+     [
+      84,
+      "Director",
+      5
+     ]
+    ]
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-kw-results-null",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     943,
+     "Kw Results Null",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": [
+     [
+      85,
+      "N",
+      0
+     ]
+    ]
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-kw-results-0",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     944,
+     "Kw Results Zero",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-kw-results-false",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     945,
+     "Kw Results False",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-genres-pre",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     946,
+     "Genres Pre",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-genres-empty-str",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     946,
+     "Genres Empty Str",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-genres-empty-dict",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     946,
+     "Genres Empty Dict",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
   }
  ]
 }

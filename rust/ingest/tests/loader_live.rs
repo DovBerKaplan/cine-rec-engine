@@ -52,6 +52,18 @@ const COMPARE: &[(&str, &str)] = &[
     ("tmdb_recommendations", "media_id,media_type,rec_media_id,rec_media_type,rank,popularity"),
 ];
 
+/// Numeric columns compared ADDITIONALLY as `::text` (review M-A):
+/// scale is part of the stored representation — Python's
+/// `Decimal(float)` is the exact expansion in MINIMAL form
+/// (Decimal(7.0) is '7'), and the value-level EXCEPT above would
+/// call 7 and 7.000…0 equal. `id` rides along so a diff names the
+/// row. (tmdb_recommendations.popularity is double precision, not
+/// numeric — no scale to pin there.)
+const TEXT_COMPARE: &[(&str, &str)] = &[
+    ("tmdb_movies", "id, vote_average::text, popularity::text"),
+    ("tmdb_tv", "id, vote_average::text, popularity::text"),
+];
+
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
@@ -259,6 +271,25 @@ async fn loader_table_state_matches_python_live() {
         if py > 0 {
             non_empty_seen += 1;
         }
+    }
+
+    // The ::text pass — a numeric SCALE divergence (7 vs 7.000…0)
+    // hides from the value-level EXCEPT above (review M-A found
+    // exactly that: every round double in rsload carried ~50 trailing
+    // zeros and the comparison stayed green).
+    for (table, cols) in TEXT_COMPARE {
+        let sql = format!(
+            "SELECT count(*) AS n FROM (\n\
+             (SELECT {cols} FROM pyload.{table} EXCEPT SELECT {cols} FROM rsload.{table})\n\
+             UNION ALL\n\
+             (SELECT {cols} FROM rsload.{table} EXCEPT SELECT {cols} FROM pyload.{table})) d"
+        );
+        let row = sqlx::query(&sql).fetch_one(&cmp_pool).await.unwrap();
+        let diff: i64 = row.try_get("n").unwrap();
+        assert_eq!(
+            diff, 0,
+            "table {table} numeric text-scale diverged ({diff} rows)"
+        );
     }
     // The plan must have produced a real catalog, not an empty one.
     // The specific list matters more than a raw count: movie-155-again
