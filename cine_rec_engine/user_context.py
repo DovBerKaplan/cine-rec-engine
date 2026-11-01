@@ -254,7 +254,7 @@ async def apply_exploration(
     # _balance_by_media_type stays with the find-similar flow in
     # service.py until its own 5a cut — read at CALL time (service
     # imports this module first; a module-level import would cycle)
-    from .service import _balance_by_media_type
+    from .find_similar import _balance_by_media_type
 
     if not picks:
         return _balance_by_media_type(results, movie_ratio, limit)
