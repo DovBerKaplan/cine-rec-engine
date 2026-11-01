@@ -190,7 +190,15 @@ async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) 
             )
             if row and row["seen_n"] and row["seen_n"] > 0:
                 max_s, max_e = row["max_s"], row["max_e"]
-                reached_last = (max_s, max_e) >= (row["cat_s"], row["cat_e"])
+                # reached_last claims the catalog's LAST episode was
+                # seen — it needs a KNOWN catalog end; without one the
+                # claim is false (an integrator episodes table that is
+                # empty/missing must not fabricate completion).
+                reached_last = (
+                    (max_s, max_e) >= (row["cat_s"], row["cat_e"])
+                    if row["cat_s"] is not None and row["cat_e"] is not None
+                    else False
+                )
                 out = {
                     "watched": True,
                     "watched_all": row["seen_n"] >= row["cat_n"] and row["cat_n"] > 0,
