@@ -70,11 +70,15 @@ from .explain import (  # noqa: E402
 )
 from . import explain as _explain  # noqa: E402
 from . import find_similar as _find_similar  # noqa: E402
-from .find_similar import (  # noqa: E402,F401 — used by the py-scoring layer, page.py and tests via service
+from .find_similar import (  # noqa: E402,F401 — used by the py-scoring layer, page.py, bench_e2e and tests via service
     _get_cache as _get_cache,
     _modality as _modality,
     _story_key as _story_key,
     _dedup_same_story as _dedup_same_story,
+    _mmr_order as _mmr_order,
+    _balance_by_media_type as _balance_by_media_type,
+    _apply_noise as _apply_noise,
+    _pair_similarity as _pair_similarity,
 )
 from . import recommend as _recommend  # noqa: E402
 from .recommend import (  # noqa: E402,F401 — re-export contract (tests import these from service)
