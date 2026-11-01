@@ -5,7 +5,29 @@
 //! fake zero vector). Multi-persona (§E.2) is deferred exactly like the
 //! Python side; the storage is ready.
 
+use crate::degrade;
 use crate::executor::{row, Bind, Db, DbError};
+
+/// CPython ≥3.12 `sum()` is Neumaier-compensated — every ported float
+/// sum must fold the same way (the phase-2 lesson; the norm below is
+/// Python's `sum(x * x for x in acc)`).
+fn py_sum(items: impl Iterator<Item = f64>) -> f64 {
+    let mut sum = 0.0;
+    let mut c = 0.0;
+    for x in items {
+        let t = sum + x;
+        if sum.abs() >= x.abs() {
+            c += (sum - t) + x;
+        } else {
+            c += (x - t) + sum;
+        }
+        sum = t;
+    }
+    if c != 0.0 {
+        sum += c;
+    }
+    sum
+}
 
 /// Weighted sum + L2 normalize. `None` when nothing weighs in.
 ///
@@ -36,7 +58,7 @@ pub fn aggregate(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f32>> {
     if total_w <= 0.0 {
         return None;
     }
-    let norm = acc.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let norm = py_sum(acc.iter().map(|x| x * x)).sqrt();
     if norm == 0.0 {
         return None;
     }
@@ -56,8 +78,9 @@ pub fn dims_mismatch(vectors: &[Vec<f32>]) -> bool {
 /// 0). `None` if not buildable (missing column/extension, or nothing
 /// weighs in). Updates `user_stats.vector_updated_at` + persona_count.
 ///
-/// Degrades to `None` when the embedding column is missing or nothing
-/// weighs in; write failures propagate as `Err` (the NIGHTLY path in
+/// Degrades to `None` ONLY when the embedding column is missing
+/// (SQLSTATE 42703 — Python's `UndefinedColumnError`) or nothing weighs
+/// in; every other failure propagates as `Err` (the NIGHTLY path in
 /// Python lets those rise too — only `ensure_user_vector` wraps them
 /// away). A dimension mismatch is `Err` BEFORE any write (the stored
 /// vector survives), mirroring Python's ValueError.
@@ -89,9 +112,18 @@ pub async fn build_user_vector(
     );
     let rows = match db.fetch(&sql, &[("user", Bind::I64(user_id))]).await {
         Ok(r) => r,
-        // Python: except UndefinedColumnError -> None; the vector path
-        // degrades on any missing piece
-        Err(_) => return Ok(None),
+        // Python catches ONLY UndefinedColumnError here — the embedding
+        // column is the optional piece. Any OTHER failure (connection,
+        // syntax, permissions) propagates: the nightly cron wants to
+        // hear about it; only ensure_user_vector wraps errors away.
+        Err(e) => {
+            if let DbError::Sqlx(se) = &e {
+                if degrade::pg_code(se) == Some("42703") {
+                    return Ok(None);
+                }
+            }
+            return Err(e);
+        }
     };
 
     // L-7: paired extraction — one pass over the rows so a decode
@@ -281,5 +313,16 @@ mod tests {
         assert!((v[0] as f64 - 2.0 / 5f64.sqrt()).abs() < 1e-6);
         // dimension mismatch → None (config error semantics)
         assert!(aggregate(&[vec![1.0, 0.0], vec![1.0, 0.0, 0.0]], &[1.0, 1.0]).is_none());
+    }
+
+    #[test]
+    fn py_sum_compensates() {
+        // CPython ≥3.12 sum() is Neumaier-compensated — the norm in
+        // aggregate ports that sum, so it must fold the same way or
+        // vectors drift 1 f64 ULP (the phase-2 lesson, applied here)
+        let xs = [1.0f64, 1e100, 1.0, -1e100];
+        assert_eq!(py_sum(xs.into_iter()), 2.0);
+        // a naive sequential fold loses both 1.0s inside the ±1e100
+        assert_ne!(xs.iter().copied().fold(0.0f64, |a, b| a + b), 2.0);
     }
 }

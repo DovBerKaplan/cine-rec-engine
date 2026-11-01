@@ -158,22 +158,42 @@ pub async fn get_user_title_progress(
         let Some(r) = rows.first() else {
             return Ok(out);
         };
-        let seen_n = row::opt_i64(r, "seen_n")?.unwrap_or_default();
-        if seen_n > 0 {
+        // Python wraps the WHOLE row decode in `except Exception →
+        // return out` — any decode failure degrades to the default
+        // progress and never breaks a card render (L-2). A missing
+        // column reads as None (dict.get semantics) which lands in the
+        // same place; a wrong TYPE degrades instead of erroring.
+        let parsed: Result<Option<TitleProgress>, sqlx::Error> = (|| {
+            let seen_n = row::opt_i64(r, "seen_n")?.unwrap_or_default();
+            if seen_n == 0 {
+                return Ok(None);
+            }
             let max_s = row::opt_i64(r, "max_s")?;
             let max_e = row::opt_i64(r, "max_e")?;
             let cat_s = row::opt_i64(r, "cat_s")?;
             let cat_e = row::opt_i64(r, "cat_e")?;
             let cat_n = row::opt_i64(r, "cat_n")?.unwrap_or_default();
-            return Ok(TitleProgress {
+            Ok(Some(TitleProgress {
                 watched: true,
                 watched_all: seen_n >= cat_n && cat_n > 0,
-                reached_last: (max_s, max_e) >= (cat_s, cat_e),
+                // reached_last claims the catalog's LAST episode was
+                // seen — that needs a KNOWN catalog end. Rust's Option
+                // ordering makes `Some(x) >= None` TRUE, so the naive
+                // port fabricated completion whenever the episodes
+                // table exists but is empty (or lacks this title) —
+                // same explicit call the Python mirror made (M-1).
+                reached_last: matches!((cat_s, cat_e), (Some(_), Some(_)))
+                    && (max_s, max_e) >= (cat_s, cat_e),
                 max_season: max_s,
                 max_episode: max_e,
-            });
-        }
-        return Ok(out);
+            }))
+        })();
+        return match parsed {
+            Ok(Some(p)) => Ok(p),
+            // nothing seen OR a decode failure — default progress,
+            // never an error
+            _ => Ok(out),
+        };
     }
     let sql = db.sql(
         "SELECT EXISTS (SELECT 1 FROM {t_user_watches} \

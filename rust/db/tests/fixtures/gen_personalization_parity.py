@@ -179,6 +179,34 @@ async def main() -> None:
                 "last_epoch": last.timestamp() if last else None,
             }
 
+        # L-b: the BIT-EXACT comparison vector — Python's own
+        # user_vector.aggregate over the LIVE embeddings weighted by the
+        # FROZEN w_at_py_now (the exact weights the Rust test freezes).
+        # The stored `vector_bits` above came from build_user_vector's
+        # stored w at ITS instant — a different moment, so it can never
+        # be reproduced bit-exactly; this one can. The order is part of
+        # the contract: frozen-w DESC, tmdb_id ASC.
+        from pgvector.asyncpg import register_vector  # noqa: E402
+
+        async with pool.acquire() as conn:
+            await register_vector(conn)
+            erows = await conn.fetch(
+                f"SELECT uts.tmdb_id, m.emb FROM user_title_stats uts "
+                f"JOIN (SELECT id, 'movie'::text AS media_type, {EMB} AS emb "
+                f"FROM tmdb_movies WHERE {EMB} IS NOT NULL "
+                f"UNION ALL SELECT id, 'tv'::text, {EMB} FROM tmdb_tv "
+                f"WHERE {EMB} IS NOT NULL) m "
+                f"ON m.id = uts.tmdb_id AND m.media_type = uts.media_type "
+                f"WHERE uts.user_id = $1 AND uts.w_item > 0", U)
+        pairs = sorted(
+            ((r["tmdb_id"], r["emb"].to_list()) for r in erows),
+            key=lambda p: (-s_side[str(p[0])]["w_at_py_now"], p[0]),
+        )
+        vec_frozen = user_vector.aggregate(
+            [p[1] for p in pairs],
+            [s_side[str(p[0])]["w_at_py_now"] for p in pairs],
+        )
+
         payload = {
             "user": U,
             "python_now_epoch": py_now.timestamp(),
@@ -210,6 +238,13 @@ async def main() -> None:
             # compare happens in Rust against its OWN build)
             "vector_norm": (
                 round(sum(x * x for x in vec) ** 0.5, 6) if vec else None
+            ),
+            # L-b: the frozen-weight vector (f64 hex) + the exact row
+            # order it was summed in — Rust must reproduce it BIT for
+            # BIT from the same live embeddings + frozen weights
+            "frozen_order": [p[0] for p in pairs],
+            "vector_bits_frozen": (
+                [f.hex() for f in vec_frozen] if vec_frozen else None
             ),
         }
     finally:
