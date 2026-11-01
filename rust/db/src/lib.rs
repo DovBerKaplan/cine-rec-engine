@@ -25,9 +25,13 @@
 
 pub mod degrade;
 pub mod executor;
+pub mod personalization;
 pub mod recall;
 pub mod recall2;
 pub mod schema_map;
+pub mod user_vector;
+pub mod watched;
+pub mod weights;
 
 pub use executor::{Bind, Db, DbError};
 pub use recall::CandidateRow;

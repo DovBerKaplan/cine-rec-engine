@@ -30,6 +30,9 @@ pub enum DbError {
         channel: &'static str,
         reason: String,
     },
+    /// Invalid caller input (the port of Python's ValueError paths —
+    /// §A required fields, feedback kinds, skip-decay bounds).
+    Invalid(String),
 }
 
 impl From<SchemaMapError> for DbError {
@@ -52,6 +55,7 @@ impl std::fmt::Display for DbError {
             DbError::ChannelOff { channel, reason } => {
                 write!(f, "channel '{channel}' off: {reason}")
             }
+            DbError::Invalid(msg) => write!(f, "invalid input: {msg}"),
         }
     }
 }

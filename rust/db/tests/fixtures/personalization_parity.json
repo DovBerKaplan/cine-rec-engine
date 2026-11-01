@@ -1,0 +1,193 @@
+{
+ "user": 910001,
+ "emb_column": "embedding_minilm",
+ "titles": {
+  "movie": 11,
+  "tv": 43,
+  "movie2": 73
+ },
+ "events": [
+  {
+   "user_id": 910001,
+   "tmdb_id": 11,
+   "media_type": "movie",
+   "watched_at": "2026-10-20T20:00:00+00:00",
+   "watched_sec": 7000,
+   "duration_sec": 7000,
+   "completed": true
+  },
+  {
+   "user_id": 910001,
+   "tmdb_id": 11,
+   "media_type": "movie",
+   "watched_at": "2026-10-22T21:00:00+00:00",
+   "watched_sec": 7000,
+   "duration_sec": 7000,
+   "completed": true
+  },
+  {
+   "user_id": 910001,
+   "tmdb_id": 73,
+   "media_type": "movie",
+   "watched_at": "2026-10-18T20:00:00+00:00",
+   "watched_sec": 600,
+   "duration_sec": 6000,
+   "completed": false,
+   "pause_count": 4
+  },
+  {
+   "user_id": 910001,
+   "tmdb_id": 43,
+   "media_type": "tv",
+   "watched_at": "2026-10-15T20:00:00+00:00",
+   "watched_sec": 2400,
+   "duration_sec": 2400,
+   "completed": true,
+   "season": 1,
+   "episode": 1
+  },
+  {
+   "user_id": 910001,
+   "tmdb_id": 43,
+   "media_type": "tv",
+   "watched_at": "2026-10-16T20:00:00+00:00",
+   "watched_sec": 2400,
+   "duration_sec": 2400,
+   "completed": true,
+   "season": 1,
+   "episode": 2
+  },
+  {
+   "user_id": 910001,
+   "tmdb_id": 43,
+   "media_type": "tv",
+   "watched_at": "2026-10-17T20:00:00+00:00",
+   "watched_sec": 200,
+   "duration_sec": 2400,
+   "completed": false,
+   "season": 1,
+   "episode": 3
+  }
+ ],
+ "feedback": {
+  "tmdb_id": 11,
+  "media_type": "movie",
+  "kind": "favorite"
+ },
+ "tv_total_episodes": 68,
+ "title_stats": [
+  {
+   "tmdb_id": 11,
+   "media_type": "movie",
+   "sessions": 2,
+   "total_watched_sec": 14000,
+   "max_ratio": 1.0,
+   "pause_count_total": 0,
+   "rewatch_count": 1,
+   "episodes_watched": 1,
+   "last_season": null,
+   "last_episode": null,
+   "last_ep_watched_sec": 7000,
+   "last_ep_duration_sec": 7000,
+   "dropped": false,
+   "w_item": 1.213995761391196
+  },
+  {
+   "tmdb_id": 43,
+   "media_type": "tv",
+   "sessions": 3,
+   "total_watched_sec": 5000,
+   "max_ratio": 1.0,
+   "pause_count_total": 0,
+   "rewatch_count": 0,
+   "episodes_watched": 2,
+   "last_season": 1,
+   "last_episode": 3,
+   "last_ep_watched_sec": 200,
+   "last_ep_duration_sec": 2400,
+   "dropped": false,
+   "w_item": 0.2917367709593605
+  },
+  {
+   "tmdb_id": 73,
+   "media_type": "movie",
+   "sessions": 1,
+   "total_watched_sec": 600,
+   "max_ratio": 0.1,
+   "pause_count_total": 4,
+   "rewatch_count": 0,
+   "episodes_watched": 0,
+   "last_season": null,
+   "last_episode": null,
+   "last_ep_watched_sec": 600,
+   "last_ep_duration_sec": 6000,
+   "dropped": true,
+   "w_item": 0.0
+  }
+ ],
+ "user_stats": {
+  "titles_touched": 3,
+  "titles_weighted": 2,
+  "movies_completed": 1,
+  "movies_dropped": 1,
+  "series_started": 1,
+  "series_hooked": 0,
+  "series_abandoned_mid_ep": 1,
+  "rewatch_titles": 1,
+  "explicit_favorites": 1,
+  "total_watch_sec_all": 19600
+ },
+ "genre_stats": [
+  {
+   "media_type": "movie",
+   "genre_id": 12,
+   "watch_sec": 14000,
+   "weighted_sum": 1.213995761391196,
+   "title_count": 1
+  },
+  {
+   "media_type": "movie",
+   "genre_id": 18,
+   "watch_sec": 600,
+   "weighted_sum": 0.0,
+   "title_count": 1
+  },
+  {
+   "media_type": "movie",
+   "genre_id": 28,
+   "watch_sec": 14000,
+   "weighted_sum": 1.213995761391196,
+   "title_count": 1
+  },
+  {
+   "media_type": "tv",
+   "genre_id": 35,
+   "watch_sec": 5000,
+   "weighted_sum": 0.2917367709593605,
+   "title_count": 1
+  },
+  {
+   "media_type": "movie",
+   "genre_id": 878,
+   "watch_sec": 14000,
+   "weighted_sum": 1.213995761391196,
+   "title_count": 1
+  },
+  {
+   "media_type": "tv",
+   "genre_id": 10751,
+   "watch_sec": 5000,
+   "weighted_sum": 0.2917367709593605,
+   "title_count": 1
+  },
+  {
+   "media_type": "tv",
+   "genre_id": 10762,
+   "watch_sec": 5000,
+   "weighted_sum": 0.2917367709593605,
+   "title_count": 1
+  }
+ ],
+ "vector_dim": 384,
+ "vector_norm": 1.0
+}

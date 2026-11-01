@@ -186,7 +186,7 @@ async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) 
                 FROM catalog
                 """,
                 user_id,
-                str(tmdb_id),
+                tmdb_id,
             )
             if row and row["seen_n"] and row["seen_n"] > 0:
                 max_s, max_e = row["max_s"], row["max_e"]
@@ -199,7 +199,7 @@ async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) 
                     "max_episode": max_e,
                 }
             return out
-        row = await db.fetchrow(pool, _PROGRESS_MOVIE_SQL, user_id, str(tmdb_id))
+        row = await db.fetchrow(pool, _PROGRESS_MOVIE_SQL, user_id, tmdb_id)
         if row:
             out["watched"] = bool(row["watched"])
         return out
