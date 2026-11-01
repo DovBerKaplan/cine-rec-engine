@@ -4,6 +4,34 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [0.16.1] — 2026-11-01
+
+LTS bugfix release on the 0.16 line (pure-Python wheel). Three real
+bugs found by the Rust-port parity reviews, fixed here first — each
+locked by a no-DB test and, for the loader, a live-Postgres regression
+proof.
+
+### Fixed
+- **ingest — data loss:** the networks bridge mirrored on EVERY
+  medium, so ingesting a movie that shares a TMDB id with a series
+  DELETEd the series' networks rows by that id (movie 155 ≠ tv 155 —
+  ids collide across media). The networks dim+bridge sync is now
+  tv-only; a movie payload that carries networks (TMDB attaches them
+  to movie responses too) touches neither networks table. Locked by a
+  recording fake-pool test and a live regression script (tv 155
+  ingested, then movie 155 with networks: the bridge rows survive).
+- **personalization — progress always False:** `get_user_title_progress`
+  bound `tmdb_id` as `str()` against `$2::bigint`; asyncpg types the
+  parameter INT8 and rejects the str, the broad except swallowed it,
+  and progress ALWAYS returned `watched=False`. Binds the int
+  directly.
+- **personalization — reached_last fabrication:** without an
+  integrator episodes table (empty or missing) the catalog end is
+  NULL; the tuple compare raised a TypeError the broad except
+  swallowed, hiding episodes that WERE seen. An unknown end now
+  reports `watched=True, reached_last=False` — it must not fabricate
+  completion either.
+
 ## [0.16.0] — 2026-10-30
 
 ### Changed — the per-user request path runs its reads in parallel
