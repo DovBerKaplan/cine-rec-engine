@@ -25,6 +25,7 @@
 
 pub mod degrade;
 pub mod executor;
+pub mod info;
 pub mod personalization;
 pub mod recall;
 pub mod recall2;
