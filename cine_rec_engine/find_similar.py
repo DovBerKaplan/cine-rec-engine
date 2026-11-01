@@ -504,6 +504,11 @@ async def find_similar(
                 if sims:
                     knn_sim_by_seed[seed["id"]] = sims
             for c in res:
+                # TODO (tech-debt, owner decision 2026-11-02): the pool
+                # dedups by bare id — a movie/tv pair sharing a TMDB id
+                # collapses to whichever the channel returned first. The
+                # key should be (id, media_type), but changing it mid-port
+                # breaks parity; documented here on both sides.
                 if c["id"] not in seen_ids and c["id"] not in seed_id_set:
                     seen_ids.add(c["id"])
                     candidates.append(c)

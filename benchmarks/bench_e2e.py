@@ -120,8 +120,9 @@ async def main():
             finally:
                 PHASES[n] = PHASES.get(n, 0.0) + (_t.perf_counter() - t0) * 1000
         setattr(RS, n, timed_method)
+    import cine_rec_engine.find_similar as _FS
     for n in ("_mmr_order", "_dedup_same_story", "_balance_by_media_type"):
-        origf = getattr(S, n)
+        origf = getattr(_FS, n)
         def timed_sync(*a, _orig=origf, _n=n, **kw):
             import time as _t
             PHASES[_n+"_calls"] = PHASES.get(_n+"_calls", 0) + 1
@@ -132,7 +133,7 @@ async def main():
                 return _orig(*a, **kw)
             finally:
                 PHASES[n] = PHASES.get(n, 0.0) + (_t.perf_counter() - t0) * 1000
-        setattr(S, n, timed_sync)
+        setattr(_FS, n, timed_sync)
     pool = await asyncpg.create_pool(DSN, min_size=2, max_size=4)
     await seed(pool)
     await analyze(pool)
@@ -144,13 +145,13 @@ async def main():
     # isolate _balance_by_media_type: capture its args on the next call
     import cine_rec_engine.service as _S
     _cap = {}
-    _orig_b = _S._balance_by_media_type
+    _orig_b = _FS._balance_by_media_type
     def cap(*a, **kw):
         _cap.setdefault("args", (list(a[0]), a[1], a[2]))
         return _orig_b(*a, **kw)
-    _S._balance_by_media_type = cap
+    _FS._balance_by_media_type = cap
     await rec.find_similar([2001, 2002, 2003], limit=60)
-    _S._balance_by_media_type = _orig_b
+    _FS._balance_by_media_type = _orig_b
     if _cap.get("args"):
         import time as _t2
         rs, mr, lm = _cap["args"]

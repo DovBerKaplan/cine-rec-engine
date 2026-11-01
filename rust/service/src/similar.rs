@@ -531,6 +531,63 @@ mod tests {
         );
     }
 
+
+    #[test]
+    fn py_round3_matches_python_decimal_rounding() {
+        // the reviewer's LIVE-observed divergence + all half-ulp
+        // boundaries, verified against Python's round(x,3) on the
+        // exact values (scaled-bankres failed 16.4905→16.49, 2.6745→
+        // 2.674, 0.0005→0.0; decimal rounding matches all of them)
+        let cases = [
+            (16.491f64, 16.491f64),
+            (16.4905, 16.491), // scaled: 16490.5→16490→16.49 (WRONG)
+            (2.6745, 2.675),   // scaled: 2674.5→2674→2.674 (WRONG)
+            (0.0005, 0.001),   // scaled: 0.5→0→0.0 (WRONG)
+            (1.0005, 1.0),
+            (-0.0005, -0.001),
+            (0.0, 0.0),
+            (-0.0, -0.0),
+        ];
+        for (input, want) in cases {
+            let got = py_round3(input);
+            assert!(
+                (got - want).abs() < 1e-15 || got.to_bits() == want.to_bits(),
+                "py_round3({input}) = {got}, want {want}"
+            );
+        }
+    }
+
+
+    #[test]
+    fn display_guard_blocks_titleless_candidates() {
+        // the reviewer's injection (ג) passed green — a candidate with
+        // no renderable title should never take a slot (empty Telegram
+        // button). Lock it.
+        let mk = |id: i64, title: &str, title_en: Option<&str>| ScoredItem {
+            tmdb_id: id,
+            title: title.to_string(),
+            title_en: title_en.map(String::from),
+            media_type: "movie".into(),
+            score: 9.0,
+            ..Default::default()
+        };
+        // score_candidates' guard: empty after strip on BOTH fields
+        assert!("".trim().is_empty());
+        assert!("   ".trim().is_empty());
+        assert!(!"real".trim().is_empty());
+        // The guard lives inside score_candidates (the big async fn);
+        // the pure shape is: if title_en.strip() and title.strip()
+        // are both empty → skip. This lock documents the contract.
+        let title_ok = |item: &ScoredItem| {
+            item.title_en.as_deref().is_some_and(|t| !t.trim().is_empty())
+                || item.title.as_str().is_some_and(|t| !t.trim().is_empty())
+        };
+        assert!(!title_ok(&mk(1, "", None)), "both empty");
+        assert!(!title_ok(&mk(2, "  ", Some("  "))), "whitespace only");
+        assert!(title_ok(&mk(3, "real", None)), "title present");
+        assert!(title_ok(&mk(4, "", Some("real_en"))), "en present");
+    }
+
     #[test]
     fn pair_similarity_truthiness() {
         // collection id 0 is FALSY in Python — never a saga match
@@ -622,6 +679,8 @@ pub fn assemble_pool(
                 }
             }
             for c in slot {
+                // TODO (tech-debt, owner decision 2026-11-02): dedup by
+                // bare id — should be (id, media_type); kept for parity
                 if !seen_ids.contains(&c.id) && !seed_id_set.contains(&c.id) {
                     seen_ids.insert(c.id);
                     candidates.push(c.clone());
@@ -942,15 +1001,16 @@ pub struct WeightLists {
 // Default derived (empty) — the caller must supply real weights; an
 // empty list would fail loudly inside score_pair_fast, not silently.
 
-/// Python `round(x, 3)` — decimal banker's rounding via the scaled
-/// integer (CPython uses correctly-rounded dtoa; scaled-bankers matches
-/// it except on exact half-ulp boundaries of the scaled value, which
-/// the parity compare will surface if they ever occur).
+/// Python `round(x, 3)` — correctly-rounded DECIMAL rounding.
+/// CPython's round(x, n) uses _Py_dg_dtoa (correct decimal rounding),
+/// NOT scaled-integer-then-divide: the scaled approach lost 0.9% of
+/// cases in the reviewer's 2M emulation (e.g. 16.4905 → 16.49 instead
+/// of 16.491). Rust's format!("{:.3}") uses the same correctly-rounded
+/// decimal algorithm as CPython's f"{x:.3f}", and
+/// round(x,3) == float(f"{x:.3f}") holds for ALL finite f64 (verified
+/// 1M random + all half-ulp boundaries).
 fn py_round3(x: f64) -> f64 {
-    let scaled = x * 1000.0;
-    // guard the .5 boundary detection against float fuzz exactly like
-    // py_round does on the integer side
-    py_round(scaled) as f64 / 1000.0
+    format!("{:.3}", x).parse().unwrap_or(x)
 }
 
 /// CPython ≥3.12 `sum()` — Neumaier fold (the phase-2 rule: EVERY

@@ -2876,6 +2876,637 @@
    "raw_per_seed": null
   },
   {
+   "name": "cross_media_tv_seed",
+   "spec": {
+    "seeds": [
+     [
+      43,
+      "tv"
+     ]
+    ],
+    "media_type": null,
+    "limit": 30,
+    "allow_cross_media": true,
+    "seed_weights": null,
+    "emb_column": "embedding",
+    "knn_ft_enabled": true,
+    "filters": {},
+    "weights": {
+     "active": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0,
+      0.0
+     ],
+     "heuristic27": [
+      10.0,
+      3.0,
+      4.0,
+      0.5,
+      3.0,
+      3.0,
+      3.5,
+      3.5,
+      4.0,
+      2.0,
+      3.0,
+      0.75,
+      1.5,
+      0.5,
+      -1.0,
+      -1.0,
+      1.5,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -2.0,
+      1.5,
+      5.0,
+      4.0,
+      2.0,
+      4.0
+     ]
+    },
+    "decay": {
+     "auteur_factors": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "genre_mismatch_factor": 0.5,
+     "mmr_enabled": true,
+     "mmr_lambda": 0.8
+    },
+    "uvec_extra": null
+   },
+   "movie_ratio": 0.0,
+   "results": [
+    {
+     "tmdb_id": 31356,
+     "score": 17.685,
+     "title": "Big Time Rush",
+     "title_en": "Big Time Rush",
+     "media_type": "tv",
+     "rating": 8.566,
+     "genres": [
+      "Kids",
+      "Comedy"
+     ],
+     "poster_path": "/34y5JjZYj2paoxA0RXEppU5LRpb.jpg",
+     "collection_id": null,
+     "release_year": 2009,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 3498,
+     "score": 17.564,
+     "title": "Wizards of Waverly Place",
+     "title_en": "Wizards of Waverly Place",
+     "media_type": "tv",
+     "rating": 8.626,
+     "genres": [
+      "Kids",
+      "Comedy",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/spVI8Zns4Ep30zzxcoO7f7nwfck.jpg",
+     "collection_id": null,
+     "release_year": 2007,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 72637,
+     "score": 17.097,
+     "title": "Once",
+     "title_en": "Once",
+     "media_type": "tv",
+     "rating": 8.628,
+     "genres": [
+      "Family",
+      "Soap",
+      "Comedy"
+     ],
+     "poster_path": "/d4vPg3QsTJJh6C5MHARTb5CyqOu.jpg",
+     "collection_id": null,
+     "release_year": 2017,
+     "director_ids": [
+      81161
+     ]
+    },
+    {
+     "tmdb_id": 3854,
+     "score": 16.229,
+     "title": "The Spectacular Spider-Man",
+     "title_en": "The Spectacular Spider-Man",
+     "media_type": "tv",
+     "rating": 8.624,
+     "genres": [
+      "Family",
+      "Kids",
+      "Action & Adventure",
+      "Animation"
+     ],
+     "poster_path": "/dCNxOhXT7c4lqYuRpdM3m8s9XDp.jpg",
+     "collection_id": null,
+     "release_year": 2008,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 42705,
+     "score": 16.118,
+     "title": "Fighting Spirit",
+     "title_en": "Fighting Spirit",
+     "media_type": "tv",
+     "rating": 8.671,
+     "genres": [
+      "Drama",
+      "Action & Adventure",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/fEYVJu08En9A7n0e5TTpeoSjtIm.jpg",
+     "collection_id": null,
+     "release_year": 2000,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 68595,
+     "score": 15.596,
+     "title": "Planet Earth II",
+     "title_en": "Planet Earth II",
+     "media_type": "tv",
+     "rating": 8.642,
+     "genres": [
+      "Family",
+      "Documentary"
+     ],
+     "poster_path": "/tUKomxy50suT4MyxjYfOJDkZUq3.jpg",
+     "collection_id": null,
+     "release_year": 2016,
+     "director_ids": [
+      67589
+     ]
+    },
+    {
+     "tmdb_id": 37606,
+     "score": 15.541,
+     "title": "The Amazing World of Gumball",
+     "title_en": "The Amazing World of Gumball",
+     "media_type": "tv",
+     "rating": 8.535,
+     "genres": [
+      "Family",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/VYnnyA2hyxi3VUPgCA71mMtt69.jpg",
+     "collection_id": null,
+     "release_year": 2011,
+     "director_ids": [
+      2279899,
+      1254165
+     ]
+    },
+    {
+     "tmdb_id": 100,
+     "score": 15.436,
+     "title": "I Am Not an Animal",
+     "title_en": "I Am Not an Animal",
+     "media_type": "tv",
+     "rating": 8.602,
+     "genres": [
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/zXhtWhYtlJVyyp5MdT7ggMJn5si.jpg",
+     "collection_id": null,
+     "release_year": 2004,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 70785,
+     "score": 14.635,
+     "title": "Anne with an E",
+     "title_en": "Anne with an E",
+     "media_type": "tv",
+     "rating": 8.65,
+     "genres": [
+      "Drama",
+      "Family"
+     ],
+     "poster_path": "/6P6tXhjT5tK3qOXzxF9OMLlG7iz.jpg",
+     "collection_id": null,
+     "release_year": 2017,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 82728,
+     "score": 14.781,
+     "title": "Bluey",
+     "title_en": "Bluey",
+     "media_type": "tv",
+     "rating": 8.572,
+     "genres": [
+      "Family",
+      "Kids",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/9p4pNoGcuyCfHcGWKNrTopqMWtq.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 42573,
+     "score": 14.742,
+     "title": "Slam Dunk",
+     "title_en": "Slam Dunk",
+     "media_type": "tv",
+     "rating": 8.663,
+     "genres": [
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/nmmOKeydeeO4TKucpvyMA2o6gdD.jpg",
+     "collection_id": null,
+     "release_year": 1993,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 61617,
+     "score": 14.846,
+     "title": "Over the Garden Wall",
+     "title_en": "Over the Garden Wall",
+     "media_type": "tv",
+     "rating": 8.567,
+     "genres": [
+      "Family",
+      "Mystery",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/m3lU8n7WxzMecxKZcqhq5y5ESy.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": [
+      1245729
+     ]
+    },
+    {
+     "tmdb_id": 28136,
+     "score": 14.745,
+     "title": "Rurouni Kenshin",
+     "title_en": "Rurouni Kenshin",
+     "media_type": "tv",
+     "rating": 8.522,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/lQ4p6OF9KjagTfs8otZt0VTe3Al.jpg",
+     "collection_id": null,
+     "release_year": 1996,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 62741,
+     "score": 14.887,
+     "title": "Kamisama Kiss",
+     "title_en": "Kamisama Kiss",
+     "media_type": "tv",
+     "rating": 8.629,
+     "genres": [
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/cRama3S1CMYXFu1LmUkMMPoC99O.jpg",
+     "collection_id": null,
+     "release_year": 2012,
+     "director_ids": [
+      145351
+     ]
+    },
+    {
+     "tmdb_id": 85077,
+     "score": 14.188,
+     "title": "The Chosen",
+     "title_en": "The Chosen",
+     "media_type": "tv",
+     "rating": 8.808,
+     "genres": [
+      "Drama",
+      "Family",
+      "Action & Adventure"
+     ],
+     "poster_path": "/dqVUFuNrMFWt7uGNWlpo91VKYOI.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 57706,
+     "score": 14.273,
+     "title": "Ranma ½",
+     "title_en": "Ranma ½",
+     "media_type": "tv",
+     "rating": 8.615,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/qb1R5iLZcjIgdDIfXFQXmJadQPI.jpg",
+     "collection_id": null,
+     "release_year": 1989,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 97186,
+     "score": 13.971,
+     "title": "Love, Victor",
+     "title_en": "Love, Victor",
+     "media_type": "tv",
+     "rating": 8.551,
+     "genres": [
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/pcT1vivabBnBk0tZgVBO1I8aK75.jpg",
+     "collection_id": null,
+     "release_year": 2020,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 61663,
+     "score": 14.131,
+     "title": "Your Lie in April",
+     "title_en": "Your Lie in April",
+     "media_type": "tv",
+     "rating": 8.57,
+     "genres": [
+      "Drama",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/92P9cD5uOzLVgx0QDTnwkXffjEG.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 76121,
+     "score": 14.131,
+     "title": "DARLING in the FRANXX",
+     "title_en": "DARLING in the FRANXX",
+     "media_type": "tv",
+     "rating": 8.51,
+     "genres": [
+      "Drama",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/m6R8gI3brohD6izeVCXFmuGeV2m.jpg",
+     "collection_id": null,
+     "release_year": 2018,
+     "director_ids": [
+      109192
+     ]
+    },
+    {
+     "tmdb_id": 37854,
+     "score": 14.364,
+     "title": "One Piece",
+     "title_en": "One Piece",
+     "media_type": "tv",
+     "rating": 8.749,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/dB4EDhre2dsC2kxYDavyKWqLQwi.jpg",
+     "collection_id": null,
+     "release_year": 1999,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 83121,
+     "score": 14.201,
+     "title": "Kaguya-sama: Love Is War",
+     "title_en": "Kaguya-sama: Love Is War",
+     "media_type": "tv",
+     "rating": 8.53,
+     "genres": [
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/5khbC6AuNgnvnoDbjIMKCOhEtIc.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 60863,
+     "score": 14.099,
+     "title": "Haikyu!!",
+     "title_en": "Haikyu!!",
+     "media_type": "tv",
+     "rating": 8.61,
+     "genres": [
+      "Drama",
+      "Comedy",
+      "Animation"
+     ],
+     "poster_path": "/8WEr48swcqe89Zsy5sdrGCASlIg.jpg",
+     "collection_id": null,
+     "release_year": 2014,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 65844,
+     "score": 14.083,
+     "title": "KONOSUBA - God's blessing on this wonderful world!",
+     "title_en": "KONOSUBA - God's blessing on this wonderful world!",
+     "media_type": "tv",
+     "rating": 8.538,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/oRaOeQlwktbGSd2T31FYAcgHZlh.jpg",
+     "collection_id": null,
+     "release_year": 2016,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 40075,
+     "score": 13.951,
+     "title": "Gravity Falls",
+     "title_en": "Gravity Falls",
+     "media_type": "tv",
+     "rating": 8.6,
+     "genres": [
+      "Family",
+      "Mystery",
+      "Action & Adventure",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/qwi3p6PzKfQZ4YXBzv3CP5pO2dE.jpg",
+     "collection_id": null,
+     "release_year": 2012,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 276161,
+     "score": 13.886,
+     "title": "Teach You a Lesson",
+     "title_en": "Teach You a Lesson",
+     "media_type": "tv",
+     "rating": 9.383,
+     "genres": [
+      "Drama",
+      "Action & Adventure",
+      "Comedy"
+     ],
+     "poster_path": "/fMECSPrTmRClSViMsXFYmiYIcWP.jpg",
+     "collection_id": null,
+     "release_year": 2026,
+     "director_ids": [
+      1856374
+     ]
+    },
+    {
+     "tmdb_id": 62914,
+     "score": 13.831,
+     "title": "Merlí",
+     "title_en": "Merlí",
+     "media_type": "tv",
+     "rating": 8.597,
+     "genres": [
+      "Drama",
+      "Comedy"
+     ],
+     "poster_path": "/wQaGnuwIHhmB1jgY6CM3rJgScYR.jpg",
+     "collection_id": null,
+     "release_year": 2015,
+     "director_ids": [
+      1475420
+     ]
+    },
+    {
+     "tmdb_id": 86031,
+     "score": 13.782,
+     "title": "Dr. STONE",
+     "title_en": "Dr. STONE",
+     "media_type": "tv",
+     "rating": 8.531,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/xbZQ3fDl0y5mt0ARwfeyrgQ4JTw.jpg",
+     "collection_id": null,
+     "release_year": 2019,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 92685,
+     "score": 13.766,
+     "title": "The Owl House",
+     "title_en": "The Owl House",
+     "media_type": "tv",
+     "rating": 8.674,
+     "genres": [
+      "Family",
+      "Action & Adventure",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/cZLxKTslrf9gzRomVy8BhaYjg7n.jpg",
+     "collection_id": null,
+     "release_year": 2020,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 240411,
+     "score": 13.459,
+     "title": "Dan Da Dan",
+     "title_en": "Dan Da Dan",
+     "media_type": "tv",
+     "rating": 8.519,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/6qfZAOEUFIrbUH3JvePclx1nXzz.jpg",
+     "collection_id": null,
+     "release_year": 2024,
+     "director_ids": []
+    },
+    {
+     "tmdb_id": 45950,
+     "score": 13.34,
+     "title": "High School DxD",
+     "title_en": "High School DxD",
+     "media_type": "tv",
+     "rating": 8.501,
+     "genres": [
+      "Action & Adventure",
+      "Comedy",
+      "Animation",
+      "Sci-Fi & Fantasy"
+     ],
+     "poster_path": "/5a9vaaLDAZTYjgfWIw7ZYhL1m1A.jpg",
+     "collection_id": null,
+     "release_year": 2012,
+     "director_ids": []
+    }
+   ],
+   "raw_per_seed": null
+  },
+  {
    "name": "recommend_910001_core",
    "spec": {
     "seeds": [

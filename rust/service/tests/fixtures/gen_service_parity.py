@@ -122,6 +122,8 @@ async def main() -> None:
              "allow_cross_media": True},
             {"name": "filters", "seeds": [(picks["movie"], "movie")],
              "filters": {"year_min": 2000, "genre_ids": [picks["genre"]]}},
+            {"name": "cross_media_tv_seed", "seeds": [(picks["tv"], "tv")],
+             "allow_cross_media": True, "limit": 30},
             {"name": "recommend_910001_core", "seeds": plan_seeds,
              "limit": 30, "uvec_extra": ([f for f in uvec], 60)},
         ]

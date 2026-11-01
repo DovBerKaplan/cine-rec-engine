@@ -344,10 +344,8 @@ HEURISTIC_WEIGHTS = {
     "dp_match": 0.0,
     # The medium signal must be LEARNED, not imposed: taste genuinely
     # crosses media, so a global medium rule can contradict real
-    # preferences. Re-enabled 2026-09 after user feedback on
-    # cross-medium recommendations; the feature stays for the LTR
-    # (with N4 modality hard negatives in the miner) to learn WHEN
-    # medium matters.
+    # preferences. The feature stays for the LTR to learn WHEN medium
+    # matters.
     "medium_mismatch": -2.0,
     # Narrative-structure agreement (linear vs anthology): +1 same
     # structure, -1 clash.

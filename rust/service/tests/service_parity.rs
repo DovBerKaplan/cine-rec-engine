@@ -23,9 +23,9 @@ fn dsn() -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
-const ROW_KEYS: [&str; 10] = [
+const ROW_KEYS: [&str; 9] = [
     "tmdb_id", "title", "title_en", "media_type", "rating", "genres",
-    "poster_path", "collection_id", "release_year", "director_ids",
+    "poster_path", "collection_id", "release_year",
 ];
 
 #[tokio::test]
@@ -89,9 +89,22 @@ async fn service_compute_matches_python_on_frozen_seeds() {
             }
             let want_score = w["score"].as_f64().unwrap();
             assert!(
-                (g.score - want_score).abs() <= 1e-9,
+                (g.score - want_score).abs() <= 1e-12,
                 "case {name}[{i}].score: {} vs {want_score}",
                 g.score
+            );
+            // director_ids: SET compare — the SQL aggregates crew ids
+            // via ARRAY_AGG without ORDER BY, so the ordering is
+            // nondeterministic across runs (the L-6/companies
+            // precedent; reviewer's flake at 9+ rows)
+            let want_dirs: std::collections::HashSet<i64> =
+                w["director_ids"].as_array().unwrap()
+                    .iter().filter_map(|v| v.as_i64()).collect();
+            let got_dirs: std::collections::HashSet<i64> =
+                g.director_ids.iter().copied().collect();
+            assert_eq!(
+                got_dirs, want_dirs,
+                "case {name}[{i}].director_ids (set)"
             );
         }
         println!("case {name}: {} rows OK", got.results.len());
@@ -118,7 +131,6 @@ fn field_of(
             item.collection_id.map(Value::from).unwrap_or(Value::Null)
         }
         "release_year" => item.release_year.map(Value::from).unwrap_or(Value::Null),
-        "director_ids" => serde_json::to_value(&item.director_ids).unwrap(),
         _ => return None,
     })
 }
@@ -170,19 +182,24 @@ async fn recommend_full_matches_python_on_frozen_inputs() {
                 "poster_path" => serde_json::to_value(&g.poster_path).unwrap(),
                 "collection_id" => serde_json::to_value(g.collection_id).unwrap(),
                 "release_year" => serde_json::to_value(g.release_year).unwrap(),
-                "director_ids" => serde_json::to_value(&g.director_ids).unwrap(),
                 _ => unreachable!(),
             }
         };
         for key in ["title", "title_en", "media_type", "genres",
-                    "poster_path", "collection_id", "release_year",
-                    "director_ids"] {
+                    "poster_path", "collection_id", "release_year"] {
             assert_eq!(gv(key), w[key], "rec[{i}].{key}");
         }
         assert!(
-            (g.score - w["score"].as_f64().unwrap()).abs() <= 1e-9,
+            (g.score - w["score"].as_f64().unwrap()).abs() <= 1e-12,
             "rec[{i}].score {} vs {}", g.score, w["score"]
         );
+        // director_ids: set compare (ARRAY_AGG unordered — see above)
+        let want_dirs: std::collections::HashSet<i64> =
+            w["director_ids"].as_array().unwrap()
+                .iter().filter_map(|v| v.as_i64()).collect();
+        let got_dirs: std::collections::HashSet<i64> =
+            g.director_ids.iter().copied().collect();
+        assert_eq!(got_dirs, want_dirs, "rec[{i}].director_ids (set)");
     }
     println!("recommend full: {} rows OK", got.results.len());
 }

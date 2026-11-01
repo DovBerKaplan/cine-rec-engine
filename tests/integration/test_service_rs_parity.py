@@ -25,7 +25,7 @@ FIXTURE = (
 
 ROW_KEYS = (
     "tmdb_id", "title", "title_en", "media_type", "rating", "genres",
-    "poster_path", "collection_id", "release_year", "director_ids",
+    "poster_path", "collection_id", "release_year",
 )
 
 
@@ -67,8 +67,12 @@ def test_compute_matches_python(case_name):
     for i, (g, w) in enumerate(zip(got["results"], want)):
         for key in ROW_KEYS:
             assert g[key] == w[key], f"{case_name}[{i}].{key}"
-        assert abs(g["score"] - w["score"]) <= 1e-9, (
+        assert abs(g["score"] - w["score"]) <= 1e-12, (
             f"{case_name}[{i}].score {g['score']} vs {w['score']}"
+        )
+        # director_ids: SET compare — ARRAY_AGG without ORDER BY
+        assert set(g["director_ids"]) == set(w["director_ids"]), (
+            f"{case_name}[{i}].director_ids"
         )
 
 
@@ -140,4 +144,11 @@ def test_recommend_full_live_vs_live():
         assert g["tmdb_id"] == w["tmdb_id"], f"row {i}"
         for key in ("title", "media_type", "genres"):
             assert g[key] == w[key], f"row {i}.{key}"
-        assert abs(g["score"] - w["score"]) <= 1e-9, f"row {i}.score"
+        # live-vs-live: scores drift ~1e-9 per 50ms between the two
+        # runs (recency); 5e-7 is generous but still catches real bugs
+        # (a wrong fold or misaligned weight shifts by >1e-6). The
+        # FIXTURE replay (frozen inputs) pins exact at 1e-12.
+        assert abs(g["score"] - w["score"]) <= 5e-7, f"row {i}.score"
+        assert set(g["director_ids"]) == set(w["director_ids"]), (
+            f"row {i}.director_ids"
+        )
