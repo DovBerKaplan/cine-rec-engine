@@ -18,7 +18,9 @@ sqlx = { version = "=0.8.6", default-features = false, features = [
     "json",
 ] }
 tokio = { version = "1", features = ["rt", "macros"] }
-pgvector = { version = "0.4", default-features = false, features = ["sqlx"] }
+# pgvector pinned EXACTLY: 0.4.2 jumped to sqlx ^0.9 (rustc 1.94) —
+# same class of drift as the sqlx pin; live parity is against 0.4.1
+pgvector = { version = "=0.4.1", default-features = false, features = ["sqlx"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
