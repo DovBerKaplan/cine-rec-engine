@@ -162,7 +162,11 @@ def install(ns: dict[str, Any]) -> str:
         if problem:
             return f"python-fallback ({problem}); set CINE_REC_SCORING_RS=0 to silence"
 
-    from . import _scoring_rs as rs
+    # optional compiled extension — resolved dynamically so both a
+    # present and an absent module typecheck (ModuleType attrs are Any)
+    from importlib import import_module
+
+    rs = import_module("cine_rec_engine._scoring_rs")
 
     hw = ns["HEURISTIC_WEIGHTS_LIST"]  # module global, values[:27]
     py_entity_profile = ns["_py_entity_profile"]

@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import os
 import random
-from typing import Awaitable, Callable, Dict, List, Optional, Tuple, Union
+from typing import Sequence, Union, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -290,7 +290,7 @@ async def find_similar(
                     if merged is None and "merged" in prefetch:
                         merged = await prefetch["merged"]
                     elif exclude:
-                        merged = set(merged) | set(exclude)
+                        merged = set(merged or ()) | set(exclude)
                     blocked = (
                         await prefetch["blocked"]
                         if "blocked" in prefetch else None)
@@ -405,7 +405,7 @@ async def find_similar(
     # to the two-channel form.
     knn_ft_enabled = os.getenv("ENABLE_KNN_FINETUNED", "true").lower() != "false"
 
-    async def _tmdb_recs_channel() -> List[List[dict]]:
+    async def _tmdb_recs_channel() -> Sequence[Union[List[dict], BaseException]]:
         """One query for every seed's TMDB recs, or the per-seed
         channel when the batch fails (each seed then degrades
         alone, exactly like the pre-batch fan-out)."""
@@ -422,7 +422,7 @@ async def find_similar(
                   for s in seed_infos],
                 return_exceptions=True)
 
-    async def _director_channel() -> List[List[dict]]:
+    async def _director_channel() -> Sequence[Union[List[dict], BaseException]]:
         """Same contract for the auteur channel: one query for all
         seeds, per-seed fallback when the batch fails."""
         try:
@@ -754,7 +754,7 @@ async def find_similar(
         if merged is None and "merged" in prefetch:
             merged = await prefetch["merged"]
         elif exclude:
-            merged = set(merged) | set(exclude)
+            merged = set(merged or ()) | set(exclude)
         blocked = (
             await prefetch["blocked"]
             if "blocked" in prefetch else None)
