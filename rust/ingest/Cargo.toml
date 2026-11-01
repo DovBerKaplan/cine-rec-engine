@@ -7,9 +7,14 @@ license = "MIT"
 publish = false
 
 [dependencies]
-# float_roundtrip: JSON floats must round-trip bit-exactly - the same
-# lesson the scoring crate learned (the default parser can land 1 ULP
-# off the correctly-rounded value; here it would silently shift
+# The single table-name registry: EVERY loader statement resolves its
+# {t_*} placeholders through cine-rec-db's SchemaMap (rust-port rule:
+# one registry, owned by the db crate). The wave-C private registry
+# was removed when this dependency landed.
+cine-rec-db = { path = "../db" }
+# float_roundtrip: JSON floats must round-trip bit-exactly - the
+# same lesson the scoring crate learned (the default parser can land
+# 1 ULP off the correctly-rounded value; here it would silently shift
 # popularity values). The parity fixtures carry exact f64 bits.
 serde_json = { version = "1", features = ["float_roundtrip"] }
 # MultiGzDecoder: Python's gzip module reads ALL concatenated members
@@ -19,6 +24,26 @@ flate2 = "1"
 # The async RateLimiter mirrors ingest/rate.py: a lock held across the
 # sleep, so concurrent acquirers queue behind the sleeping one.
 tokio = { version = "1", features = ["sync", "time", "macros", "rt"] }
+# sqlx is used directly for the loader statements (the Db pool is
+# public); feature set mirrors the db crate + chrono for DATE binds
+# (asyncpg binds date objects; SQL stays verbatim, so the params must
+# be real dates).
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "json",
+    "chrono",
+    "bigdecimal",
+] }
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+# NUMERIC parity: asyncpg converts a Python float to Decimal(float) —
+# the EXACT decimal expansion of the double — and binds it as a
+# numeric param (7.9 → 7.9000000000000003552713678800500929355621...).
+# The loader builds that BigDecimal bit-exactly from the f64 (see
+# loader::decimal_exact); PG's own float8→numeric cast rounds
+# differently and is NOT what asyncpg does.
+bigdecimal = "0.4"
+num-bigint = "0.4"
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
