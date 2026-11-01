@@ -171,7 +171,9 @@ impl std::error::Error for LoaderError {}
 pub struct CastRow {
     pub person_id: i64,
     pub character: String,
-    pub cast_order: i32,
+    /// The full `int(order)` value — the INT4 range check happens at
+    /// the BIND (asyncpg parity; review M-2).
+    pub cast_order: i64,
 }
 
 /// One whitelisted crew row: (person_id, job, department) —
@@ -296,9 +298,11 @@ fn py_str_or_empty(v: Option<&Value>) -> String {
             } else if let Some(u) = n.as_u64() {
                 u.to_string()
             } else {
-                // float repr — shortest round-trip on both sides for
-                // ordinary values.
-                n.as_f64().map(|f| format!("{f}")).unwrap_or_default()
+                // Python str(float) keeps a '.0' (5.0 → "5.0") — Rust's
+                // Debug does too, Display does not. Exponent FORMS
+                // still differ (python "1e+16"/"1e-07" vs Rust
+                // "1e16"/"1e-7") — documented divergence.
+                n.as_f64().map(|f| format!("{f:?}")).unwrap_or_default()
             }
         }
         // str(list/dict) reprs are pathological for these fields; the
@@ -352,6 +356,37 @@ fn parse_iso_date(s: &str) -> Result<NaiveDate, String> {
 // Raw Values convert to typed binds HERE — the same place Python's
 // asyncpg encoder accepts or rejects them, after the builder.
 
+/// An extracted `x or []` list: falsy → empty, array → items, truthy
+/// non-array → carried as [`MaybeBad::Bad`] so the failure fires at
+/// the STATEMENT Python evaluates it at (inside the batch), not at
+/// extraction time (review M-2).
+#[derive(Debug, Clone)]
+enum MaybeBad {
+    List(Vec<Value>),
+    Bad(Value),
+}
+
+fn extract_list(v: Option<&Value>) -> MaybeBad {
+    match v {
+        None | Some(Value::Null) => MaybeBad::List(Vec::new()),
+        Some(Value::Array(a)) => MaybeBad::List(a.clone()),
+        Some(v) if !is_truthy(v) => MaybeBad::List(Vec::new()),
+        Some(v) => MaybeBad::Bad(v.clone()),
+    }
+}
+
+impl MaybeBad {
+    fn bad(&self, ctx: &str) -> Option<PyConvError> {
+        match self {
+            MaybeBad::Bad(v) => Some(PyConvError::Type(format!(
+                "{ctx}: iterating {} is a TypeError in Python",
+                crate::pyval::py_type_name(v)
+            ))),
+            MaybeBad::List(_) => None,
+        }
+    }
+}
+
 fn bind_text(v: &Option<Value>, col: &str) -> Result<LBind, PyConvError> {
     match v {
         None => Ok(LBind::OptStr(None)),
@@ -373,12 +408,44 @@ fn bind_text_req(v: &Value, col: &str) -> Result<LBind, PyConvError> {
     }
 }
 
+/// The ASYNCPG INT ENCODER, not Python's `int()` (review M-1, all
+/// behaviors verified live): int passes; float TRUNCATES toward zero
+/// (120.5→120, -0.7→0); bool → 0/1; a STRING is a DataError
+/// ("'str' object cannot be interpreted as an integer") — unlike
+/// `int("120")` which succeeds at builder sites. bigint[] params
+/// encode element-wise with the same rules.
+fn ap_int(v: &Value, col: &str) -> Result<i64, PyConvError> {
+    match v {
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Ok(i)
+            } else if let Some(f) = n.as_f64() {
+                // truncation toward zero, like asyncpg's int(value)
+                if f.trunc() >= 9_223_372_036_854_775_808.0
+                    || f.trunc() < -9_223_372_036_854_775_808.0
+                {
+                    Err(PyConvError::Value(format!(
+                        "{col}: integer out of range for int8: {f}"
+                    )))
+                } else {
+                    Ok(f.trunc() as i64)
+                }
+            } else {
+                Err(PyConvError::Value(format!("{col}: unbindable number {n}")))
+            }
+        }
+        Value::Bool(b) => Ok(i64::from(*b)),
+        other => Err(PyConvError::Type(format!(
+            "{col}: asyncpg cannot encode {} as an integer",
+            crate::pyval::py_type_name(other)
+        ))),
+    }
+}
+
 fn bind_i64(v: &Option<Value>, col: &str) -> Result<LBind, PyConvError> {
     match v {
         None => Ok(LBind::OptI64(None)),
-        Some(v) => Ok(LBind::OptI64(Some(
-            crate::pyval::py_int(v).map_err(|e| annotate(e, col))?,
-        ))),
+        Some(v) => Ok(LBind::OptI64(Some(ap_int(v, col)?))),
     }
 }
 
@@ -386,32 +453,71 @@ fn bind_i32(v: &Option<Value>, col: &str) -> Result<LBind, PyConvError> {
     match v {
         None => Ok(LBind::OptI32(None)),
         Some(v) => {
-            let i = crate::pyval::py_int(v).map_err(|e| annotate(e, col))?;
+            let i = ap_int(v, col)?;
             i32::try_from(i)
                 .map(|i| LBind::OptI32(Some(i)))
-                .map_err(|_| PyConvError::Type(format!("{col}: integer {i} out of INT4 range")))
+                .map_err(|_| PyConvError::Value(format!("{col}: integer {i} out of INT4 range")))
         }
     }
 }
 
-/// NUMERIC columns (vote_average, popularity): asyncpg accepts int,
-/// float AND parseable strings (it decodes them as Decimal — pinned
-/// live: a payload popularity of `"23.5"` lands as numeric 23.5).
-/// A float becomes `Decimal(float)` — the EXACT decimal expansion of
-/// the double (see [`decimal_exact`]); non-numeric strings fail the
-/// bind, like asyncpg.
+/// NUMERIC columns (vote_average, popularity) — the asyncpg codec,
+/// every branch verified live: int and float pass (float as
+/// `Decimal(float)`, the EXACT decimal expansion — [`decimal_exact`]);
+/// bool → 0/1; a STRING parses as `Decimal(str)` — trimmed whitespace,
+/// underscores between digits, exponents, ARBITRARY precision kept
+/// (never routed through f64); list/dict are DataErrors.
+///
+/// DOCUMENTED DIVERGENCE: `Decimal('NaN')`/`Decimal('Infinity')` bind
+/// fine in asyncpg (PG ≥14 numeric has NaN/Infinity), but BigDecimal
+/// cannot represent them and sqlx has no numeric-NaN encoding — here
+/// those two literals fail the title LOUDLY instead of storing
+/// numeric NaN/Infinity. Pathological for TMDB input; pinned by a
+/// unit test, listed in the README.
 fn bind_numeric(v: &Option<Value>, col: &str) -> Result<LBind, PyConvError> {
     match v {
         None => Ok(LBind::OptNumeric(None)),
-        Some(Value::Number(n)) => Ok(LBind::OptNumeric(n.as_f64())),
-        Some(Value::String(s)) => crate::pyval::py_float(&Value::String(s.clone()))
-            .map(|f| LBind::OptNumeric(Some(f)))
+        Some(Value::Bool(b)) => Ok(LBind::OptNumericInt(i64::from(*b))),
+        Some(Value::Number(n)) => {
+            if let Some(i) = n.as_i64() {
+                Ok(LBind::OptNumericInt(i))
+            } else {
+                Ok(LBind::OptNumeric(n.as_f64()))
+            }
+        }
+        Some(Value::String(s)) => decimal_from_str(s)
+            .map(LBind::OptNumericBig)
             .map_err(|e| annotate(e, col)),
         Some(other) => Err(PyConvError::Type(format!(
             "{col}: asyncpg cannot encode {} as numeric",
             crate::pyval::py_type_name(other)
         ))),
     }
+}
+
+/// `Decimal(str)` acceptance minus the non-finite forms: surrounding
+/// whitespace, underscores between digits, decimal/exponent syntax —
+/// parsed to an EXACT BigDecimal (no f64 round-trip, so a 25-digit
+/// string keeps all 25 digits like asyncpg's Decimal).
+fn decimal_from_str(s: &str) -> Result<bigdecimal::BigDecimal, PyConvError> {
+    let trimmed = crate::pyval::py_strip(s);
+    let cleaned: String = trimmed.chars().filter(|&c| c != '_').collect();
+    if cleaned.is_empty() {
+        return Err(PyConvError::Value(format!(
+            "could not convert string to numeric: {s:?}"
+        )));
+    }
+    let lower = cleaned.to_ascii_lowercase();
+    if lower.contains("nan") || lower.contains("inf") {
+        // asyncpg stores numeric NaN/Infinity from these strings; see
+        // the documented divergence above.
+        return Err(PyConvError::Value(format!(
+            "{s:?}: numeric NaN/Infinity literals are a documented divergence (loud failure)"
+        )));
+    }
+    cleaned
+        .parse::<bigdecimal::BigDecimal>()
+        .map_err(|_| PyConvError::Value(format!("could not convert string to numeric: {s:?}")))
 }
 
 /// The EXACT decimal expansion of an f64, as asyncpg's numeric codec
@@ -488,8 +594,11 @@ pub fn keep_cast(cast: &[Value]) -> Result<Vec<CastRow>, PyConvError> {
             continue;
         };
         let id = crate::pyval::py_int(id_v)?;
-        let order: i32 = i32::try_from(crate::pyval::py_int(order_v)?)
-            .map_err(|_| PyConvError::Value("cast_order out of INT4 range".into()))?;
+        // Python's int() is arbitrary-precision: a huge order builds a
+        // row fine and only the INT4 BIND fails later (after the cast
+        // DELETE — pinned by review M-2). Keep the full i64 here; the
+        // range check lives at the bind site.
+        let order = crate::pyval::py_int(order_v)?;
         let character = py_str_or_empty(c.get("character"));
         rows.push(CastRow {
             person_id: id,
@@ -508,11 +617,20 @@ pub fn keep_cast(cast: &[Value]) -> Result<Vec<CastRow>, PyConvError> {
 pub fn keep_crew(crew: &[Value]) -> Result<Vec<CrewRow>, PyConvError> {
     let mut rows = Vec::new();
     for c in crew {
-        // `c.get("job") in CREW_JOBS` — a non-string job never equals
-        // a whitelist entry, so it is simply dropped (no error),
-        // exactly like Python.
-        let Some(Value::String(job)) = c.get("job") else {
-            continue;
+        // `c.get("job") in CREW_JOBS`: hashable non-string jobs
+        // (numbers, bools, None) simply don't match — dropped. An
+        // UNHASHABLE job (list/dict) makes Python's set membership
+        // raise TypeError → the title fails; loud here too (review
+        // L-1).
+        let job = match c.get("job") {
+            Some(Value::String(job)) => job,
+            Some(v @ (Value::Array(_) | Value::Object(_))) => {
+                return Err(PyConvError::Type(format!(
+                    "unhashable type: '{}'",
+                    crate::pyval::py_type_name(v)
+                )))
+            }
+            _ => continue,
         };
         if !CREW_JOBS.contains(&job.as_str()) {
             continue;
@@ -534,11 +652,13 @@ pub fn keep_crew(crew: &[Value]) -> Result<Vec<CrewRow>, PyConvError> {
 /// `title_row_from_payload` (see [`MovieRow`] for column order).
 pub fn title_row_from_payload(payload: &Value) -> Result<MovieRow, PyConvError> {
     let id = req_int(payload, "id")?;
-    // `(payload.get("belongs_to_collection") or {}).get("id")` — the
-    // extracted id passes through RAW; a truthy non-dict container
-    // fails `.get` in Python (AttributeError → failed title).
-    let collection_id = match get(payload, "belongs_to_collection") {
-        None => None,
+    // `(payload.get("belongs_to_collection") or {}).get("id")`: a FALSY
+    // value (null, false, "", 0, []) reads as {} → None — the title
+    // ingests; a TRUTHY non-dict fails `.get` (AttributeError →
+    // failed title). Pinned by review M-3.
+    let collection_id = match payload.get("belongs_to_collection") {
+        None | Some(Value::Null) => None,
+        Some(v) if !is_truthy(v) => None,
         Some(Value::Object(obj)) => match obj.get("id") {
             None | Some(Value::Null) => None,
             Some(v) => Some(v.clone()),
@@ -625,14 +745,32 @@ pub fn rec_rows_from_payload(payload: &Value) -> Result<Vec<RecRow>, PyConvError
     // Lazy like the Python comprehension: `payload["id"]` is only
     // touched when there IS a row to build — an id-less payload with
     // no recommendations returns [] without error (pinned by the
-    // fixture).
+    // fixture). Container shapes follow Python (review L-1): a truthy
+    // non-dict recommendations / non-list results raises where the
+    // `.get`/iteration would.
     let empty = Vec::new();
-    let results = match get(payload, "recommendations") {
-        Some(Value::Object(obj)) => obj
-            .get("results")
-            .and_then(Value::as_array)
-            .unwrap_or(&empty),
-        _ => &empty,
+    let results: &[Value] = match get(payload, "recommendations") {
+        None => &empty,
+        Some(v) if !is_truthy(v) => &empty,
+        Some(Value::Object(obj)) => match obj.get("results") {
+            None | Some(Value::Null) => &empty,
+            Some(v) if !is_truthy(v) => &empty,
+            Some(Value::Array(a)) => a,
+            Some(other) => {
+                return Err(PyConvError::Type(format!(
+                    "recommendations.results: iterating {} is a TypeError in Python",
+                    crate::pyval::py_type_name(other)
+                )))
+            }
+        },
+        Some(other) => {
+            // Python raises AttributeError on the .get — exact text
+            // (pinned by the offline fixture).
+            return Err(PyConvError::Attr(format!(
+                "'{}' object has no attribute 'get'",
+                crate::pyval::py_type_name(other)
+            )));
+        }
     };
     if results.is_empty() {
         return Ok(Vec::new());
@@ -661,24 +799,32 @@ pub fn rec_rows_from_payload(payload: &Value) -> Result<Vec<RecRow>, PyConvError
 /// IDENTITY to False in Python (`payload.get("success") is False`),
 /// which for JSON means exactly the boolean `false`; `adult` is
 /// truthiness; popularity is `float(x or 0.0)` with NaN never below
-/// the floor.
-pub fn should_ingest(payload: Option<&Value>, min_popularity: f64, include_adult: bool) -> bool {
-    let Some(payload) = payload else { return false };
+/// the floor. An unconvertible popularity (`float("abc")`) RAISES in
+/// Python — caught by `ingest_one`'s except → `failed` — so this
+/// returns Err, never a silent 0.0 (review M-3).
+pub fn should_ingest(
+    payload: Option<&Value>,
+    min_popularity: f64,
+    include_adult: bool,
+) -> Result<bool, PyConvError> {
+    let Some(payload) = payload else {
+        return Ok(false);
+    };
     if payload.get("success") == Some(&Value::Bool(false)) {
-        return false;
+        return Ok(false);
     }
     let adult = is_truthy(payload.get("adult").unwrap_or(&Value::Bool(false)));
     if adult && !include_adult {
-        return false;
+        return Ok(false);
     }
     let pop = match get(payload, "popularity") {
-        Some(v) if is_truthy(v) => py_float(v).unwrap_or(0.0),
+        Some(v) if is_truthy(v) => py_float(v)?,
         _ => 0.0,
     };
-    !matches!(
+    Ok(!matches!(
         pop.partial_cmp(&min_popularity),
         Some(std::cmp::Ordering::Less)
-    )
+    ))
 }
 
 /// `is_complete` — the acceptance rule (spec §9): all four appended
@@ -742,9 +888,15 @@ pub enum LBind {
     /// A DOUBLE PRECISION param (the recs graph) — bits identical on
     /// both sides.
     F64(f64),
-    /// A NUMERIC param via [`decimal_exact`] — the asyncpg
+    /// A NUMERIC param from an f64 via [`decimal_exact`] — the asyncpg
     /// `Decimal(float)` value.
     OptNumeric(Option<f64>),
+    /// A NUMERIC param that was a JSON int (exact, no f64 detour) or a
+    /// bool (0/1) — asyncpg accepts both.
+    OptNumericInt(i64),
+    /// A NUMERIC param parsed EXACTLY from a string (`Decimal(str)` —
+    /// arbitrary precision kept).
+    OptNumericBig(bigdecimal::BigDecimal),
     Bool(bool),
     OptBool(Option<bool>),
     Str(String),
@@ -764,17 +916,19 @@ impl LBind {
             LBind::I32(v) => query.bind(v),
             LBind::OptI32(v) => query.bind(v),
             LBind::F64(v) => query.bind(v),
-            // A non-finite value fails asyncpg's numeric ENCODER in
+            // A non-finite f64 fails asyncpg's numeric ENCODER in
             // Python; here the same title dies one step later, at the
             // server: a text expression can never cast into a numeric
-            // column. (Non-finite numerics cannot come from JSON —
-            // only from exotic string payloads, which py_float
-            // rejects first — so this arm is belt-only.)
+            // column. (Non-finite f64s cannot come from JSON.)
             LBind::OptNumeric(v) => match v.map(decimal_exact) {
                 Some(Err(e)) => query.bind(e.to_string()),
                 Some(Ok(d)) => query.bind(d),
                 None => query.bind(Option::<bigdecimal::BigDecimal>::None),
             },
+            LBind::OptNumericInt(i) => {
+                query.bind(bigdecimal::BigDecimal::new(num_bigint::BigInt::from(*i), 0))
+            }
+            LBind::OptNumericBig(d) => query.bind(d.clone()),
             LBind::Bool(v) => query.bind(v),
             LBind::OptBool(v) => query.bind(v),
             LBind::Str(v) => query.bind(v),
@@ -838,9 +992,11 @@ async fn sync_bridge(
     rows: &[Vec<LBind>],
 ) -> Result<(), LoaderError> {
     if !current_ids.is_empty() {
+        // bigint[] encoding is element-wise asyncpg: strings rejected,
+        // floats truncated (review M-1).
         let ids: Vec<i64> = current_ids
             .iter()
-            .map(crate::pyval::py_int)
+            .map(|v| ap_int(v, "bridge current_ids"))
             .collect::<Result<Vec<_>, _>>()?;
         sqlx::query(&format!(
             "DELETE FROM {table} WHERE {media_col} = $1 AND {other_col} <> ALL($2::bigint[])"
@@ -1022,24 +1178,40 @@ impl TmdbIngest {
                 .await?;
         }
 
-        // 2. the bridge batch, one connection.
-        // genres: `[(g["id"], g["name"]) ...]` — BOTH raw; binds check.
-        let genres: Vec<(Value, Value)> = payload
-            .get("genres")
-            .and_then(Value::as_array)
-            .map(|a| {
-                a.iter()
-                    .map(|g| Ok((req_raw(g, "id")?.clone(), req_raw(g, "name")?.clone())))
-                    .collect::<Result<Vec<_>, PyConvError>>()
-            })
-            .transpose()?
-            .unwrap_or_default();
+        // 2. the bridge batch, one connection. The extraction ORDER is
+        // Python's order (lines 322-331, all BEFORE the acquire):
+        // shape errors here fail the title with only the fact row
+        // written; keywords/companies/networks CONVERSIONS happen at
+        // their statements INSIDE the batch (review M-2) — a bad
+        // shape there is carried as [`MaybeBad`] and raised at the
+        // exact statement Python raises at.
 
-        let kw_container = match get(payload, "keywords") {
-            None => None,
-            Some(v @ Value::Object(_)) => Some(v),
-            // `(payload.get("keywords", {}) or {}).get(...)` fails on
-            // non-dict truthy values in Python (AttributeError).
+        // genres: `[(g["id"], g["name"]) for g in
+        // payload.get("genres", [])]` — eager, both slots raw. A
+        // PRESENT null / truthy non-list is a TypeError in Python
+        // (iterating None / a scalar); absent → [] (review M-3).
+        let genres: Vec<(Value, Value)> = match payload.get("genres") {
+            None => Vec::new(),
+            Some(Value::Array(a)) => a
+                .iter()
+                .map(|g| Ok((req_raw(g, "id")?.clone(), req_raw(g, "name")?.clone())))
+                .collect::<Result<Vec<_>, PyConvError>>()?,
+            Some(other) => {
+                return Err(PyConvError::Type(format!(
+                    "'{}' object is not iterable",
+                    crate::pyval::py_type_name(other)
+                ))
+                .into())
+            }
+        };
+
+        // keywords container: `(payload.get("keywords", {}) or {})` —
+        // falsy → {}, dict → itself, truthy non-dict → AttributeError
+        // (eager — Python evaluates the .get chain immediately).
+        let kw_container: Option<&serde_json::Map<String, Value>> = match payload.get("keywords") {
+            None | Some(Value::Null) => None,
+            Some(v) if !is_truthy(v) => None,
+            Some(v @ Value::Object(_)) => Some(v.as_object().unwrap()),
             Some(other) => {
                 return Err(PyConvError::Type(format!(
                     "keywords: '{}' object has no attribute 'get'",
@@ -1048,39 +1220,57 @@ impl TmdbIngest {
                 .into())
             }
         };
-        // keywords: `int(k["id"])` CONVERTS; `k["name"]` is raw.
-        let kw_ids_names: Vec<(i64, Value)> = {
-            let mut kws = kw_container
-                .and_then(|c| c.get("keywords"))
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
-            if kws.is_empty() {
-                kws = kw_container
-                    .and_then(|c| c.get("results"))
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .unwrap_or_default();
+        // The keyword LIST is extracted eagerly (with the results
+        // fallback), but its id/name conversion is DEFERRED to the
+        // keywords statement inside the batch.
+        let kw_list: MaybeBad = extract_list(kw_container.and_then(|c| c.get("keywords")));
+        let kw_list = match &kw_list {
+            MaybeBad::List(items) if items.is_empty() => {
+                extract_list(kw_container.and_then(|c| c.get("results")))
             }
-            kws.iter()
-                .map(|k| Ok((req_int(k, "id")?, req_raw(k, "name")?.clone())))
-                .collect::<Result<Vec<_>, PyConvError>>()?
+            other => other.clone(),
         };
 
-        let credits_obj = match get(payload, "credits") {
-            Some(v @ Value::Object(_)) => v.clone(),
-            _ => Value::Object(Default::default()),
+        // credits: `payload.get("credits") or {}` — falsy → {},
+        // truthy non-dict → AttributeError (eager).
+        let credits_obj: serde_json::Map<String, Value> = match payload.get("credits") {
+            None | Some(Value::Null) => Default::default(),
+            Some(v) if !is_truthy(v) => Default::default(),
+            Some(v @ Value::Object(_)) => v.as_object().unwrap().clone(),
+            Some(other) => {
+                return Err(PyConvError::Type(format!(
+                    "credits: '{}' object has no attribute 'get'",
+                    crate::pyval::py_type_name(other)
+                ))
+                .into())
+            }
         };
-        let cast_list = credits_obj
-            .get("cast")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        let crew_list = credits_obj
-            .get("crew")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
+        let cast_list: Vec<Value> = match credits_obj.get("cast") {
+            Some(v) if is_truthy(v) => match v {
+                Value::Array(a) => a.clone(),
+                other => {
+                    return Err(PyConvError::Type(format!(
+                        "cast: iterating {} is a TypeError in Python",
+                        crate::pyval::py_type_name(other)
+                    ))
+                    .into())
+                }
+            },
+            _ => Vec::new(),
+        };
+        let crew_list: Vec<Value> = match credits_obj.get("crew") {
+            Some(v) if is_truthy(v) => match v {
+                Value::Array(a) => a.clone(),
+                other => {
+                    return Err(PyConvError::Type(format!(
+                        "crew: iterating {} is a TypeError in Python",
+                        crate::pyval::py_type_name(other)
+                    ))
+                    .into())
+                }
+            },
+            _ => Vec::new(),
+        };
         let cast = keep_cast(&cast_list)?;
         let crew = keep_crew(&crew_list)?;
         let people: HashSet<i64> = cast
@@ -1089,28 +1279,14 @@ impl TmdbIngest {
             .chain(crew.iter().map(|c| c.person_id))
             .collect();
 
-        // companies/networks: `int(x["id"])` converts; names raw.
-        let raw_pairs = |list: &[Value], ctx: &str| -> Result<Vec<(i64, Value)>, PyConvError> {
-            list.iter()
-                .map(|c| Ok((req_int(c, "id")?, req_raw(c, "name")?.clone())))
-                .collect::<Result<Vec<_>, PyConvError>>()
-                .map_err(|e| annotate(e, ctx))
-        };
-        let companies: Vec<(i64, Value)> = raw_pairs(
-            get(payload, "production_companies")
-                .and_then(Value::as_array)
-                .unwrap_or(&Vec::new()),
-            "companies",
-        )?;
-        let networks: Vec<(i64, Value)> = if movie {
-            Vec::new()
+        // companies/networks: extraction only here (Python lines
+        // 330-331); int()/name conversions run at their statements
+        // inside the batch.
+        let companies_m = extract_list(payload.get("production_companies"));
+        let networks_m = if movie {
+            MaybeBad::List(Vec::new())
         } else {
-            raw_pairs(
-                get(payload, "networks")
-                    .and_then(Value::as_array)
-                    .unwrap_or(&Vec::new()),
-                "networks",
-            )?
+            extract_list(payload.get("networks"))
         };
 
         let mut conn = self.db.pool().acquire().await?;
@@ -1184,6 +1360,18 @@ impl TmdbIngest {
         )
         .await?;
 
+        // keywords: the id/name conversion runs HERE (Python's
+        // `[(int(k["id"]), k["name"]) for k in kw]` inside the batch)
+        // — after people and genres have been written (review M-2).
+        let kw_ids_names: Vec<(i64, Value)> = match &kw_list {
+            MaybeBad::Bad(_) => {
+                return Err(kw_list.bad("keywords").unwrap().into());
+            }
+            MaybeBad::List(items) => items
+                .iter()
+                .map(|k| Ok((req_int(k, "id")?, req_raw(k, "name")?.clone())))
+                .collect::<Result<Vec<_>, PyConvError>>()?,
+        };
         if !kw_ids_names.is_empty() {
             let rows: Vec<Vec<LBind>> = kw_ids_names
                 .iter()
@@ -1217,6 +1405,17 @@ impl TmdbIngest {
         )
         .await?;
 
+        // companies: conversion HERE too (Python converts inside the
+        // batch, after the keywords statements).
+        let companies: Vec<(i64, Value)> = match &companies_m {
+            MaybeBad::Bad(_) => {
+                return Err(companies_m.bad("production_companies").unwrap().into());
+            }
+            MaybeBad::List(items) => items
+                .iter()
+                .map(|c| Ok((req_int(c, "id")?, req_raw(c, "name")?.clone())))
+                .collect::<Result<Vec<_>, PyConvError>>()?,
+        };
         if !companies.is_empty() {
             let rows: Vec<Vec<LBind>> = companies
                 .iter()
@@ -1250,34 +1449,51 @@ impl TmdbIngest {
         )
         .await?;
 
-        if !networks.is_empty() {
-            let rows: Vec<Vec<LBind>> = networks
-                .iter()
-                .map(|(id, name)| Ok(vec![LBind::I64(*id), bind_text_req(name, "network.name")?]))
-                .collect::<Result<Vec<_>, PyConvError>>()?;
-            executemany(&mut conn, &self.db.sql(UPSERT_NETWORK)?, &rows).await?;
+        // networks: tv-ONLY bridge (H-1): a movie sharing the id with
+        // a series must never mirror — let alone EMPTY — the series'
+        // networks. TMDB ids collide across media (AGENTS.md inv. 4);
+        // fixed on BOTH sides in the same change.
+        if !movie {
+            let networks: Vec<(i64, Value)> = match &networks_m {
+                MaybeBad::Bad(_) => {
+                    return Err(networks_m.bad("networks").unwrap().into());
+                }
+                MaybeBad::List(items) => items
+                    .iter()
+                    .map(|n| Ok((req_int(n, "id")?, req_raw(n, "name")?.clone())))
+                    .collect::<Result<Vec<_>, PyConvError>>()?,
+            };
+            if !networks.is_empty() {
+                let rows: Vec<Vec<LBind>> = networks
+                    .iter()
+                    .map(|(id, name)| {
+                        Ok(vec![LBind::I64(*id), bind_text_req(name, "network.name")?])
+                    })
+                    .collect::<Result<Vec<_>, PyConvError>>()?;
+                executemany(&mut conn, &self.db.sql(UPSERT_NETWORK)?, &rows).await?;
+            }
+            let net_tbl = self.db.sql("{t_tmdb_tv_networks_map}")?;
+            let net_ids: Vec<i64> = networks.iter().map(|(id, _)| *id).collect();
+            sync_bridge(
+                &mut conn,
+                &net_tbl,
+                "tv_id",
+                media_id,
+                "network_id",
+                &net_ids
+                    .iter()
+                    .map(|i| serde_json::json!(i))
+                    .collect::<Vec<_>>(),
+                Some(&format!(
+                    "INSERT INTO {net_tbl} (tv_id, network_id) VALUES ($1, $2) ON CONFLICT DO NOTHING"
+                )),
+                &net_ids
+                    .iter()
+                    .map(|id| vec![LBind::I64(media_id), LBind::I64(*id)])
+                    .collect::<Vec<_>>(),
+            )
+            .await?;
         }
-        let net_tbl = self.db.sql("{t_tmdb_tv_networks_map}")?;
-        let net_ids: Vec<i64> = networks.iter().map(|(id, _)| *id).collect();
-        sync_bridge(
-            &mut conn,
-            &net_tbl,
-            "tv_id",
-            media_id,
-            "network_id",
-            &net_ids
-                .iter()
-                .map(|i| serde_json::json!(i))
-                .collect::<Vec<_>>(),
-            Some(&format!(
-                "INSERT INTO {net_tbl} (tv_id, network_id) VALUES ($1, $2) ON CONFLICT DO NOTHING"
-            )),
-            &net_ids
-                .iter()
-                .map(|id| vec![LBind::I64(media_id), LBind::I64(*id)])
-                .collect::<Vec<_>>(),
-        )
-        .await?;
 
         let cast_tbl = self.db.sql(if movie {
             "{t_tmdb_movie_cast}"
@@ -1312,7 +1528,12 @@ impl TmdbIngest {
                         LBind::I64(media_id),
                         LBind::I64(c.person_id),
                         LBind::Str(c.character.clone()),
-                        LBind::I32(c.cast_order),
+                        // INT4 range checked at the BIND (asyncpg
+                        // parity; the builder keeps the full int).
+                        bind_i32(
+                            &Some(Value::Number(serde_json::Number::from(c.cast_order))),
+                            "cast_order",
+                        )?,
                     ])
                 })
                 .collect::<Result<Vec<_>, PyConvError>>()?,
@@ -1386,7 +1607,9 @@ impl TmdbIngest {
     }
     /// `ingest_one` — fetch + gate + upsert one title with the exact
     /// stats accounting. True when ingested; every failure path just
-    /// counts `failed` and returns false (the Python catch-all).
+    /// counts `failed` and returns false (the Python catch-all — the
+    /// gate itself raising, e.g. `float("abc")` in should_ingest,
+    /// lands in `failed` exactly like Python's except).
     pub async fn ingest_one<F: TitleFetcher>(
         &self,
         fetcher: &mut F,
@@ -1397,7 +1620,18 @@ impl TmdbIngest {
     ) -> bool {
         self.bump(|s| s.attempted += 1);
         let payload = fetcher.fetch_title(media_id, medium).await;
-        if !should_ingest(payload.as_ref(), min_popularity, include_adult) {
+        let gate = should_ingest(payload.as_ref(), min_popularity, include_adult);
+        let allowed = match gate {
+            Ok(allowed) => allowed,
+            Err(e) => {
+                // Python: should_ingest raises inside the try → except
+                // → failed (review M-3).
+                self.bump(|s| s.failed += 1);
+                eprintln!("ingest {medium}/{media_id} failed: {e}");
+                return false;
+            }
+        };
+        if !allowed {
             let adult = payload
                 .as_ref()
                 .map(|p| is_truthy(p.get("adult").unwrap_or(&Value::Bool(false))))
@@ -1538,21 +1772,26 @@ mod tests {
 
     #[test]
     fn should_ingest_gate_matrix() {
+        let ok = |r: Result<bool, PyConvError>| r.unwrap();
         let movie = serde_json::json!({"id": 1, "adult": false, "popularity": 5.0});
-        assert!(should_ingest(Some(&movie), 0.0, false));
-        assert!(!should_ingest(Some(&movie), 10.0, false));
-        assert!(!should_ingest(None, 0.0, false));
+        assert!(ok(should_ingest(Some(&movie), 0.0, false)));
+        assert!(!ok(should_ingest(Some(&movie), 10.0, false)));
+        assert!(!ok(should_ingest(None, 0.0, false)));
         // success=false is identity-False in Python — the exact bool.
         let rejected = serde_json::json!({"success": false});
-        assert!(!should_ingest(Some(&rejected), 0.0, false));
+        assert!(!ok(should_ingest(Some(&rejected), 0.0, false)));
         // adult truthiness — a "false" STRING is truthy in Python.
         let adult_str = serde_json::json!({"id": 2, "adult": "false", "popularity": 1.0});
-        assert!(!should_ingest(Some(&adult_str), 0.0, false));
-        assert!(should_ingest(Some(&adult_str), 0.0, true));
+        assert!(!ok(should_ingest(Some(&adult_str), 0.0, false)));
+        assert!(ok(should_ingest(Some(&adult_str), 0.0, true)));
         // popularity as a numeric string goes through float().
         let pop_str = serde_json::json!({"id": 3, "popularity": "7.5"});
-        assert!(should_ingest(Some(&pop_str), 7.0, false));
-        assert!(!should_ingest(Some(&pop_str), 8.0, false));
+        assert!(ok(should_ingest(Some(&pop_str), 7.0, false)));
+        assert!(!ok(should_ingest(Some(&pop_str), 8.0, false)));
+        // An unconvertible popularity RAISES (float("abc")) — the
+        // caller counts the title failed, never filtered (M-3).
+        let pop_bad = serde_json::json!({"id": 4, "popularity": "abc"});
+        assert!(should_ingest(Some(&pop_bad), 0.0, false).is_err());
     }
 
     #[test]
@@ -1587,5 +1826,49 @@ mod tests {
                                               // tv shape: results via keywords.results is separate; recs absent → []
         let tv = serde_json::json!({"id": 5, "name": "X"});
         assert!(rec_rows_from_payload(&tv).unwrap().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod encoder_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// The asyncpg encoders (review M-1) — every branch also proven by
+    /// the live parity plan; these pin them offline.
+    #[test]
+    fn asyncpg_int_encoder_semantics() {
+        assert!(
+            ap_int(&json!("120"), "t").is_err(),
+            "strings are a DataError"
+        );
+        assert_eq!(ap_int(&json!(120.5), "t").unwrap(), 120, "float truncates");
+        assert_eq!(ap_int(&json!(-0.7), "t").unwrap(), 0, "toward zero");
+        assert_eq!(ap_int(&json!(true), "t").unwrap(), 1);
+        assert_eq!(ap_int(&json!(false), "t").unwrap(), 0);
+    }
+
+    #[test]
+    fn asyncpg_numeric_encoder_semantics() {
+        // bool → 0/1; strings parse as Decimal (arbitrary precision,
+        // whitespace/underscore/exponent forms); NaN/Infinity strings
+        // are the DOCUMENTED divergence — loud failure instead of
+        // numeric NaN/∞ storage; containers rejected.
+        assert!(bind_numeric(&Some(json!(true)), "v").is_ok());
+        assert!(bind_numeric(&Some(json!("1.1000000000000000000001")), "v").is_ok());
+        assert!(bind_numeric(&Some(json!(" 7.5 ")), "v").is_ok());
+        assert!(bind_numeric(&Some(json!("1_000")), "v").is_ok());
+        assert!(bind_numeric(&Some(json!("1e5")), "v").is_ok());
+        assert!(bind_numeric(&Some(json!("NaN")), "v").is_err());
+        assert!(bind_numeric(&Some(json!("-inf")), "v").is_err());
+        assert!(bind_numeric(&Some(json!([1])), "v").is_err());
+        // Exact string precision: the BigDecimal keeps all 23 digits
+        // (an f64 detour would not).
+        match bind_numeric(&Some(json!("1.1000000000000000000001")), "v") {
+            Ok(LBind::OptNumericBig(d)) => {
+                assert_eq!(d.to_string(), "1.1000000000000000000001")
+            }
+            other => panic!("expected exact BigDecimal, got {other:?}"),
+        }
     }
 }

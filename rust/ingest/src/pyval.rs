@@ -40,6 +40,9 @@ pub enum PyConvError {
     /// `ValueError` — right type, unconvertible value (bad literal,
     /// NaN→int, out-of-range for this port).
     Value(String),
+    /// `AttributeError` — a `.get` on a non-dict (truthy containers
+    /// where Python would raise before reaching the data).
+    Attr(String),
     /// `TypeError` — the value's type is not convertible at all
     /// (null/list/dict where a number was needed, non-subscriptable
     /// JSON). The ingest code NEVER swallows this class.
@@ -49,7 +52,10 @@ pub enum PyConvError {
 impl fmt::Display for PyConvError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PyConvError::Key(m) | PyConvError::Value(m) | PyConvError::Type(m) => f.write_str(m),
+            PyConvError::Key(m)
+            | PyConvError::Value(m)
+            | PyConvError::Type(m)
+            | PyConvError::Attr(m) => f.write_str(m),
         }
     }
 }

@@ -23,11 +23,16 @@ where deterministic).
 The corpus deliberately includes: a full movie with every table
 touched, the SAME id re-ingested with SHRUNK bridges (the mirror
 case), movie 155 + tv 155 together (ids collide across media), empty
-title (`or ""`), a string popularity (builds a row, fails at BIND in
-Python — pinned as a raw row value), a `success: false` rejection,
-adult gate, float-int ids, cast order ties, dropped cast/crew rows,
-keywords via both the movie and tv shapes, and a non-dict
-external_ids.
+title (`or ""`), a string popularity ("23.5" — builds a row and LANDS
+as numeric 23.5: asyncpg decodes str→Decimal), a `success: false`
+rejection, adult gate, float-int ids, cast order ties, dropped
+cast/crew rows, keywords via both the movie and tv shapes, a non-dict
+external_ids — plus the review-round-1 families: asyncpg-encoder
+cases (string runtime/genre-id rejected at the bind, bool
+vote_average stored as 1), gate errors (float("abc")), falsy
+belongs_to_collection, null genres, mid-batch conversion failures,
+INT4-busting cast order, float character repr, unhashable crew job
+and a non-dict recommendations container.
 
 Run from the repo root with the wt3 venv:
     .venv/bin/python rust/ingest/tests/fixtures/gen_loader_parity.py
@@ -220,6 +225,84 @@ CASES = [
             "crew": [],
         },
     }),
+    # ── review round 1: encoder/truthiness/order cases ──────────────
+    # M-1: asyncpg rejects STRING ints at the bind (int("120") would
+    # succeed at builder sites); bools bind as 0/1 for numeric.
+    ("movie-runtime-str", "movie", {
+        "id": 920, "title": "Runtime Str", "runtime": "120", "popularity": 2.0,
+    }),
+    ("movie-genre-id-str", "movie", {
+        "id": 921, "title": "Genre Id Str", "popularity": 2.0,
+        "genres": [{"id": "18", "name": "Drama"}],
+    }),
+    ("movie-voteavg-true", "movie", {
+        "id": 922, "title": "Voteavg True", "vote_average": True, "popularity": 2.0,
+    }),
+    # M-3: an unconvertible popularity RAISES in should_ingest
+    # (float("abc")) — failed, never silently filtered.
+    ("movie-pop-str-bad", "movie", {
+        "id": 923, "title": "Pop Abc", "popularity": "abc",
+    }),
+    # M-3: a FALSY belongs_to_collection reads as {} → None (ingests).
+    ("movie-collection-false", "movie", {
+        "id": 924, "title": "Collection False", "belongs_to_collection": False,
+        "popularity": 2.0,
+    }),
+    # M-3: genres PRESENT but null — iterating None is a TypeError
+    # (pinned live: fact row only, no people).
+    ("movie-genres-null", "movie", {
+        "id": 925, "title": "Genres Null", "genres": None, "popularity": 2.0,
+    }),
+    # M-2: keyword id present, name missing — conversion fails INSIDE
+    # the batch, after people+genres were written (pinned live).
+    ("movie-kw-midfail", "movie", {
+        "id": 926, "title": "Kw Midfail", "popularity": 2.0,
+        "genres": [{"id": 28, "name": "Action"}],
+        "credits": {"cast": [{"id": 61, "name": "Mid Lead", "character": "M", "order": 0}], "crew": []},
+        "keywords": {"keywords": [{"id": 5001}]},
+    }),
+    # M-2: company without id — same mid-batch failure point, one
+    # statement later.
+    ("movie-co-midfail", "movie", {
+        "id": 927, "title": "Co Midfail", "popularity": 2.0,
+        "genres": [{"id": 28, "name": "Action"}],
+        "credits": {"cast": [{"id": 61, "name": "Mid Lead", "character": "M", "order": 0}], "crew": []},
+        "keywords": {"keywords": [{"id": 5002, "name": "ok"}]},
+        "production_companies": [{"name": "NoId Co"}],
+    }),
+    # H-1: any movie 155 re-ingested AFTER the tv side — the tv
+    # networks of 155 must survive (pinned live with an explicit
+    # count assertion).
+    ("movie-155-again", "movie", {
+        "id": 155, "title": "The North Star", "popularity": 3.0,
+    }),
+    # M-2: a cast order beyond INT4 — int() succeeds at the builder
+    # (bignum), the INT4 bind fails AFTER the cast DELETE (live).
+    ("movie-order-huge", "movie", {
+        "id": 928, "title": "Order Huge", "popularity": 2.0,
+        "credits": {"cast": [
+            {"id": 71, "name": "Huge Order", "character": "H", "order": 3000000000},
+        ], "crew": []},
+    }),
+    # L-1: character as a float — Python str(5.0) is "5.0".
+    ("movie-character-float", "movie", {
+        "id": 929, "title": "Character Float", "popularity": 2.0,
+        "credits": {"cast": [
+            {"id": 72, "name": "Floaty", "character": 5.0, "order": 0},
+        ], "crew": []},
+    }),
+    # L-1: an UNHASHABLE job — Python's set membership raises
+    # TypeError (title fails); keep_crew records the error.
+    ("movie-crew-unhashable-job", "movie", {
+        "id": 930, "title": "Crew Unhashable", "popularity": 2.0,
+        "credits": {"cast": [], "crew": [{"id": 73, "job": ["Director"]}]},
+    }),
+    # L-1: a truthy non-dict recommendations — AttributeError in
+    # Python at the .get (title fails at the recs statement, live).
+    ("movie-recs-list", "movie", {
+        "id": 931, "title": "Recs List", "popularity": 2.0,
+        "recommendations": [1],
+    }),
 ]
 
 GATE_GRID = [(0.0, False), (20.0, False), (0.0, True), (10.0, True)]
@@ -239,6 +322,15 @@ def run_or_error(fn, *args):
     try:
         return {"ok": ser(fn(*args))}
     except Exception as e:  # noqa: BLE001 — record exactly what Python raises
+        return {"error": f"{type(e).__name__}: {e}"}
+
+
+def gate_result(payload, mp, ia):
+    """should_ingest may RAISE (float("abc")) — record the exact
+    class+message instead of a bool (review M-3)."""
+    try:
+        return L.should_ingest(payload, mp, ia)
+    except Exception as e:  # noqa: BLE001
         return {"error": f"{type(e).__name__}: {e}"}
 
 
@@ -264,7 +356,7 @@ def main():
             "recs": run_or_error(L.rec_rows_from_payload, payload),
             "complete": L.is_complete(payload),
             "gate": {
-                f"{mp}/{ia}": L.should_ingest(payload, mp, ia)
+                f"{mp}/{ia}": gate_result(payload, mp, ia)
                 for mp, ia in GATE_GRID
             },
         }

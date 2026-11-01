@@ -237,7 +237,7 @@ pub fn parse_line(line: &[u8]) -> Result<Option<ExportEntry>, ExportError> {
     };
     match entry_from_value(&obj) {
         Ok(entry) => Ok(Some(entry)),
-        Err(PyConvError::Key(_) | PyConvError::Value(_)) => Ok(None),
+        Err(PyConvError::Key(_) | PyConvError::Value(_) | PyConvError::Attr(_)) => Ok(None),
         Err(type_err @ PyConvError::Type(_)) => Err(ExportError::Conv(type_err)),
     }
 }

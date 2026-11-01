@@ -41,6 +41,7 @@ fn err_string(e: &PyConvError) -> String {
         PyConvError::Key(_) => "KeyError",
         PyConvError::Value(_) => "ValueError",
         PyConvError::Type(_) => "TypeError",
+        PyConvError::Attr(_) => "AttributeError",
     };
     format!("{class}: {e}")
 }
@@ -206,14 +207,32 @@ fn builders_match_python_row_for_row() {
                     parts[1].eq_ignore_ascii_case("true"), // Python's True/False
                 )
             };
-            assert_eq!(
-                should_ingest(Some(&payload), min_pop, include_adult),
-                want.as_bool().unwrap(),
-                "{name}.gate[{key}]"
-            );
+            match want {
+                Value::Bool(b) => assert_eq!(
+                    should_ingest(Some(&payload), min_pop, include_adult).unwrap(),
+                    *b,
+                    "{name}.gate[{key}]"
+                ),
+                // Python's should_ingest RAISED (e.g. float("abc")) —
+                // the error text is pinned.
+                Value::Object(o) => {
+                    let got = should_ingest(Some(&payload), min_pop, include_adult)
+                        .err()
+                        .unwrap_or_else(|| panic!("{name}.gate[{key}]: no error, Python raised"));
+                    assert_eq!(
+                        err_string(&got),
+                        o["error"].as_str().unwrap(),
+                        "{name}.gate[{key}] error text"
+                    );
+                }
+                other => panic!("{name}.gate[{key}]: malformed {other}"),
+            }
         }
         // A missing payload is always rejected.
-        assert!(!should_ingest(None, 0.0, false), "{name}: None payload");
+        assert!(
+            !should_ingest(None, 0.0, false).unwrap(),
+            "{name}: None payload"
+        );
     }
 }
 

@@ -512,6 +512,223 @@
      "crew": []
     }
    }
+  },
+  {
+   "name": "movie-runtime-str",
+   "medium": "movie",
+   "payload": {
+    "id": 920,
+    "title": "Runtime Str",
+    "runtime": "120",
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-genre-id-str",
+   "medium": "movie",
+   "payload": {
+    "id": 921,
+    "title": "Genre Id Str",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": "18",
+      "name": "Drama"
+     }
+    ]
+   }
+  },
+  {
+   "name": "movie-voteavg-true",
+   "medium": "movie",
+   "payload": {
+    "id": 922,
+    "title": "Voteavg True",
+    "vote_average": true,
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-pop-str-bad",
+   "medium": "movie",
+   "payload": {
+    "id": 923,
+    "title": "Pop Abc",
+    "popularity": "abc"
+   }
+  },
+  {
+   "name": "movie-collection-false",
+   "medium": "movie",
+   "payload": {
+    "id": 924,
+    "title": "Collection False",
+    "belongs_to_collection": false,
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-genres-null",
+   "medium": "movie",
+   "payload": {
+    "id": 925,
+    "title": "Genres Null",
+    "genres": null,
+    "popularity": 2.0
+   }
+  },
+  {
+   "name": "movie-kw-midfail",
+   "medium": "movie",
+   "payload": {
+    "id": 926,
+    "title": "Kw Midfail",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ],
+    "credits": {
+     "cast": [
+      {
+       "id": 61,
+       "name": "Mid Lead",
+       "character": "M",
+       "order": 0
+      }
+     ],
+     "crew": []
+    },
+    "keywords": {
+     "keywords": [
+      {
+       "id": 5001
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-co-midfail",
+   "medium": "movie",
+   "payload": {
+    "id": 927,
+    "title": "Co Midfail",
+    "popularity": 2.0,
+    "genres": [
+     {
+      "id": 28,
+      "name": "Action"
+     }
+    ],
+    "credits": {
+     "cast": [
+      {
+       "id": 61,
+       "name": "Mid Lead",
+       "character": "M",
+       "order": 0
+      }
+     ],
+     "crew": []
+    },
+    "keywords": {
+     "keywords": [
+      {
+       "id": 5002,
+       "name": "ok"
+      }
+     ]
+    },
+    "production_companies": [
+     {
+      "name": "NoId Co"
+     }
+    ]
+   }
+  },
+  {
+   "name": "movie-155-again",
+   "medium": "movie",
+   "payload": {
+    "id": 155,
+    "title": "The North Star",
+    "popularity": 3.0
+   }
+  },
+  {
+   "name": "movie-order-huge",
+   "medium": "movie",
+   "payload": {
+    "id": 928,
+    "title": "Order Huge",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 71,
+       "name": "Huge Order",
+       "character": "H",
+       "order": 3000000000
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-character-float",
+   "medium": "movie",
+   "payload": {
+    "id": 929,
+    "title": "Character Float",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [
+      {
+       "id": 72,
+       "name": "Floaty",
+       "character": 5.0,
+       "order": 0
+      }
+     ],
+     "crew": []
+    }
+   }
+  },
+  {
+   "name": "movie-crew-unhashable-job",
+   "medium": "movie",
+   "payload": {
+    "id": 930,
+    "title": "Crew Unhashable",
+    "popularity": 2.0,
+    "credits": {
+     "cast": [],
+     "crew": [
+      {
+       "id": 73,
+       "job": [
+        "Director"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "movie-recs-list",
+   "medium": "movie",
+   "payload": {
+    "id": 931,
+    "title": "Recs List",
+    "popularity": 2.0,
+    "recommendations": [
+     1
+    ]
+   }
   }
  ]
 }

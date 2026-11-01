@@ -2,7 +2,7 @@
 name = "cine-rec-ingest"
 version = "0.1.0"
 edition = "2021"
-description = "Rust port of cine-rec-engine's ingest lane (wave C: rate limiter, TMDB export parsing, table-name mapping - everything DB-free)"
+description = "Rust port of cine-rec-engine's ingest lane (waves C+D: rate limiter, export parsing, the full loader with live table-state parity, CLI skeleton)"
 license = "MIT"
 publish = false
 

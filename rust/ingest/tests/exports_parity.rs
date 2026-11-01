@@ -98,7 +98,7 @@ fn assert_error(got: ExportError, want: &Value) {
                 assert_eq!(m, message);
             }
         }
-        ExportError::Conv(PyConvError::Value(_)) => {
+        ExportError::Conv(PyConvError::Value(_) | PyConvError::Attr(_)) => {
             assert!(
                 matches!(
                     class,

@@ -60,7 +60,7 @@ fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
-struct OnePayload(Value);
+struct OnePayload(Option<Value>);
 
 impl TitleFetcher for OnePayload {
     fn fetch_title(
@@ -69,7 +69,7 @@ impl TitleFetcher for OnePayload {
         _medium: &str,
     ) -> impl std::future::Future<Output = Option<Value>> + Send {
         let payload = self.0.clone();
-        async move { Some(payload) }
+        async move { payload }
     }
 }
 
@@ -163,18 +163,23 @@ async fn loader_table_state_matches_python_live() {
         let medium = step["medium"].as_str().unwrap();
         let min_pop = step["min_popularity"].as_f64().unwrap();
         let include_adult = step["include_adult"].as_bool().unwrap();
+        let fetch_none = step["fetch_none"].as_bool().unwrap_or(false);
         let payload = fixtures["payloads"]
             .as_array()
             .unwrap()
             .iter()
             .find(|c| c["name"] == name)
-            .unwrap_or_else(|| panic!("payload {name} missing"))["payload"]
-            .clone();
+            // fetch_none steps are synthetic — no payload needed.
+            .map(|c| c["payload"].clone())
+            .unwrap_or_else(|| {
+                assert!(fetch_none, "payload {name} missing and not fetch_none");
+                Value::Null
+            });
         let media_id = payload
             .get("id")
             .and_then(|v| cine_rec_ingest::pyval::py_int(v).ok())
             .unwrap_or(0);
-        let mut fetcher = OnePayload(payload);
+        let mut fetcher = OnePayload(if fetch_none { None } else { Some(payload) });
         ingest
             .ingest_one(&mut fetcher, media_id, medium, min_pop, include_adult)
             .await;
@@ -209,6 +214,26 @@ async fn loader_table_state_matches_python_live() {
         .connect(&dsn)
         .await
         .unwrap();
+
+    // H-1 INVARIANT pin (the EXCEPT alone cannot catch a bug BOTH
+    // sides share): the plan ingests movie 155 AFTER tv 155 — the
+    // series' networks must STILL be there afterwards. Pre-fix, both
+    // sides deleted them (identical, silently wrong).
+    for schema in ["pyload", "rsload"] {
+        let n: i64 = sqlx::query(&format!(
+            "SELECT count(*)::bigint FROM {schema}.tmdb_tv_networks_map WHERE tv_id = 155"
+        ))
+        .fetch_one(&cmp_pool)
+        .await
+        .unwrap()
+        .try_get(0)
+        .unwrap();
+        assert_eq!(
+            n, 2,
+            "{schema}: tv 155 networks must survive movie 155 (H-1)"
+        );
+    }
+
     let mut non_empty_seen = 0;
     for (table, cols) in COMPARE {
         let sql = format!(
@@ -235,10 +260,39 @@ async fn loader_table_state_matches_python_live() {
             non_empty_seen += 1;
         }
     }
-    cmp_pool.close().await;
     // The plan must have produced a real catalog, not an empty one.
+    // The specific list matters more than a raw count: movie-155-again
+    // legitimately EMPTIES movie-side bridges by mirroring (its
+    // minimal payload deletes 155's cast/crew/keywords — correct on
+    // both sides), so the count alone would be brittle.
     assert!(
-        non_empty_seen >= 18,
+        non_empty_seen >= 15,
         "only {non_empty_seen} non-empty tables — empty measurement"
     );
+    for must in [
+        "tmdb_movies",
+        "tmdb_tv",
+        "tmdb_people",
+        "tmdb_keywords",
+        "tmdb_production_companies",
+        "tmdb_networks",
+        "tmdb_recommendations",
+        "tmdb_tv_cast",
+        "tmdb_tv_crew",
+        "tmdb_tv_genres",
+        "tmdb_tv_genres_map",
+        "tmdb_tv_networks_map",
+    ] {
+        let n: i64 = sqlx::query(&format!(
+            "SELECT (SELECT count(*) FROM pyload.{must}) + \
+             (SELECT count(*) FROM rsload.{must})"
+        ))
+        .fetch_one(&cmp_pool)
+        .await
+        .unwrap()
+        .try_get(0)
+        .unwrap();
+        assert!(n > 0, "{must} is empty on both sides — empty measurement");
+    }
+    cmp_pool.close().await;
 }

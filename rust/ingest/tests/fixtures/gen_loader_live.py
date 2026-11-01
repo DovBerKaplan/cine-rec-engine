@@ -35,26 +35,46 @@ sys.path.insert(0, str(ROOT))
 
 import ingest.loader as L  # noqa: E402
 
-# (case name, medium, min_popularity, include_adult) — the exact
-# sequence the Rust side replays. movie-adult runs twice: once for the
-# adult gate, once for the popularity gate.
+# (case name, medium, min_popularity, include_adult, fetch_none) —
+# the exact sequence the Rust side replays. Notes on accounting:
+# * movie-adult (5.0, True): Python's ingest_one checks
+#   `payload.get("adult")` FIRST, so an adult title rejected on
+#   popularity still counts filtered_ADULT.
+# * movie-pop-str ("23.5") INGESTS — asyncpg decodes str→Decimal for
+#   numeric (never was a bind failure).
+# * fetch_none steps simulate a fetch error (the patched fetch
+#   returns None / Rust returns None) → failed (review L-5).
 PLAN = [
-    ("movie-full", "movie", 0.0, False),
-    ("movie-shrink", "movie", 0.0, False),   # mirror: shrunk bridges
-    ("tv-full", "tv", 0.0, False),           # id 155 again, tv side
-    ("movie-minimal", "movie", 0.0, False),
-    ("movie-adult", "movie", 0.0, False),    # → filtered_adult
-    ("movie-adult", "movie", 5.0, True),     # → filtered_popularity
-    ("movie-int-votes", "movie", 0.0, False),
-    ("movie-recs-empty", "movie", 0.0, False),
-    ("tv-external-str", "tv", 0.0, False),
-    ("movie-pop-str", "movie", 0.0, False),  # bind failure → failed
-    ("movie-success-false", "movie", 0.0, False),  # gate rejection
-    ("movie-float-id", "movie", 0.0, False),
-    ("movie-bad-date", "movie", 0.0, False),     # builder ValueError
-    ("movie-missing-id", "movie", 0.0, False),   # KeyError
-    ("movie-rec-missing-id", "movie", 0.0, False),  # partial state
-    ("movie-credited-noid", "movie", 0.0, False),   # people names KeyError
+    ("movie-full", "movie", 0.0, False, False),
+    ("movie-shrink", "movie", 0.0, False, False),   # mirror: shrunk bridges
+    ("tv-full", "tv", 0.0, False, False),           # id 155 again, tv side
+    ("movie-155-again", "movie", 0.0, False, False),  # H-1: tv networks must survive
+    ("movie-minimal", "movie", 0.0, False, False),
+    ("movie-adult", "movie", 0.0, False, False),    # → filtered_adult
+    ("movie-adult", "movie", 5.0, True, False),     # → filtered_adult (adult checked first)
+    ("movie-int-votes", "movie", 0.0, False, False),
+    ("movie-recs-empty", "movie", 0.0, False, False),
+    ("tv-external-str", "tv", 0.0, False, False),
+    ("movie-pop-str", "movie", 0.0, False, False),  # INGESTS: str→Decimal numeric
+    ("movie-success-false", "movie", 0.0, False, False),  # gate rejection
+    ("movie-float-id", "movie", 0.0, False, False),
+    ("movie-bad-date", "movie", 0.0, False, False),     # builder ValueError
+    ("movie-missing-id", "movie", 0.0, False, False),   # KeyError
+    ("movie-rec-missing-id", "movie", 0.0, False, False),  # partial state
+    ("movie-credited-noid", "movie", 0.0, False, False),  # people names KeyError
+    # ── review round 1 ────────────────────────────────────────────
+    ("movie-runtime-str", "movie", 0.0, False, False),   # M-1: str int → bind DataError
+    ("movie-genre-id-str", "movie", 0.0, False, False),  # M-1: same, at the genres dim
+    ("movie-voteavg-true", "movie", 0.0, False, False),  # M-1: bool numeric → 1, ingests
+    ("movie-pop-str-bad", "movie", 0.0, False, False),   # M-3: float("abc") → failed
+    ("movie-collection-false", "movie", 0.0, False, False),  # M-3: ingests, collection NULL
+    ("movie-genres-null", "movie", 0.0, False, False),   # M-3: TypeError → fact row only
+    ("movie-kw-midfail", "movie", 0.0, False, False),    # M-2: fails after people+genres
+    ("movie-co-midfail", "movie", 0.0, False, False),    # M-2: fails after keywords
+    ("movie-order-huge", "movie", 0.0, False, False),    # M-2: INT4 bind after cast DELETE
+    ("movie-crew-unhashable-job", "movie", 0.0, False, False),  # L-1: TypeError in keep_crew
+    ("movie-recs-list", "movie", 0.0, False, False),     # L-1: AttributeError at recs
+    ("movie-fetch-error", "movie", 0.0, False, True),    # L-5: fetch → None → failed
 ]
 
 SCHEMA = "pyload"
@@ -99,15 +119,26 @@ async def main():
         async def _return_payload(payload):
             return payload
 
-        for name, medium, min_pop, include_adult in PLAN:
-            payload = payloads[name]["payload"]
-            # Per-case patched fetch: no HTTP, no retry — the payload
-            # itself is exactly what the fixture holds.
-            ingest._fetch_title = (
-                lambda session, mid, m, _p=payload: _return_payload(_p)
-            )
+        for name, medium, min_pop, include_adult, fetch_none in PLAN:
+            # fetch_none steps are synthetic — no payload needed.
+            payload = payloads.get(name, {}).get("payload")
+            # Per-case patched fetch: no HTTP, no retry (the patch
+            # therefore also bypasses the semaphore/limiter and the
+            # "error" in data → None conversion — the fetch-error path
+            # itself is exercised by the fetch_none steps, which patch
+            # the fetch to return None like a failed fetch would).
+            if fetch_none:
+                async def _no_payload():
+                    return None
+                ingest._fetch_title = (
+                    lambda session, mid, m: _no_payload()
+                )
+            else:
+                ingest._fetch_title = (
+                    lambda session, mid, m, _p=payload: _return_payload(_p)
+                )
             await ingest.ingest_one(
-                None, payload.get("id", 0), medium,
+                None, (payload or {}).get("id", 0), medium,
                 min_popularity=min_pop, include_adult=include_adult,
             )
     finally:
@@ -124,8 +155,14 @@ async def main():
     out = {
         "schema": SCHEMA,
         "plan": [
-            {"name": n, "medium": m, "min_popularity": mp, "include_adult": ia}
-            for n, m, mp, ia in PLAN
+            {
+                "name": n,
+                "medium": m,
+                "min_popularity": mp,
+                "include_adult": ia,
+                "fetch_none": fn,
+            }
+            for n, m, mp, ia, fn in PLAN
         ],
         "stats": stats,
     }

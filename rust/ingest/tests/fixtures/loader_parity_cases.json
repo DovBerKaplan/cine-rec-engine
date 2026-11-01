@@ -774,6 +774,584 @@
     "0.0/True": true,
     "10.0/True": false
    }
+  },
+  {
+   "name": "movie-runtime-str",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     920,
+     "Runtime Str",
+     null,
+     null,
+     null,
+     null,
+     "120",
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-genre-id-str",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     921,
+     "Genre Id Str",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-voteavg-true",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     922,
+     "Voteavg True",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     true,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-pop-str-bad",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     923,
+     "Pop Abc",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     "abc",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": {
+     "error": "ValueError: could not convert string to float: 'abc'"
+    },
+    "20.0/False": {
+     "error": "ValueError: could not convert string to float: 'abc'"
+    },
+    "0.0/True": {
+     "error": "ValueError: could not convert string to float: 'abc'"
+    },
+    "10.0/True": {
+     "error": "ValueError: could not convert string to float: 'abc'"
+    }
+   }
+  },
+  {
+   "name": "movie-collection-false",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     924,
+     "Collection False",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-genres-null",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     925,
+     "Genres Null",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-kw-midfail",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     926,
+     "Kw Midfail",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": [
+     [
+      61,
+      "M",
+      0
+     ]
+    ]
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-co-midfail",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     927,
+     "Co Midfail",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": [
+     [
+      61,
+      "M",
+      0
+     ]
+    ]
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-155-again",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     155,
+     "The North Star",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     3.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-order-huge",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     928,
+     "Order Huge",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": [
+     [
+      71,
+      "H",
+      3000000000
+     ]
+    ]
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-character-float",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     929,
+     "Character Float",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": [
+     [
+      72,
+      "5.0",
+      0
+     ]
+    ]
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-crew-unhashable-job",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     930,
+     "Crew Unhashable",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "error": "TypeError: unhashable type: 'list'"
+   },
+   "recs": {
+    "ok": []
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
+  },
+  {
+   "name": "movie-recs-list",
+   "medium": "movie",
+   "movie_row": {
+    "ok": [
+     931,
+     "Recs List",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     false,
+     null,
+     null,
+     2.0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "cast": {
+    "ok": []
+   },
+   "crew": {
+    "ok": []
+   },
+   "recs": {
+    "error": "AttributeError: 'list' object has no attribute 'get'"
+   },
+   "complete": false,
+   "gate": {
+    "0.0/False": true,
+    "20.0/False": false,
+    "0.0/True": true,
+    "10.0/True": false
+   }
   }
  ]
 }
