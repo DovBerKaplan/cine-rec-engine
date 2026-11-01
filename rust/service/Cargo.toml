@@ -21,4 +21,3 @@ cine-rec-scoring = { path = "../scoring" }
 
 [lib]
 name = "cine_rec_service"
-pgvector = { version = "=0.4.1", default-features = false, features = ["sqlx"] }
