@@ -12,6 +12,16 @@
 //! `set_table_map()` for tests; here the map is a VALUE, cloned into
 //! whoever needs it ([`std::sync::Arc`] in the executor), so tests
 //! construct maps explicitly and nothing global mutates.
+//!
+//! DEVIATION (decided, s3 follow-up א → session 1): the ERROR TEXTS
+//! intentionally differ from `tables.py` (Rust `{:?}` formatting, no
+//! valid-key list, a different `name()` message). The texts serve
+//! different consumers — Python's reach `cine-rec init/check` CLI
+//! users, these reach Rust callers and tests — so mirroring CPython's
+//! `repr` wording buys nothing. The PARITY SURFACE is behavior, and
+//! that is aligned and test-pinned: unknown logical key fails loudly,
+//! blank/empty physical names rejected, env override beats file,
+//! `{t_<logical>}` resolution grammar identical.
 
 use std::collections::{BTreeMap, HashSet};
 use std::fmt;

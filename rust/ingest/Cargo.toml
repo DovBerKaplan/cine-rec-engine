@@ -25,10 +25,12 @@ flate2 = "1"
 # sleep, so concurrent acquirers queue behind the sleeping one.
 tokio = { version = "1", features = ["sync", "time", "macros", "rt"] }
 # sqlx is used directly for the loader statements (the Db pool is
-# public); feature set mirrors the db crate + chrono for DATE binds
+# public); feature set mirrors the db crate + chrono for DATE binds.
+# Pinned EXACTLY like the db crate: 0.9 needs rustc 1.94 and live
+# parity is verified against 0.8.6
 # (asyncpg binds date objects; SQL stays verbatim, so the params must
 # be real dates).
-sqlx = { version = "0.8", default-features = false, features = [
+sqlx = { version = "=0.8.6", default-features = false, features = [
     "runtime-tokio",
     "postgres",
     "json",

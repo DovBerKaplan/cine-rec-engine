@@ -225,6 +225,81 @@ class TestBridgeMirroring:
         assert gmap_table(False) == "tmdb_tv_genres_map"
 
 
+class TestNetworksBridgeIsTvOnly:
+    """Session-2 L-2: pin the H-1 source fix without a DB.
+
+    Movie ingest used to mirror the networks bridge with an EMPTY
+    list — a plain DELETE BY id that wiped a colliding series'
+    networks (movie 155 != tv 155, AGENTS.md invariant 4). The fix
+    makes the mirroring tv-only BY MEDIUM, so even a movie payload
+    that CARRIES networks (TMDB attaches them to movie responses
+    too) must not touch either networks table. The Rust live test
+    pins the same behavior end-to-end; this is the no-DB lock.
+    """
+
+    def _make(self):
+        from ingest.loader import TmdbIngest
+
+        class Conn:
+            def __init__(self):
+                self.executed = []
+
+            async def execute(self, sql, *args):
+                self.executed.append((sql, args))
+                return "UPDATE 1"
+
+            async def executemany(self, sql, rows):
+                self.executed.append((sql, rows))
+                return "UPDATE 1"
+
+        conn = Conn()
+
+        class Pool:
+            async def execute(self, sql, *args):
+                return await conn.execute(sql, *args)
+
+            def acquire(self):
+                class _CM:
+                    async def __aenter__(self):
+                        return conn
+
+                    async def __aexit__(self, *exc):
+                        return False
+
+                return _CM()
+
+        return TmdbIngest(Pool(), api_key="dummy-key"), conn
+
+    async def test_movie_never_touches_networks_tables(self):
+        ing, conn = self._make()
+        await ing._upsert_title(
+            {"id": 155, "title": "The Pumpkin Eater",
+             "networks": [{"id": 2130, "name": "Netflix"}]},  # carried!
+            "movie",
+        )
+        touched = [sql for sql, _ in conn.executed
+                   if "tmdb_networks" in sql or "tmdb_tv_networks_map" in sql]
+        assert not touched, (
+            "movie ingest must not mirror (let alone wipe) networks: "
+            f"{touched}"
+        )
+
+    async def test_tv_mirrors_its_networks(self):
+        ing, conn = self._make()
+        await ing._upsert_title(
+            {"id": 155, "name": "Fauda",
+             "networks": [{"id": 2130, "name": "Netflix"}]},
+            "tv",
+        )
+        dim = [sql for sql, _ in conn.executed
+               if "INSERT INTO tmdb_networks " in sql
+               or "INSERT INTO tmdb_networks(" in sql]
+        bridge = [sql for sql, _ in conn.executed
+                  if "tmdb_tv_networks_map" in sql]
+        assert dim, "tv path upserts the networks dimension table"
+        assert bridge, "tv path mirrors the networks bridge"
+
+
 class TestDateCoercion:
     def test_iso_string_becomes_date(self):
         from datetime import date as d
