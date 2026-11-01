@@ -18,7 +18,12 @@ pub struct ScoredItem {
     pub tmdb_id: i64,
     pub media_type: String,
     pub score: f64,
+    pub title: String,
+    pub title_en: Option<String>,
+    pub rating: f64,
+    pub poster_path: Option<String>,
     pub collection_id: Option<i64>,
+    pub release_year: Option<i64>,
     pub director_ids: Vec<i64>,
     pub genres: Vec<String>,
 }
@@ -430,6 +435,37 @@ mod tests {
         assert_eq!(knn.get(&2).map(|m| m.get(&12)), Some(Some(&0.5)));
     }
 
+
+    #[test]
+    fn dedup_same_story_matches_python() {
+        // rows verified against cine_rec_engine.find_similar on the
+        // exact inputs: saga keeps the EARLIEST year (2), remakes keep
+        // top-scored (3 — the stripped/lowered key collides with 4),
+        // collection_id 0 is falsy (5 keys alone)
+        let it = |id: i64, score: f64, coll: Option<i64>, year: Option<i64>,
+                  title: &str, title_en: Option<&str>| ScoredItem {
+            tmdb_id: id,
+            score,
+            collection_id: coll,
+            release_year: year,
+            title: title.to_string(),
+            title_en: title_en.map(String::from),
+            ..Default::default()
+        };
+        let rows = vec![
+            it(1, 9.0, Some(10), Some(2023), "Wick 4", None),
+            it(2, 8.9, Some(10), Some(2014), "John Wick", None),
+            it(3, 8.5, None, None, "Dune", Some("  DUNE! ")),
+            it(4, 8.4, None, None, "dune", None),
+            it(5, 0.0, Some(0), None, "X", None),
+        ];
+        let out = dedup_same_story(rows);
+        assert_eq!(
+            out.iter().map(|r| r.tmdb_id).collect::<Vec<_>>(),
+            vec![2, 3, 5]
+        );
+    }
+
     #[test]
     fn pair_similarity_truthiness() {
         // collection id 0 is FALSY in Python — never a saga match
@@ -806,4 +842,383 @@ pub async fn enrich_pool(
         .map(|c| c.media_type.clone().unwrap_or_default())
         .collect();
     enrich_candidates_batch(db, &ids, Some(&media)).await
+}
+
+
+// ---------------------------------------------------------------------------
+// Scoring loop (steps 5b–8): profiles, pairs, dedup, decays, MMR
+// ---------------------------------------------------------------------------
+
+use cine_rec_scoring::real::{entity_profile, score_pair_fast};
+use cine_rec_scoring::types::{CastKey, Entity};
+
+/// The two weight lists the loop needs, supplied by the caller (the
+/// bridge reads them off the service module; the harness freezes them
+/// in the fixture): `active` = ACTIVE weights (28, feature order),
+/// `heuristic27` = HEURISTIC_WEIGHTS_LIST — the module global driving
+/// the residual/heuristic terms (NOT the active list).
+#[derive(Debug, Clone)]
+pub struct WeightLists {
+    pub active: Vec<f64>,
+    pub heuristic27: Vec<f64>,
+}
+
+/// Python `round(x, 3)` — decimal banker's rounding via the scaled
+/// integer (CPython uses correctly-rounded dtoa; scaled-bankers matches
+/// it except on exact half-ulp boundaries of the scaled value, which
+/// the parity compare will surface if they ever occur).
+fn py_round3(x: f64) -> f64 {
+    let scaled = x * 1000.0;
+    // guard the .5 boundary detection against float fuzz exactly like
+    // py_round does on the integer side
+    py_round(scaled) as f64 / 1000.0
+}
+
+/// CPython ≥3.12 `sum()` — Neumaier fold (the phase-2 rule: EVERY
+/// ported float sum folds compensated).
+fn py_sum(items: impl Iterator<Item = f64>) -> f64 {
+    let mut sum = 0.0;
+    let mut c = 0.0;
+    for x in items {
+        let t = sum + x;
+        if sum.abs() >= x.abs() {
+            c += (sum - t) + x;
+        } else {
+            c += (x - t) + sum;
+        }
+        sum = t;
+    }
+    if c != 0.0 {
+        sum += c;
+    }
+    sum
+}
+
+fn seed_entity(s: &SeedInfo) -> Entity {
+    Entity {
+        id: s.id,
+        media_type: s.media_type.clone(),
+        title: Some(s.title.clone()),
+        title_en: s.title_en.clone(),
+        genres: s.genres.clone(),
+        keywords: s.keywords.clone(),
+        cast_ids: s.cast_ids.clone(),
+        cast_list: s.cast_list.iter().map(|n| CastKey::Name(n.clone())).collect(),
+        director_ids: s.director_ids.clone(),
+        writer_ids: s.writer_ids.clone(),
+        composer_ids: s.composer_ids.clone(),
+        dp_ids: s.dp_ids.clone(),
+        companies: s.companies.clone(),
+        networks: s.networks.clone(),
+        original_language: s.original_language.clone(),
+        overview: Some(s.overview.clone()),
+        overview_en: s.overview_en.clone(),
+        release_year: s.release_year,
+        vote_average: Some(s.rating),
+        vote_count: None, // seed infos carry no vote count (query shape)
+        collection_id: s.collection_id,
+        adult: false,
+        via: None,
+        tmdb_rank: None,
+        narrative: s.narrative.clone(),
+        pacing: s.pacing.clone(),
+        emotional_arc: Some(s.emotional_arc.clone()),
+        director: s.director.clone(),
+    }
+}
+
+fn cand_entity(c: &CandidateRow) -> Entity {
+    Entity {
+        id: c.id,
+        media_type: c.media_type.clone().unwrap_or_default(),
+        title: c.title.clone(),
+        title_en: c.title_en.clone(),
+        genres: c.genres.clone(),
+        overview: c.overview.clone(),
+        overview_en: c.overview_en.clone(),
+        vote_average: c.vote_average,
+        vote_count: c.vote_count,
+        collection_id: c.collection_id,
+        release_year: c.release_year,
+        via: c.via.clone(),
+        tmdb_rank: c.tmdb_rank,
+        ..Default::default()
+    }
+}
+
+fn enrichment_entity(e: &Enrichment) -> Entity {
+    Entity {
+        director: e.director.clone(),
+        director_ids: e.director_ids.clone(),
+        writer_ids: e.writer_ids.clone(),
+        composer_ids: e.composer_ids.clone(),
+        dp_ids: e.dp_ids.clone(),
+        cast_list: e.cast_list.iter().map(|n| CastKey::Name(n.clone())).collect(),
+        cast_ids: e.cast_ids.clone(),
+        keywords: e.keywords.clone(),
+        companies: e.companies.clone(),
+        networks: e.networks.clone(),
+        collection_id: e.collection_id,
+        original_language: e.original_language.clone(),
+        narrative: e.narrative.clone(),
+        pacing: e.pacing.clone(),
+        emotional_arc: Some(e.emotional_arc.clone()),
+        ..Default::default()
+    }
+}
+
+/// Steps 6–8: score every candidate against every seed (weighted 1/w
+/// average), one slot per story, auteur decays, MMR, round to 3
+/// decimals. The auteur factors/`genre_mismatch` are inputs (config
+/// values, defaulted by the caller to the deployment constants).
+#[derive(Debug, Clone)]
+pub struct DecayConfig {
+    pub auteur_factors: Vec<f64>,      // AUTEUR_DECAY_FACTORS
+    pub genre_mismatch_factor: f64,    // GENRE_MISMATCH_AUTEUR_FACTOR
+    pub mmr_enabled: bool,             // MMR_ENABLED
+    pub mmr_lambda: f64,               // MMR_LAMBDA
+}
+
+impl Default for DecayConfig {
+    fn default() -> Self {
+        DecayConfig {
+            auteur_factors: vec![1.0, 1.0, 1.0],
+            genre_mismatch_factor: 0.5,
+            mmr_enabled: true,
+            mmr_lambda: 0.8,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ScoreOutcome {
+    pub results: Vec<ScoredItem>,
+    /// per-candidate per-seed raw scores (cache/re-weight payload)
+    pub raw_per_seed: HashMap<i64, HashMap<i64, f64>>,
+    pub movie_ratio: f64,
+}
+
+#[allow(clippy::too_many_arguments)] // the pipeline stage genuinely carries this many inputs
+pub fn score_candidates(
+    seed_infos: &[SeedInfo],
+    candidates: &[CandidateRow],
+    enriched: &HashMap<i64, Enrichment>,
+    seed_sims: &HashMap<i64, HashMap<i64, f64>>,
+    seed_weights: Option<&HashMap<i64, f64>>,
+    weights: &WeightLists,
+    decay: &DecayConfig,
+    limit: Option<usize>,
+) -> ScoreOutcome {
+    let movie_count = seed_infos
+        .iter()
+        .filter(|s| s.media_type == "movie")
+        .count();
+    let movie_ratio = if seed_infos.is_empty() {
+        1.0
+    } else {
+        movie_count as f64 / seed_infos.len() as f64
+    };
+
+    let seed_ids: Vec<i64> = seed_infos.iter().map(|s| s.id).collect();
+    let inf_w = build_seed_weights(&seed_ids, seed_weights);
+    let total_weight = py_sum(inf_w.iter().copied());
+
+    // per-entity profiles built ONCE (not once per pair)
+    let seed_ents: Vec<Entity> = seed_infos.iter().map(seed_entity).collect();
+    let seed_profiles: Vec<_> = seed_ents
+        .iter()
+        .map(|e| entity_profile(e, None, None))
+        .collect();
+    let empty_enrichment = Enrichment::default();
+
+    let mut raw_per_seed: HashMap<i64, HashMap<i64, f64>> = HashMap::new();
+    let mut results: Vec<ScoredItem> = Vec::new();
+    let empty_sims: HashMap<i64, f64> = HashMap::new();
+
+    for cand in candidates {
+        let cid = cand.id;
+        let data = enriched.get(&cid).unwrap_or(&empty_enrichment);
+        let data_ent = enrichment_entity(data);
+        let cand_ent = cand_entity(cand);
+        let cand_genres: Vec<String> = cand.genres.clone();
+        let cp = entity_profile(&cand_ent, Some(&data_ent), Some(&cand_genres));
+        let cand_genres_set: Option<HashSet<String>> = if cand_genres.is_empty() {
+            None
+        } else {
+            Some(cand_genres.iter().cloned().collect())
+        };
+
+        let mut seed_score_map: HashMap<i64, f64> = HashMap::new();
+        let mut weighted_scores: Vec<f64> = Vec::new();
+        for (i, seed) in seed_infos.iter().enumerate() {
+            let overview_sim = seed_sims
+                .get(&seed.id)
+                .unwrap_or(&empty_sims)
+                .get(&cid)
+                .copied()
+                .unwrap_or(0.0);
+            let score = score_pair_fast(
+                &seed_profiles[i],
+                &cp,
+                data.director.as_deref(),
+                cand_genres_set.as_ref(),
+                overview_sim,
+                &weights.active,
+                &weights.heuristic27,
+            );
+            if score > 0.0 {
+                seed_score_map.insert(seed.id, score);
+                weighted_scores.push(score * inf_w[i]);
+            }
+        }
+        if weighted_scores.is_empty() {
+            continue;
+        }
+        // display guard: no renderable title → no slot
+        let title_ok = cand
+            .title_en
+            .as_deref()
+            .is_some_and(|t| !t.trim().is_empty())
+            || cand.title.as_deref().is_some_and(|t| !t.trim().is_empty());
+        if !title_ok {
+            continue;
+        }
+
+        let avg_score = if total_weight > 0.0 {
+            py_sum(weighted_scores.into_iter()) / total_weight
+        } else {
+            0.0
+        };
+        raw_per_seed.insert(cid, seed_score_map);
+        results.push(ScoredItem {
+            tmdb_id: cid,
+            score: avg_score,
+            title: cand.title.clone().unwrap_or_default(),
+            title_en: cand.title_en.clone(),
+            media_type: cand.media_type.clone().unwrap_or_else(|| "movie".into()),
+            rating: cand.vote_average.unwrap_or(0.0),
+            poster_path: cand.poster_path.clone(),
+            collection_id: cand.collection_id,
+            release_year: cand.release_year,
+            director_ids: data.director_ids.clone(),
+            genres: cand_genres,
+        });
+    }
+
+    // 7. sort by score desc (stable), one representative per story
+    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results = dedup_same_story(results);
+
+    // 7b. auteur decay — geometric per over-represented seed director
+    let seed_director_ids: HashSet<i64> =
+        seed_infos.iter().flat_map(|s| s.director_ids.clone()).collect();
+    if !seed_director_ids.is_empty() && decay.auteur_factors.len() > 1 {
+        let mut per_director_seen: HashMap<i64, i64> = HashMap::new();
+        for r in &mut results {
+            let shared: Vec<i64> = r
+                .director_ids
+                .iter()
+                .copied()
+                .filter(|p| seed_director_ids.contains(p))
+                .collect();
+            if shared.is_empty() {
+                continue;
+            }
+            let occurrence = shared
+                .iter()
+                .map(|p| per_director_seen.get(p).copied().unwrap_or(0) + 1)
+                .max()
+                .unwrap_or(1);
+            for p in &shared {
+                *per_director_seen.entry(*p).or_insert(0) += 1;
+            }
+            let idx = occurrence.min(decay.auteur_factors.len() as i64) as usize - 1;
+            r.score *= decay.auteur_factors[idx];
+        }
+        results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    }
+
+    // 7c. genre-conditional auteur decay — auteur brand with zero
+    // thematic bridge to the seed's genre world
+    if !seed_director_ids.is_empty() {
+        let seed_genre_set: HashSet<String> = seed_infos
+            .iter()
+            .flat_map(|s| canonical_genres(&s.genres))
+            .collect();
+        for r in &mut results {
+            let shared = r
+                .director_ids
+                .iter()
+                .any(|p| seed_director_ids.contains(p));
+            if !shared {
+                continue;
+            }
+            let cand_genre_set = canonical_genres(&r.genres);
+            if seed_genre_set.is_disjoint(&cand_genre_set) {
+                r.score *= decay.genre_mismatch_factor;
+            }
+        }
+        results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    }
+
+    // 7d. MMR — THE diversifier, right before the limit
+    if let Some(limit) = limit {
+        if decay.mmr_enabled && decay.mmr_lambda < 1.0 && results.len() > limit {
+            results = mmr_order(&results, decay.mmr_lambda, limit);
+        }
+    }
+
+    // 8. round for display
+    for r in &mut results {
+        r.score = py_round3(r.score);
+    }
+    ScoreOutcome { results, raw_per_seed, movie_ratio }
+}
+
+/// `_story_key` — collection sagas by id, remakes by alphanumeric
+/// title (both title fields stripped/lowercased, non-alnum dropped).
+fn story_key(item: &ScoredItem) -> String {
+    match item.collection_id {
+        Some(coll) if coll != 0 => format!("coll:{coll}"),
+        _ => {
+            let t = item
+                .title_en
+                .as_deref()
+                .unwrap_or(&item.title)
+                .trim()
+                .to_lowercase();
+            let alnum: String =
+                t.chars().filter(|ch| ch.is_ascii_alphanumeric() || !ch.is_ascii()).collect();
+            format!("t:{alnum}")
+        }
+    }
+}
+
+/// `_dedup_same_story` — sagas keep their EARLIEST member (lowest
+/// release year), same-title remakes keep the top-scored version.
+pub fn dedup_same_story(items: Vec<ScoredItem>) -> Vec<ScoredItem> {
+    let mut sorted = items;
+    sorted.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    let mut best: HashMap<String, ScoredItem> = HashMap::new();
+    for it in sorted {
+        let key = story_key(&it);
+        match best.get(&key) {
+            None => {
+                best.insert(key, it);
+            }
+            Some(cur) => {
+                if key.starts_with("coll:") {
+                    match (it.release_year, cur.release_year) {
+                        (Some(ya), Some(yb)) if ya < yb => {
+                            best.insert(key, it);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+    let mut out: Vec<ScoredItem> = best.into_values().collect();
+    out.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    out
 }
