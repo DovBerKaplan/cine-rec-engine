@@ -177,6 +177,54 @@ pub async fn record_event(db: &Db, event: &WatchEvent) -> Result<(), DbError> {
 }
 
 /// `_recompute_title_stats` — rebuild one user_title_stats row from the
+/// Assemble the §D inputs for one title from its stats row and run
+/// `w_item` — the SINGLE assembly both recompute paths (and the
+/// parity test) use. The row must carry the production column set:
+/// `uts.*` + `favorite` + `disliked` + `last_epoch` (the two feedback
+/// flags come as subselects, like both callers' fetch SQL). Keeping a
+/// copy of this assembly in test code left production uncovered by
+/// the exact gate (review L-γ).
+pub fn title_w(
+    row: &sqlx::postgres::PgRow,
+    total_episodes: i64,
+    now_epoch: f64,
+) -> Result<(f64, bool), sqlx::Error> {
+    let media_type = row::opt_text(row, "media_type")?.unwrap_or_default();
+    let last_ep_watched = row::opt_i64(row, "last_ep_watched_sec")?.unwrap_or_default();
+    let last_ep_duration = row::opt_i64(row, "last_ep_duration_sec")?.unwrap_or_default();
+    let series = SeriesSignals {
+        episodes_watched: row::opt_i64(row, "episodes_watched")?.unwrap_or_default(),
+        total_episodes,
+        last_ep_ratio: if last_ep_watched > 0 && last_ep_duration > 0 {
+            Some(last_ep_watched as f64 / last_ep_duration as f64)
+        } else {
+            None
+        },
+        last_ep_watched_sec: last_ep_watched,
+        total_watched_sec: row::opt_i64(row, "total_watched_sec")?.unwrap_or_default(),
+    };
+    let max_ratio = row::opt_f64(row, "max_ratio")?;
+    let w = weights::w_item(
+        &media_type,
+        max_ratio,
+        row::opt_i64(row, "pause_count_total")?.unwrap_or_default(),
+        Some(&series),
+        row::opt_f64(row, "last_epoch")?,
+        now_epoch,
+        row::opt_i64(row, "rewatch_count")?.unwrap_or_default(),
+        row::opt_bool(row, "favorite")?.unwrap_or(false),
+        false,
+        row::opt_bool(row, "disliked")?.unwrap_or(false),
+    );
+    let dropped = weights::is_dropped(
+        &media_type,
+        max_ratio,
+        series.episodes_watched,
+        series.last_ep_ratio,
+    );
+    Ok((w, dropped))
+}
+
 /// raw events + feedback, then store w_i/dropped. Runs INSIDE the
 /// caller's transaction when one is open.
 async fn recompute_on_conn(
@@ -226,40 +274,7 @@ async fn recompute_on_conn(
         0
     };
 
-    let episodes_watched = row::opt_i64(&row, "episodes_watched")?.unwrap_or_default();
-    let last_ep_watched = row::opt_i64(&row, "last_ep_watched_sec")?.unwrap_or_default();
-    let last_ep_duration = row::opt_i64(&row, "last_ep_duration_sec")?.unwrap_or_default();
-    let series = SeriesSignals {
-        episodes_watched,
-        total_episodes: total_eps,
-        last_ep_ratio: if last_ep_watched > 0 && last_ep_duration > 0 {
-            Some(last_ep_watched as f64 / last_ep_duration as f64)
-        } else {
-            None
-        },
-        last_ep_watched_sec: last_ep_watched,
-        total_watched_sec: row::opt_i64(&row, "total_watched_sec")?.unwrap_or_default(),
-    };
-    let w = weights::w_item(
-        media_type,
-        row::opt_f64(&row, "max_ratio")?,
-        row::opt_i64(&row, "pause_count_total")?.unwrap_or_default(),
-        Some(&series),
-        row::opt_f64(&row, "last_epoch")?,
-        now_epoch(),
-        row::opt_i64(&row, "rewatch_count")?.unwrap_or_default(),
-        row::opt_bool(&row, "favorite")?.unwrap_or(false),
-        false,
-        row::opt_bool(&row, "disliked")?.unwrap_or(false),
-    );
-    // §D.1 only — an explicit dislike zeroes w_item but is NOT a
-    // drop-off (movies_dropped counts genuine quit-early, §C.1)
-    let dropped = weights::is_dropped(
-        media_type,
-        row::opt_f64(&row, "max_ratio")?,
-        series.episodes_watched,
-        series.last_ep_ratio,
-    );
+    let (w, dropped) = title_w(&row, total_eps, now_epoch())?;
 
     let update_sql = db.sql(
         r#"UPDATE {t_user_title_stats}
@@ -465,31 +480,8 @@ pub async fn recompute_weights(db: &Db, user_id: i64) -> Result<u64, DbError> {
     for r in &rows {
         let media_type = row::opt_text(r, "media_type")?.unwrap_or_default();
         let tmdb_id = row::opt_i64(r, "tmdb_id")?.unwrap_or_default();
-        let last_ep_watched = row::opt_i64(r, "last_ep_watched_sec")?.unwrap_or_default();
-        let last_ep_duration = row::opt_i64(r, "last_ep_duration_sec")?.unwrap_or_default();
-        let series = SeriesSignals {
-            episodes_watched: row::opt_i64(r, "episodes_watched")?.unwrap_or_default(),
-            total_episodes: *ep_counts.get(&tmdb_id).unwrap_or(&0),
-            last_ep_ratio: if last_ep_watched > 0 && last_ep_duration > 0 {
-                Some(last_ep_watched as f64 / last_ep_duration as f64)
-            } else {
-                None
-            },
-            last_ep_watched_sec: last_ep_watched,
-            total_watched_sec: row::opt_i64(r, "total_watched_sec")?.unwrap_or_default(),
-        };
-        let w = weights::w_item(
-            &media_type,
-            row::opt_f64(r, "max_ratio")?,
-            row::opt_i64(r, "pause_count_total")?.unwrap_or_default(),
-            Some(&series),
-            row::opt_f64(r, "last_epoch")?,
-            now_epoch(),
-            row::opt_i64(r, "rewatch_count")?.unwrap_or_default(),
-            row::opt_bool(r, "favorite")?.unwrap_or(false),
-            false,
-            row::opt_bool(r, "disliked")?.unwrap_or(false),
-        );
+        let total_eps = *ep_counts.get(&tmdb_id).unwrap_or(&0);
+        let (w, _dropped) = title_w(r, total_eps, now_epoch())?;
         let res = sqlx::query(&update_sql)
             .bind(user_id)
             .bind(tmdb_id)

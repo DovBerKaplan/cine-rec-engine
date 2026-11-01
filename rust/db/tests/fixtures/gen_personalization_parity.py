@@ -1,6 +1,12 @@
 """Generate personalization_parity.json — Python-computed expected
 state after a scripted §A event sequence, for the Rust replay test.
 
+Corpus coverage (review M-α): the sequence carries a rewatch+favorite
+title (the max() combo), a rewatch-ONLY title, a favorite-ONLY title,
+a completed-then-disliked title (w=0), a dropped movie, and a series
+with depth-ladder + abandon signals — each engagement constant and
+the dislike override are pinned on their own title.
+
 Uses DEDICATED user ids (910_000+) so it can run against any DB seeded
 with schema + demo data (the catalog join only needs real titles).
 
@@ -41,17 +47,23 @@ U = 910_001  # fixture user; Rust replay uses U + 1000
 
 
 async def catalog_titles(conn) -> dict:
-    """Deterministic catalog picks: a movie, a long tv series, a short one."""
-    movie = await conn.fetchrow(
-        "SELECT m.id FROM tmdb_media m WHERE m.media_type='movie' "
-        "AND m.vote_count > 100 ORDER BY m.id LIMIT 1")
-    tv = await conn.fetchrow(
+    """Deterministic catalog picks: movies, a long tv series, a short one."""
+    async def movie_at(offset):
+        return (await conn.fetchrow(
+            "SELECT m.id FROM tmdb_media m WHERE m.media_type='movie' "
+            f"AND m.vote_count > 100 ORDER BY m.id OFFSET {offset} LIMIT 1"))["id"]
+    movie = await movie_at(0)
+    tv = (await conn.fetchrow(
         "SELECT t.id FROM tmdb_tv t JOIN tmdb_media m ON (m.id=t.id AND m.media_type='tv') "
-        "WHERE t.number_of_episodes >= 3 AND m.vote_count > 50 ORDER BY t.id LIMIT 1")
-    movie2 = await conn.fetchrow(
-        "SELECT m.id FROM tmdb_media m WHERE m.media_type='movie' "
-        "AND m.vote_count > 100 ORDER BY m.id OFFSET 5 LIMIT 1")
-    return {"movie": movie["id"], "tv": tv["id"], "movie2": movie2["id"]}
+        "WHERE t.number_of_episodes >= 3 AND m.vote_count > 50 ORDER BY t.id LIMIT 1"))["id"]
+    return {
+        "movie": movie,          # rewatch + favorite (the max() combo)
+        "tv": tv,
+        "movie2": await movie_at(5),   # dropped at 10%
+        "movie3": await movie_at(10),  # rewatch-ONLY (no favorite)
+        "movie4": await movie_at(15),  # favorite-ONLY (single watch)
+        "movie5": await movie_at(20),  # completed then DISLIKED (w=0)
+    }
 
 
 def EVENTS(t):
@@ -82,12 +94,32 @@ def EVENTS(t):
      "watched_at": _ts("2026-10-17T20:00:00+00:00"),
      "watched_sec": 200, "duration_sec": 2400, "completed": False,
      "season": 1, "episode": 3},
+    # M-α: rewatch-ONLY (no favorite) — pins ENGAGEMENT_REWATCH alone,
+    # which the max(REWATCH, FAVORITE) on the first movie would mask
+    {"tmdb_id": t["movie3"], "media_type": "movie",
+     "watched_at": _ts("2026-10-21T20:00:00+00:00"),
+     "watched_sec": 7000, "duration_sec": 7000, "completed": True},
+    {"tmdb_id": t["movie3"], "media_type": "movie",
+     "watched_at": _ts("2026-10-23T20:00:00+00:00"),
+     "watched_sec": 7000, "duration_sec": 7000, "completed": True},
+    # M-α: favorite-ONLY (single watch) — pins ENGAGEMENT_FAVORITE alone
+    {"tmdb_id": t["movie4"], "media_type": "movie",
+     "watched_at": _ts("2026-10-19T20:00:00+00:00"),
+     "watched_sec": 7000, "duration_sec": 7000, "completed": True},
+    # M-α: completed-then-DISLIKED — pins the disliked → w=0 override
+    {"tmdb_id": t["movie5"], "media_type": "movie",
+     "watched_at": _ts("2026-10-16T20:00:00+00:00"),
+     "watched_sec": 7000, "duration_sec": 7000, "completed": True},
     ]
 
-FEEDBACK = [
-    # favorite the completed movie (engagement ×1.5)
-    (910_001, "movie-fav", "movie", "favorite"),
-]
+
+def FEEDBACK(t):
+    return [
+        # favorite on the rewatched movie — the max() combination case
+        (t["movie"], "movie", "favorite"),
+        (t["movie4"], "movie", "favorite"),   # favorite-ONLY
+        (t["movie5"], "movie", "dislike"),    # disliked → w = 0
+    ]
 
 
 async def main() -> None:
@@ -106,7 +138,11 @@ async def main() -> None:
 
         for ev in EVENTS(titles):
             await user_stats.record_event(pool, {"user_id": U, **ev})
-        await user_stats.record_feedback(pool, U, titles["movie"], "movie", "favorite")
+        fb_list = FEEDBACK(titles)
+        fav_ids = {tid for tid, _, kind in fb_list if kind == "favorite"}
+        dis_ids = {tid for tid, _, kind in fb_list if kind == "dislike"}
+        for tid, mt, kind in fb_list:
+            await user_stats.record_feedback(pool, U, tid, mt, kind)
         await user_stats.refresh_user_stats(pool, U)
         vec = await user_vector.build_user_vector(pool, U, None, EMB)
 
@@ -151,9 +187,10 @@ async def main() -> None:
                     total_watched_sec=r["total_watched_sec"],
                 )
                 s = uw.s_series(sig)
-            eng = 1.5 if (r["rewatch_count"] >= 1 or r["tmdb_id"] == titles["movie"]) else 1.0
+            eng = 1.5 if (r["rewatch_count"] >= 1 or r["tmdb_id"] in fav_ids) else 1.0
             last = r["last_watched_at"]
-            fav = r["tmdb_id"] == titles["movie"]
+            fav = r["tmdb_id"] in fav_ids
+            disliked = r["tmdb_id"] in dis_ids
             w_at_py_now = uw.w_item(
                 r["media_type"],
                 max_ratio=r["max_ratio"],
@@ -172,6 +209,7 @@ async def main() -> None:
                 now=py_now,
                 rewatch_count=r["rewatch_count"],
                 favorite=fav,
+                disliked=disliked,
             )
             s_side[str(r["tmdb_id"])] = {
                 "s": s, "engagement": eng,
@@ -217,8 +255,10 @@ async def main() -> None:
                 {"user_id": U, **{**ev, "watched_at": ev["watched_at"].isoformat()}}
                 for ev in EVENTS(titles)
             ],
-            "feedback": {"tmdb_id": titles["movie"], "media_type": "movie",
-                         "kind": "favorite"},
+            "feedback": [
+                {"tmdb_id": tid, "media_type": mt, "kind": kind}
+                for tid, mt, kind in FEEDBACK(titles)
+            ],
             "tv_total_episodes": n_eps,
             "title_stats": [
                 {k: (r[k].timestamp() if k == "last_watched_at"

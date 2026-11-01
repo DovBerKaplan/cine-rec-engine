@@ -29,11 +29,12 @@ fn py_sum(items: impl Iterator<Item = f64>) -> f64 {
     sum
 }
 
-/// Weighted sum + L2 normalize. `None` when nothing weighs in.
-///
-/// Raises on dimension mismatch — a mixed-dimension sum is a
-/// configuration error (two encoders in one space), not silence.
-pub fn aggregate(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f32>> {
+/// Weighted sum + L2 normalize, in f64 — Python's `aggregate` returns
+/// f64 components; the f32 [`aggregate`] is the stored-vector wrapper.
+/// Bit-parity checks must use THIS one (comparing after the f32 cast
+/// rounds away exactly the sub-f32 differences that distinguish a
+/// compensated norm from a naive fold — review M-β).
+pub fn aggregate_f64(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f64>> {
     if dims_mismatch(vectors) {
         // the caller turns this into an ERR before any write — a mixed
         // dimension sum is a configuration error, not silence (Python
@@ -62,7 +63,13 @@ pub fn aggregate(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f32>> {
     if norm == 0.0 {
         return None;
     }
-    Some(acc.iter().map(|x| (*x / norm) as f32).collect())
+    Some(acc.iter().map(|x| x / norm).collect())
+}
+
+/// The stored-vector shape: the f64 aggregation rounded to f32 (the
+/// embedding columns store f32; the f64 pass stays the parity target).
+pub fn aggregate(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f32>> {
+    aggregate_f64(vectors, weights).map(|v| v.into_iter().map(|x| x as f32).collect())
 }
 
 /// True when the vectors carry mixed dimensions (a configuration
@@ -324,5 +331,26 @@ mod tests {
         assert_eq!(py_sum(xs.into_iter()), 2.0);
         // a naive sequential fold loses both 1.0s inside the ±1e100
         assert_ne!(xs.iter().copied().fold(0.0f64, |a, b| a + b), 2.0);
+    }
+
+    #[test]
+    fn aggregate_f64_norm_is_compensated() {
+        // Python-anchored golden: one unit component + 40 × 2^-28. A
+        // naive norm fold loses every 2^-56 square (below ulp(1)) and
+        // normalizes to exactly 1.0 / 2^-28; the compensated fold
+        // (CPython ≥3.12 sum) yields the bits Python's aggregate
+        // produced. The live fixture's data rounds IDENTICALLY either
+        // way (measured), so only this golden catches swapping py_sum
+        // for a plain fold inside aggregate (review M-β).
+        let v: Vec<f32> = std::iter::once(1.0f32)
+            .chain(std::iter::repeat_n(2.0f32.powi(-28), 40))
+            .collect();
+        let out = aggregate_f64(&[v], &[1.0]).unwrap();
+        // from Python: user_vector.aggregate([[1.0] + [2**-28]*40], [1.0])
+        // — 0x1.ffffffffffffep-1 / 0x1.ffffffffffffep-29 as f64 bits
+        // (hex float literals are not stable Rust)
+        assert_eq!(out[0], f64::from_bits(0x3feffffffffffffe));
+        assert_eq!(out[1], f64::from_bits(0x3e2ffffffffffffe));
+        assert_eq!(out[40], f64::from_bits(0x3e2ffffffffffffe));
     }
 }

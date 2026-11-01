@@ -11,15 +11,14 @@ use std::path::Path;
 
 use cine_rec_db::executor::row;
 use cine_rec_db::personalization::{
-    apply_skip_decay, record_event, record_feedback, refresh_user_stats, WatchEvent,
+    apply_skip_decay, record_event, record_feedback, refresh_user_stats, title_w, WatchEvent,
 };
 use cine_rec_db::schema_map::SchemaMap;
-use cine_rec_db::user_vector::{aggregate, build_user_vector, top_weighted_seeds};
+use cine_rec_db::user_vector::{aggregate_f64, build_user_vector, top_weighted_seeds};
 use cine_rec_db::watched::{
     get_title_rating, get_user_dislikes, get_user_recommendation_exclusions,
     get_user_title_progress, get_user_watched,
 };
-use cine_rec_db::weights::{w_item, SeriesSignals};
 use cine_rec_db::{Db, DbError};
 use serde_json::Value;
 
@@ -68,12 +67,16 @@ fn parse_py_hex(s: &str) -> f64 {
         "parse_py_hex: {s:?}: bad fraction {frac:?}"
     );
     // int_digits||frac_digits read as a single hex integer, then
-    // scaled: mantissa = int.frac = joined / 16^frac_len
+    // scaled: mantissa = int.frac = joined / 16^frac_len. The scale is
+    // split in two: a single powi underflows to 0 below ~2^-1023, and
+    // subnormal hex inputs (Python emits down to 2^-1074) would
+    // silently read as 0 — two halves stay representable (L-δ)
     let joined = format!("{int_part}{frac}");
     let mant_int: u64 =
         u64::from_str_radix(&joined, 16).unwrap_or_else(|e| panic!("parse_py_hex: {s:?}: {e}"));
     let shift = exp - 4 * frac.len() as i32;
-    let v = (mant_int as f64) * 2.0f64.powi(shift);
+    let scale = 2.0f64.powi(shift / 2) * 2.0f64.powi(shift - shift / 2);
+    let v = (mant_int as f64) * scale;
     assert!(v.is_finite(), "parse_py_hex: {s:?}: non-finite result");
     if neg {
         -v
@@ -169,27 +172,42 @@ async fn personalization_replays_python_end_to_end() {
             .await
             .unwrap();
     }
-    let fb = &fx["feedback"];
-    record_feedback(
-        &db,
-        user,
-        fb["tmdb_id"].as_i64().unwrap(),
-        fb["media_type"].as_str().unwrap(),
-        fb["kind"].as_str().unwrap(),
-    )
-    .await
-    .unwrap();
+    let feedback: Vec<&Value> = fx["feedback"].as_array().unwrap().iter().collect();
+    for f in &feedback {
+        record_feedback(
+            &db,
+            user,
+            f["tmdb_id"].as_i64().unwrap(),
+            f["media_type"].as_str().unwrap(),
+            f["kind"].as_str().unwrap(),
+        )
+        .await
+        .unwrap();
+    }
     refresh_user_stats(&db, user).await.unwrap();
 
     // ── title stats: everything exact except w_item (recency of now) ──
+    // the SELECT carries the PRODUCTION column shape (favorite/disliked
+    // subselects + last_epoch) so `title_w` reads what production reads
     let rows = db
         .fetch(
             &db.sql(
-                "SELECT tmdb_id, media_type, sessions, total_watched_sec, \
-                 max_ratio, pause_count_total, rewatch_count, episodes_watched, \
-                 last_season, last_episode, last_ep_watched_sec, \
-                 last_ep_duration_sec, dropped, w_item \
-                 FROM {t_user_title_stats} WHERE user_id = $1 ORDER BY tmdb_id",
+                "SELECT uts.tmdb_id, uts.media_type, uts.sessions, \
+                 uts.total_watched_sec, uts.max_ratio, uts.pause_count_total, \
+                 uts.rewatch_count, uts.episodes_watched, uts.last_season, \
+                 uts.last_episode, uts.last_ep_watched_sec, \
+                 uts.last_ep_duration_sec, uts.dropped, uts.w_item, \
+                 COALESCE((SELECT TRUE FROM {t_user_feedback} f \
+                   WHERE f.user_id = uts.user_id AND f.tmdb_id = uts.tmdb_id \
+                     AND f.media_type = uts.media_type AND f.kind = 'favorite'), \
+                   FALSE) AS favorite, \
+                 EXISTS (SELECT 1 FROM {t_user_feedback} f \
+                   WHERE f.user_id = uts.user_id AND f.tmdb_id = uts.tmdb_id \
+                     AND f.media_type = uts.media_type AND f.kind = 'dislike') \
+                   AS disliked, \
+                 EXTRACT(EPOCH FROM uts.last_watched_at)::float8 AS last_epoch \
+                 FROM {t_user_title_stats} uts WHERE uts.user_id = $1 \
+                 ORDER BY uts.tmdb_id",
             )
             .unwrap(),
             &[("u", cine_rec_db::Bind::I64(user))],
@@ -199,7 +217,41 @@ async fn personalization_replays_python_end_to_end() {
     assert!(!rows.is_empty());
     let py_rows: Vec<&Value> = fx["title_stats"].as_array().unwrap().iter().collect();
     assert_eq!(rows.len(), py_rows.len(), "title row count");
-    let fb_tmdb = fb["tmdb_id"].as_i64().unwrap();
+    // M-α meta-guard: the corpus itself must carry each engagement path
+    // on its OWN title, or the pins below silently evaporate
+    let favorites: std::collections::HashSet<i64> = feedback
+        .iter()
+        .filter(|f| f["kind"].as_str() == Some("favorite"))
+        .filter_map(|f| f["tmdb_id"].as_i64())
+        .collect();
+    let disliked_fb: std::collections::HashSet<i64> = feedback
+        .iter()
+        .filter(|f| f["kind"].as_str() == Some("dislike"))
+        .filter_map(|f| f["tmdb_id"].as_i64())
+        .collect();
+    assert!(
+        py_rows.iter().any(|p| {
+            p["rewatch_count"].as_i64().unwrap_or_default() >= 1
+                && !favorites.contains(&p["tmdb_id"].as_i64().unwrap_or_default())
+        }),
+        "corpus must include a rewatch-ONLY title (M-α)"
+    );
+    assert!(
+        py_rows.iter().any(|p| {
+            p["rewatch_count"].as_i64().unwrap_or_default() == 0
+                && favorites.contains(&p["tmdb_id"].as_i64().unwrap_or_default())
+        }),
+        "corpus must include a favorite-ONLY title (M-α)"
+    );
+    assert!(
+        !disliked_fb.is_empty(),
+        "corpus must include a disliked title (M-α)"
+    );
+    // NOTE: injecting ONE engagement constant alone is structurally
+    // invisible — the formula is max(REWATCH, FAVORITE) on BOTH sides
+    // (Python included), so the other 1.5 always masks the drift. The
+    // corpus above pins the FLAG logic (each path on its own title);
+    // a BOTH-constants drift is caught by the 1e-9 w gate below.
     for (r, py) in rows.iter().zip(&py_rows) {
         let tmdb_id: i64 = row::opt_i64(r, "tmdb_id").unwrap().unwrap_or_default();
         for col in [
@@ -231,61 +283,28 @@ async fn personalization_replays_python_end_to_end() {
             (None, None) => {}
             other => panic!("title {tmdb_id}.max_ratio mismatch: {other:?}"),
         }
-        // H-2″: push the row RUST replayed through the full Rust §D
-        // pipeline (s_movie/s_series/is_dropped → engagement → recency
-        // at the fixture's frozen instant) and match Python's
-        // w_at_py_now at 1e-9. The previous round built `expected` from
-        // the fixture's OWN s/engagement — that only tested recency ×
-        // multiplication (an injected ENGAGEMENT_REWATCH of 1.495
-        // passed); this exercises the port itself, clock-free.
+        // H-2″: push the row RUST replayed through the PRODUCTION
+        // assembly — `personalization::title_w`, the same helper both
+        // recompute paths use, so the SeriesSignals construction is
+        // exercised, not a test-side copy (review L-γ) — at the
+        // fixture's frozen instant, and match Python's w_at_py_now at
+        // 1e-9. Corpus coverage (M-α): a rewatch-ONLY title, a
+        // favorite-ONLY title, and a disliked title each pin one
+        // engagement constant alone, so neither 1.5 can hide behind
+        // the max() of the other; disliked pins the w=0 override.
         let s_side = &fx["s_side"][&tmdb_id.to_string()];
-        let last_epoch = s_side["last_epoch"].as_f64();
         let py_now = fx["python_now_epoch"].as_f64().unwrap();
         let w_at_py_now = s_side["w_at_py_now"].as_f64().unwrap();
-        let media_type = row::opt_text(r, "media_type").unwrap().unwrap_or_default();
-        let pause = row::opt_i64(r, "pause_count_total")
-            .unwrap()
-            .unwrap_or_default();
-        let rewatch = row::opt_i64(r, "rewatch_count")
-            .unwrap()
-            .unwrap_or_default();
-        let eps = row::opt_i64(r, "episodes_watched")
-            .unwrap()
-            .unwrap_or_default();
-        let last_ep_sec = row::opt_i64(r, "last_ep_watched_sec").unwrap();
-        let last_ep_dur = row::opt_i64(r, "last_ep_duration_sec").unwrap();
-        let total_sec = row::opt_i64(r, "total_watched_sec")
-            .unwrap()
-            .unwrap_or_default();
-        let tv_id = fx["titles"]["tv"].as_i64().unwrap();
         let n_eps = fx["tv_total_episodes"].as_i64().unwrap_or_default();
-        let series = (media_type == "tv").then(|| SeriesSignals {
-            episodes_watched: eps,
-            total_episodes: if tmdb_id == tv_id { n_eps } else { 0 },
-            // same guard the Python generator uses: a ratio only
-            // exists when both sides are known and the ep was started
-            last_ep_ratio: match (last_ep_sec, last_ep_dur) {
-                (Some(s), Some(d)) if s > 0 && d > 0 => Some(s as f64 / d as f64),
-                _ => None,
-            },
-            last_ep_watched_sec: last_ep_sec.unwrap_or_default(),
-            total_watched_sec: total_sec,
-        });
-        let w_rs = w_item(
-            &media_type,
-            max_ratio,
-            pause,
-            series.as_ref(),
-            last_epoch,
-            py_now,
-            rewatch,
-            tmdb_id == fb_tmdb,
-            false,
-            false,
-        );
+        let is_tv = row::opt_text(r, "media_type").unwrap().as_deref() == Some("tv");
+        let (w_rs, dropped_rs) = title_w(r, if is_tv { n_eps } else { 0 }, py_now).unwrap();
         assert!(
             (w_at_py_now - w_rs).abs() < 1e-9,
             "title {tmdb_id}: python w_at_py_now {w_at_py_now} != rust-pipeline w {w_rs}"
+        );
+        assert_eq!(
+            dropped_rs, dropped,
+            "title {tmdb_id}: production is_dropped"
         );
         // the STORED Rust w used its own now — sanity band only
         // (decay ∈ (0,1] → w ≤ base); the exact check above is the gate
@@ -447,20 +466,26 @@ async fn personalization_replays_python_end_to_end() {
     assert_eq!(got_order, want_order, "frozen summation order");
     let vectors: Vec<Vec<f32>> = pairs.iter().map(|(_, e)| e.clone()).collect();
     let frozen_ws: Vec<f64> = pairs.iter().map(|(id, _)| w_of(*id)).collect();
-    let agg = aggregate(&vectors, &frozen_ws).expect("aggregate over fixture weights");
-    let py_frozen: Vec<f32> = fx["vector_bits_frozen"]
+    // M-β: compare in f64 — the f32 cast rounds away exactly the
+    // sub-f32 differences that separate a compensated norm from a
+    // naive fold (measured on this fixture: 381/384 components differ
+    // in f64, 0 after rounding to f32), so an f32 comparison could
+    // not lock py_sum. Python's aggregate returns f64 components and
+    // the fixture stores their hex.
+    let agg = aggregate_f64(&vectors, &frozen_ws).expect("aggregate over fixture weights");
+    let py_frozen: Vec<f64> = fx["vector_bits_frozen"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|h| parse_py_hex(h.as_str().unwrap()) as f32)
+        .map(|h| parse_py_hex(h.as_str().unwrap()))
         .collect();
     assert_eq!(agg.len(), py_frozen.len(), "frozen vector component count");
     for (i, x) in agg.iter().enumerate() {
-        let py = py_frozen[i];
         assert_eq!(
             x.to_bits(),
-            py.to_bits(),
-            "vector[{i}]: rust-aggregated {x} != python-frozen {py}"
+            py_frozen[i].to_bits(),
+            "vector[{i}]: rust-aggregated {x} != python-frozen {}",
+            py_frozen[i]
         );
     }
 
@@ -473,7 +498,13 @@ async fn personalization_replays_python_end_to_end() {
     let watched = get_user_watched(&db, user).await.unwrap();
     assert!(!watched.is_empty(), "user_watches view derives from stats");
     let dislikes = get_user_dislikes(&db, user).await.unwrap();
-    assert!(dislikes.is_empty(), "favorite is not a dislike");
+    // the corpus dislikes exactly the disliked titles (M-α) — and a
+    // favorite is never a dislike
+    let dis_ids: std::collections::HashSet<i64> = dislikes.iter().map(|(id, _)| *id).collect();
+    assert_eq!(
+        dis_ids, disliked_fb,
+        "dislikes = exactly the disliked titles"
+    );
     let excl = get_user_recommendation_exclusions(&db, user).await.unwrap();
     assert!(excl.len() >= watched.len());
 
