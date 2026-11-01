@@ -30,4 +30,5 @@ pub mod recall2;
 pub mod schema_map;
 
 pub use executor::{Bind, Db, DbError};
+pub use recall::CandidateRow;
 pub use schema_map::{SchemaMap, SchemaMapError, LOGICAL_TABLES};

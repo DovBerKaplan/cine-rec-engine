@@ -46,25 +46,25 @@ impl CandidateRow {
         self.tmdb_rank
     }
 
-    pub(crate) fn from_recall_row(r: &sqlx::postgres::PgRow) -> Self {
-        Self {
-            id: row::opt_i64(r, "id").unwrap_or_default(),
-            title: row::opt_text(r, "title"),
-            title_en: row::opt_text(r, "title_en"),
-            media_type: row::opt_text(r, "media_type"),
-            overview: row::opt_text(r, "overview"),
-            overview_en: row::opt_text(r, "overview_en"),
-            vote_average: row::opt_f64(r, "vote_average"),
-            vote_count: row::opt_i64(r, "vote_count"),
-            popularity: row::opt_f64(r, "popularity"),
-            poster_path: row::opt_text(r, "poster_path"),
-            collection_id: row::opt_i64(r, "collection_id"),
-            release_year: row::opt_i64(r, "release_year"),
-            genres: row::opt_text_array(r, "genres").unwrap_or_default(),
+    pub(crate) fn from_recall_row(r: &sqlx::postgres::PgRow) -> Result<Self, DbError> {
+        Ok(Self {
+            id: row::opt_i64(r, "id")?.unwrap_or_default(),
+            title: row::opt_text(r, "title")?,
+            title_en: row::opt_text(r, "title_en")?,
+            media_type: row::opt_text(r, "media_type")?,
+            overview: row::opt_text(r, "overview")?,
+            overview_en: row::opt_text(r, "overview_en")?,
+            vote_average: row::opt_f64(r, "vote_average")?,
+            vote_count: row::opt_i64(r, "vote_count")?,
+            popularity: row::opt_f64(r, "popularity")?,
+            poster_path: row::opt_text(r, "poster_path")?,
+            collection_id: row::opt_i64(r, "collection_id")?,
+            release_year: row::opt_i64(r, "release_year")?,
+            genres: row::opt_text_array(r, "genres")?.unwrap_or_default(),
             via: None,
-            knn_similarity: row::opt_f64(r, "knn_similarity"),
-            tmdb_rank: row::opt_i64(r, "tmdb_rank"),
-        }
+            knn_similarity: row::opt_f64(r, "knn_similarity")?,
+            tmdb_rank: row::opt_i64(r, "tmdb_rank")?,
+        })
     }
 }
 
@@ -188,7 +188,10 @@ pub async fn generate_candidates(
         .await?
     };
 
-    let mut cands: Vec<CandidateRow> = rows.iter().map(CandidateRow::from_recall_row).collect();
+    let mut cands: Vec<CandidateRow> = rows
+        .iter()
+        .map(CandidateRow::from_recall_row)
+        .collect::<Result<Vec<_>, _>>()?;
 
     if allow_cross_media {
         // per-medium budget: rank within each media_type, keep `limit`
@@ -214,18 +217,90 @@ pub async fn generate_candidates(
                         .unwrap_or(std::cmp::Ordering::Equal)
                 })
         });
-        let mut kept: HashMap<String, i64> = HashMap::new();
-        cands.retain(|c| {
-            let mt = c.media_type.clone().unwrap_or_default();
-            let n = kept.entry(mt).or_insert(0);
-            if *n >= limit {
-                false
-            } else {
-                *n += 1;
-                true
-            }
-        });
+        // Python builds a per-medium `budgeted` list here but never
+        // assigns it back — the budget is dead code in production and
+        // the full sorted slice (LIMIT 2×limit) is what callers get.
+        // Parity replicates the OBSERVED behavior; flagged to the owner.
+        let _ = limit;
     }
+
+    // Quality slice: rating-ordered among well-voted titles sharing a
+    // genre — mid-tail gems (an 8.5-rated anime with modest popularity)
+    // never make the popularity slice but belong in the shortlist.
+    let q_rows: Vec<sqlx::postgres::PgRow> = if allow_cross_media {
+        db.fetch(
+            r#"
+                SELECT m.id, m.title, m.title_en, m.media_type, m.overview,
+                       m.overview_en, m.vote_average::float, m.vote_count::int,
+                       m.popularity::float, m.poster_path, m.collection_id,
+                       EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int
+                           AS release_year,
+                       ARRAY(
+                           SELECT g.name FROM {t_tmdb_genres} g
+                           JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
+                           WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type)
+                       ) as genres
+                FROM {t_tmdb_media} m
+                WHERE m.id != $1 AND m.vote_average >= 7.0 AND m.vote_count >= $4
+                  AND EXISTS (
+                      SELECT 1 FROM {t_tmdb_media_genres} mg
+                      JOIN {t_tmdb_genres} g ON mg.genre_id = g.id
+                      WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND g.name = ANY($2::text[])
+                  )
+                ORDER BY m.vote_average DESC, m.vote_count DESC
+                LIMIT $3
+                "#,
+            &[
+                ("id", Bind::I64(base_movie_id)),
+                ("genres", Bind::TextArray(base_genres.to_vec())),
+                ("slice", Bind::I64(QUALITY_SLICE)),
+                ("floor", Bind::I64(500)),
+            ],
+        )
+        .await?
+    } else {
+        db.fetch(
+            r#"
+                SELECT m.id, m.title, m.title_en, m.media_type, m.overview,
+                       m.overview_en, m.vote_average::float, m.vote_count::int,
+                       m.popularity::float, m.poster_path, m.collection_id,
+                       EXTRACT(YEAR FROM COALESCE(m.release_date, m.first_air_date))::int
+                           AS release_year,
+                       ARRAY(
+                           SELECT g.name FROM {t_tmdb_genres} g
+                           JOIN {t_tmdb_media_genres} mg ON g.id = mg.genre_id
+                           WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
+                       ) as genres
+                FROM {t_tmdb_media} m
+                WHERE m.media_type = $1 AND m.id != $2
+                  AND m.vote_average >= 7.0 AND m.vote_count >= $4
+                  AND EXISTS (
+                      SELECT 1 FROM {t_tmdb_media_genres} mg
+                      JOIN {t_tmdb_genres} g ON mg.genre_id = g.id
+                      WHERE (mg.media_id, mg.media_type) = (m.id, m.media_type) AND mg.media_type = m.media_type
+                        AND g.name = ANY($3::text[])
+                  )
+                ORDER BY m.vote_average DESC, m.vote_count DESC
+                LIMIT $5
+                "#,
+            &[
+                ("media_type", Bind::Text(media_type.to_string())),
+                ("id", Bind::I64(base_movie_id)),
+                ("genres", Bind::TextArray(base_genres.to_vec())),
+                ("floor", Bind::I64(vote_floor_for(Some(media_type)))),
+                ("slice", Bind::I64(QUALITY_SLICE)),
+            ],
+        )
+        .await?
+    };
+    let mut seen: std::collections::HashSet<i64> = cands.iter().map(|c| c.id).collect();
+    for r in &q_rows {
+        let c = CandidateRow::from_recall_row(r)?;
+        if seen.insert(c.id) {
+            cands.push(c);
+        }
+    }
+
     Ok(cands)
 }
 
@@ -305,10 +380,10 @@ pub async fn enrich_candidates_batch(
         None => vec![("ids", Bind::I64Array(candidate_ids.to_vec()))],
     };
     for r in db.fetch(director_sql, &director_binds).await? {
-        let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
+        let mid = row::opt_i64(&r, "media_id")?.unwrap_or_default();
         let e = out.entry(mid).or_default();
-        e.director = row::opt_text(&r, "director");
-        e.director_ids = row::opt_i64_array(&r, "director_ids").unwrap_or_default();
+        e.director = row::opt_text(&r, "director")?;
+        e.director_ids = row::opt_i64_array(&r, "director_ids")?.unwrap_or_default();
     }
 
     // Batch: writers (person_ids for the writer-DNA match)
@@ -332,9 +407,9 @@ pub async fn enrich_candidates_batch(
                 "#
     };
     for r in db.fetch(writer_sql, &director_binds).await? {
-        let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
+        let mid = row::opt_i64(&r, "media_id")?.unwrap_or_default();
         out.entry(mid).or_default().writer_ids =
-            row::opt_i64_array(&r, "writer_ids").unwrap_or_default();
+            row::opt_i64_array(&r, "writer_ids")?.unwrap_or_default();
     }
 
     // Batch: composer + cinematographer ids (cinematic DNA beyond the
@@ -354,10 +429,10 @@ pub async fn enrich_candidates_batch(
         .fetch(DNA_SQL, &[("ids", Bind::I64Array(candidate_ids.to_vec()))])
         .await?
     {
-        let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
+        let mid = row::opt_i64(&r, "media_id")?.unwrap_or_default();
         let e = out.entry(mid).or_default();
-        e.composer_ids = row::opt_i64_array(&r, "composer_ids").unwrap_or_default();
-        e.dp_ids = row::opt_i64_array(&r, "dp_ids").unwrap_or_default();
+        e.composer_ids = row::opt_i64_array(&r, "composer_ids")?.unwrap_or_default();
+        e.dp_ids = row::opt_i64_array(&r, "dp_ids")?.unwrap_or_default();
     }
 
     // Batch: cast (top 5 per movie, ordered) — names for display,
@@ -373,13 +448,13 @@ pub async fn enrich_candidates_batch(
         .fetch(CAST_SQL, &[("ids", Bind::I64Array(candidate_ids.to_vec()))])
         .await?
     {
-        let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
+        let mid = row::opt_i64(&r, "media_id")?.unwrap_or_default();
         let e = out.entry(mid).or_default();
         if e.cast_list.len() < 5 {
-            if let Some(name) = row::opt_text(&r, "name") {
+            if let Some(name) = row::opt_text(&r, "name")? {
                 e.cast_list.push(name);
             }
-            if let Some(pid) = row::opt_i64(&r, "person_id") {
+            if let Some(pid) = row::opt_i64(&r, "person_id")? {
                 e.cast_ids.push(pid);
             }
         }
@@ -401,8 +476,8 @@ pub async fn enrich_candidates_batch(
     {
         Ok(rows) => {
             for r in rows {
-                let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
-                if let Some(name) = row::opt_text(&r, "name") {
+                let mid = row::opt_i64(&r, "media_id")?.unwrap_or_default();
+                if let Some(name) = row::opt_text(&r, "name")? {
                     out.entry(mid).or_default().keywords.push(name);
                 }
             }
@@ -428,8 +503,8 @@ pub async fn enrich_candidates_batch(
         )
         .await?
     {
-        let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
-        if let Some(name) = row::opt_text(&r, "name") {
+        let mid = row::opt_i64(&r, "media_id")?.unwrap_or_default();
+        if let Some(name) = row::opt_text(&r, "name")? {
             out.entry(mid).or_default().companies.push(name);
         }
     }
@@ -448,8 +523,8 @@ pub async fn enrich_candidates_batch(
         )
         .await?
     {
-        let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
-        if let Some(name) = row::opt_text(&r, "name") {
+        let mid = row::opt_i64(&r, "media_id")?.unwrap_or_default();
+        if let Some(name) = row::opt_text(&r, "name")? {
             out.entry(mid).or_default().networks.push(name);
         }
     }
@@ -464,10 +539,10 @@ pub async fn enrich_candidates_batch(
         .fetch(COLL_SQL, &[("ids", Bind::I64Array(candidate_ids.to_vec()))])
         .await?
     {
-        let id = row::opt_i64(&r, "id").unwrap_or_default();
+        let id = row::opt_i64(&r, "id")?.unwrap_or_default();
         let e = out.entry(id).or_default();
-        e.collection_id = row::opt_i64(&r, "collection_id");
-        e.original_language = row::opt_text(&r, "original_language");
+        e.collection_id = row::opt_i64(&r, "collection_id")?;
+        e.original_language = row::opt_text(&r, "original_language")?;
     }
 
     // Batch: cinematic structure tags (narrative/pacing/emotional_arc)
@@ -484,11 +559,11 @@ pub async fn enrich_candidates_batch(
     {
         Ok(rows) => {
             for r in rows {
-                let mid = row::opt_i64(&r, "media_id").unwrap_or_default();
+                let mid = row::opt_i64(&r, "media_id")?.unwrap_or_default();
                 let e = out.entry(mid).or_default();
-                e.narrative = row::opt_text(&r, "narrative_complexity");
-                e.pacing = row::opt_text(&r, "pacing");
-                e.emotional_arc = row::opt_text_array(&r, "emotional_arc").unwrap_or_default();
+                e.narrative = row::opt_text(&r, "narrative_complexity")?;
+                e.pacing = row::opt_text(&r, "pacing")?;
+                e.emotional_arc = row::opt_text_array(&r, "emotional_arc")?.unwrap_or_default();
             }
         }
         Err(e) => match e.into_degraded("cinematic") {
@@ -504,11 +579,16 @@ pub async fn enrich_candidates_batch(
 /// `_vote_floor` — TV vote counts run an order of magnitude below
 /// movies on TMDB; a flat floor starves tv seeds.
 pub fn vote_floor_for(media_type: Option<&str>) -> i64 {
+    // mirror config.VOTE_FLOOR_MOVIE / VOTE_FLOOR_TV (both 500 today —
+    // the split exists so a tv-specific floor can diverge if warranted)
     match media_type {
-        Some("tv") => 50,
+        Some("tv") => 500,
         _ => 500,
     }
 }
+
+/// rating-ordered complement budget to the popularity slice (queries.py)
+pub const QUALITY_SLICE: i64 = 40;
 
 /// Per-medium KNN facts. The embedding columns live on the split fact
 /// tables (schema.sql §2) — the tmdb_media compatibility view does NOT
@@ -647,13 +727,14 @@ pub async fn generate_knn_candidates(
 
     // ef_search must be raised per session for pgvector's hnsw indexes
     // to return deep-enough candidate lists.
-    let _ = sqlx::query(&db.sql("SET hnsw.ef_search = 400")?)
-        .execute(db.pool())
-        .await;
-
+    // ef_search must be raised per session for pgvector's hnsw indexes
+    // to return deep-enough candidate lists — on the SAME connection
+    // the query runs on (a pool-level SET may land on another one).
+    let resolved = db.sql(&sql)?;
     let rows = match db
-        .fetch(
-            &sql, // already resolved (built via SchemaMap::name, no placeholders)
+        .set_and_fetch(
+            "SET hnsw.ef_search = 400",
+            &resolved,
             &[("seed", Bind::I64(seed_id)), ("limit", Bind::I64(limit))],
         )
         .await
@@ -667,13 +748,12 @@ pub async fn generate_knn_candidates(
         },
     };
 
-    Ok(rows
-        .iter()
-        .map(|r| {
-            let mut c = CandidateRow::from_recall_row(r);
+    rows.iter()
+        .map(|r| -> Result<CandidateRow, DbError> {
+            let mut c = CandidateRow::from_recall_row(r)?;
             c.via = Some("knn".to_string());
             c.knn_similarity = Some(c.knn_similarity.unwrap_or(0.0));
-            c
+            Ok(c)
         })
-        .collect())
+        .collect::<Result<Vec<_>, _>>()
 }

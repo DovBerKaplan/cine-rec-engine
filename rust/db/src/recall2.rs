@@ -72,15 +72,14 @@ pub async fn generate_user_vector_candidates(
             real => return Err(real),
         },
     };
-    Ok(rows
-        .iter()
-        .map(|r| {
-            let mut c = CandidateRow::from_recall_row(r);
+    rows.iter()
+        .map(|r| -> Result<CandidateRow, DbError> {
+            let mut c = CandidateRow::from_recall_row(r)?;
             c.via = Some("uvec".to_string());
             c.knn_similarity = Some(c.knn_similarity.unwrap_or(0.0));
-            c
+            Ok(c)
         })
-        .collect())
+        .collect::<Result<Vec<_>, _>>()
 }
 
 /// `_DISCOVERY_RECALL` — titles NEAREST the user vector among those
@@ -144,20 +143,18 @@ pub async fn generate_discovery_candidates(
         .await
     {
         Ok(r) => r,
-        Err(e) => match e.into_degraded("uvec") {
-            DbError::ChannelOff { .. } => return Ok(Vec::new()),
-            real => return Err(real),
-        },
+        // Python catches (UndefinedColumn/Object/Table, Exception):
+        // ANY failure degrades this channel to empty
+        Err(_) => return Ok(Vec::new()),
     };
-    Ok(rows
-        .iter()
-        .map(|r| {
-            let mut c = CandidateRow::from_recall_row(r);
+    rows.iter()
+        .map(|r| -> Result<CandidateRow, DbError> {
+            let mut c = CandidateRow::from_recall_row(r)?;
             c.via = Some("uvec".to_string());
             c.knn_similarity = Some(c.knn_similarity.unwrap_or(0.0));
-            c
+            Ok(c)
         })
-        .collect())
+        .collect::<Result<Vec<_>, _>>()
 }
 
 /// `fetch_embeddings_batch` — `(id, media_type) -> embedding`, for the
@@ -206,9 +203,9 @@ pub async fn fetch_embeddings_batch(
         {
             Ok(rows) => {
                 for r in rows {
-                    if let Some(emb) = row::opt_vector(&r, "emb") {
+                    if let Some(emb) = row::opt_vector(&r, "emb")? {
                         out.insert(
-                            (row::opt_i64(&r, "id").unwrap_or_default(), mt.to_string()),
+                            (row::opt_i64(&r, "id")?.unwrap_or_default(), mt.to_string()),
                             emb,
                         );
                     }
@@ -282,14 +279,13 @@ pub async fn generate_tmdb_rec_candidates(
             real => return Err(real),
         },
     };
-    Ok(rows
-        .iter()
-        .map(|r| {
-            let mut c = CandidateRow::from_recall_row(r);
+    rows.iter()
+        .map(|r| -> Result<CandidateRow, DbError> {
+            let mut c = CandidateRow::from_recall_row(r)?;
             c.via = Some("tmdb".to_string());
-            c
+            Ok(c)
         })
-        .collect())
+        .collect::<Result<Vec<_>, _>>()
 }
 
 /// `generate_tmdb_rec_candidates_batch` — per-seed TMDB-recs in ONE
@@ -370,11 +366,11 @@ pub async fn generate_tmdb_rec_candidates_batch(
     };
     let mut by_seed: HashMap<(i64, String), Vec<CandidateRow>> = HashMap::new();
     for r in rows {
-        let mut c = CandidateRow::from_recall_row(&r);
+        let mut c = CandidateRow::from_recall_row(&r)?;
         c.via = Some("tmdb".to_string());
         let key = (
-            row::opt_i64(&r, "_seed_id").unwrap_or_default(),
-            row::opt_text(&r, "_seed_media_type").unwrap_or_default(),
+            row::opt_i64(&r, "_seed_id")?.unwrap_or_default(),
+            row::opt_text(&r, "_seed_media_type")?.unwrap_or_default(),
         );
         by_seed.entry(key).or_default().push(c);
     }
@@ -422,14 +418,14 @@ const DIRECTOR_SQL: &str = r#"
 /// Rank by aggregate popularity per title, capped. Writer-only links
 /// get `via="writer"` — a shared screenwriter is a taste signal, not
 /// an auteur stamp.
-fn rank_auteur_works(rows: Vec<sqlx::postgres::PgRow>, limit: usize) -> Vec<CandidateRow> {
+fn rank_auteur_works(
+    rows: Vec<sqlx::postgres::PgRow>,
+    limit: usize,
+) -> Result<Vec<CandidateRow>, DbError> {
     let mut by_id: HashMap<i64, CandidateRow> = HashMap::new();
     for r in rows {
-        let mut c = CandidateRow::from_recall_row(&r);
-        let via_director: bool = row::opt_i64(&r, "via_director")
-            .map(|v| v != 0)
-            .or_else(|| row::opt_f64(&r, "via_director").map(|v| v != 0.0))
-            .unwrap_or(false);
+        let mut c = CandidateRow::from_recall_row(&r)?;
+        let via_director = row::opt_bool(&r, "via_director")?.unwrap_or(false);
         c.via = Some(if via_director { "director" } else { "writer" }.to_string());
         let prev = by_id.get(&c.id);
         if prev.is_none() || c.popularity.unwrap_or(0.0) > prev.unwrap().popularity.unwrap_or(0.0) {
@@ -444,7 +440,7 @@ fn rank_auteur_works(rows: Vec<sqlx::postgres::PgRow>, limit: usize) -> Vec<Cand
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     ranked.truncate(limit);
-    ranked
+    Ok(ranked)
 }
 
 /// `generate_director_candidates` — other works by the seed's
@@ -474,7 +470,7 @@ pub async fn generate_director_candidates(
             real => return Err(real),
         },
     };
-    Ok(rank_auteur_works(rows, limit))
+    rank_auteur_works(rows, limit)
 }
 
 /// `generate_director_candidates_batch` — per-seed auteur works in ONE
@@ -561,11 +557,11 @@ pub async fn generate_director_candidates_batch(
     // split rows per seed by ordinal, then the same dedup/rank/cap
     let mut per_seed: HashMap<usize, Vec<sqlx::postgres::PgRow>> = HashMap::new();
     for r in rows {
-        let ord = row::opt_i64(&r, "seed_ordinal").unwrap_or_default() as usize;
+        let ord = row::opt_i64(&r, "seed_ordinal")?.unwrap_or_default() as usize;
         per_seed.entry(ord.saturating_sub(1)).or_default().push(r);
     }
     for (i, slot) in out.iter_mut().enumerate() {
-        *slot = rank_auteur_works(per_seed.remove(&i).unwrap_or_default(), limit);
+        *slot = rank_auteur_works(per_seed.remove(&i).unwrap_or_default(), limit)?;
     }
     Ok(out)
 }
@@ -576,7 +572,11 @@ pub async fn generate_director_candidates_batch(
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PageRow {
     pub tmdb_id: i64,
+    /// Python rows carry BOTH id and tmdb_id (popular copies tmdb_id
+    /// into id); keep the key parity for page/by-text consumers.
+    pub id: Option<i64>,
     pub title: Option<String>,
+    pub title_en: Option<String>,
     pub media_type: Option<String>,
     pub rating: Option<f64>,
     pub vote_count: Option<i64>,
@@ -678,22 +678,24 @@ async fn gem_or_trending_arm(
         order = order,
         n = params.len(),
     );
-    Ok(db
-        .fetch(&sql, &params)
-        .await?
-        .iter()
-        .map(|r| PageRow {
-            tmdb_id: row::opt_i64(r, "tmdb_id").unwrap_or_default(),
-            title: row::opt_text(r, "title"),
-            media_type: row::opt_text(r, "media_type"),
-            rating: row::opt_f64(r, "rating"),
-            vote_count: row::opt_i64(r, "vote_count"),
-            popularity: row::opt_f64(r, "popularity"),
-            poster_path: row::opt_text(r, "poster_path"),
-            release_year: row::opt_i64(r, "release_year"),
+    let rows = db.fetch(&sql, &params).await?;
+    let mut page = Vec::with_capacity(rows.len());
+    for r in &rows {
+        page.push(PageRow {
+            tmdb_id: row::opt_i64(r, "tmdb_id")?.unwrap_or_default(),
+            id: row::opt_i64(r, "tmdb_id")?,
+            title_en: row::opt_text(r, "title_en")?,
+            title: row::opt_text(r, "title")?,
+            media_type: row::opt_text(r, "media_type")?,
+            rating: row::opt_f64(r, "rating")?,
+            vote_count: row::opt_i64(r, "vote_count")?,
+            popularity: row::opt_f64(r, "popularity")?,
+            poster_path: row::opt_text(r, "poster_path")?,
+            release_year: row::opt_i64(r, "release_year")?,
             via: None,
-        })
-        .collect())
+        });
+    }
+    Ok(page)
 }
 
 /// `generate_hidden_gems` / `generate_trending_genre` /
@@ -740,6 +742,7 @@ pub async fn generate_popular_candidates(
 ) -> Result<Vec<PageRow>, DbError> {
     let mut rows = gem_or_trending_rows(db, "popular", limit, None, year_min, year_max).await?;
     for r in &mut rows {
+        r.id = Some(r.tmdb_id); // internal recall-pool shape (find_similar)
         r.via = Some("text".to_string());
     }
     Ok(rows)

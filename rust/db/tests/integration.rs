@@ -55,7 +55,11 @@ integration_test!(genre_channel_returns_seedless_candidates, |db, _dsn| {
     .await
     .expect("genre channel");
     assert!(!cands.is_empty(), "demo DB has genre neighbors");
-    assert!(cands.len() <= 10);
+    // popularity slice (<= limit) + the rating-ordered quality slice
+    // (QUALITY_SLICE, deduped) — the Python channel's shape
+    use cine_rec_db::recall::QUALITY_SLICE;
+    assert!(cands.len() as i64 <= 10 + QUALITY_SLICE);
+    assert!(cands.iter().any(|c| c.vote_count.unwrap_or(0) > 0));
     for c in &cands {
         assert_ne!(c.id, SEED_MOVIE_ID);
         assert_eq!(c.media_type.as_deref(), Some("movie"));
@@ -64,7 +68,7 @@ integration_test!(genre_channel_returns_seedless_candidates, |db, _dsn| {
     }
 });
 
-integration_test!(cross_media_keeps_per_medium_budget, |db, _dsn| {
+integration_test!(cross_media_slice_shape, |db, _dsn| {
     let cands = generate_candidates(
         db,
         SEED_MOVIE_ID,
@@ -79,15 +83,11 @@ integration_test!(cross_media_keeps_per_medium_budget, |db, _dsn| {
     .await
     .expect("cross-media genre channel");
     assert!(!cands.is_empty());
-    let mut per_medium: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    for c in &cands {
-        *per_medium
-            .entry(c.media_type.clone().unwrap_or_default())
-            .or_default() += 1;
-    }
-    for (mt, n) in &per_medium {
-        assert!(n <= &5, "medium {mt} exceeded its budget: {n}");
-    }
+    // NOTE: Python's per-medium budget here is dead code (built but
+    // never assigned back) — the cross slice returns the full sorted
+    // LIMIT 2x plus the quality slice. Field-level parity with Python
+    // is pinned by tests/live_parity.rs; this only pins the floors.
+    assert!(cands.iter().all(|c| c.vote_average.unwrap_or(0.0) >= 5.5));
 });
 
 integration_test!(empty_genres_short_circuit, |db, _dsn| {

@@ -1,0 +1,5751 @@
+{
+ "seeds": {
+  "movie_id": 11,
+  "movie_genres": [
+   "Science Fiction",
+   "Adventure",
+   "Action"
+  ],
+  "tv_id": 43,
+  "tv_genres": [
+   "Family",
+   "Kids",
+   "Comedy"
+  ],
+  "rec_seed": [
+   11,
+   "movie"
+  ],
+  "dir_seed": 11,
+  "user_vector": [
+   -0.0654,
+   -0.033878,
+   0.041811,
+   -0.053704,
+   0.002117,
+   0.03921,
+   0.026329,
+   0.024136,
+   0.031198,
+   0.048115,
+   0.064209,
+   -0.015912,
+   -0.049248,
+   -0.038436,
+   0.037816,
+   -0.015051,
+   0.07472,
+   0.010932,
+   0.007963,
+   -0.014309,
+   0.001879,
+   -0.032464,
+   0.045552,
+   0.038476,
+   -0.055782,
+   0.031372,
+   0.067483,
+   -0.024462,
+   -0.110174,
+   -0.088392,
+   -0.044092,
+   -0.004403,
+   -0.084377,
+   0.05867,
+   0.007091,
+   0.058678,
+   0.018979,
+   -0.015368,
+   0.088341,
+   -0.102696,
+   -0.045444,
+   -0.053359,
+   0.062052,
+   0.022899,
+   0.026695,
+   0.007923,
+   -0.019446,
+   -0.028739,
+   0.078387,
+   0.004154,
+   0.030639,
+   0.069568,
+   -0.016511,
+   0.081056,
+   0.073998,
+   0.019063,
+   0.025041,
+   -0.048087,
+   0.152038,
+   -0.041662,
+   -0.018773,
+   0.08277,
+   0.110711,
+   0.031427,
+   0.034612,
+   -0.135853,
+   0.021615,
+   0.054991,
+   -0.038952,
+   0.005896,
+   -0.051479,
+   0.046889,
+   0.065503,
+   -0.049656,
+   -0.026192,
+   -0.004177,
+   0.026603,
+   -0.033197,
+   0.045647,
+   0.01937,
+   -0.003522,
+   -0.042611,
+   -0.047149,
+   0.157887,
+   -0.039178,
+   0.015669,
+   -0.029906,
+   -0.098678,
+   0.084079,
+   0.002058,
+   -0.101875,
+   -0.043341,
+   0.054388,
+   0.014664,
+   -0.08649,
+   -0.031419,
+   0.010324,
+   -0.045638,
+   0.036921,
+   0.014505,
+   0.051918,
+   0.03244,
+   0.051058,
+   -0.039803,
+   0.00883,
+   -0.049523,
+   0.008449,
+   -0.107144,
+   0.007175,
+   0.031091,
+   -0.042383,
+   -0.066574,
+   -0.03188,
+   0.003781,
+   0.029522,
+   0.035535,
+   0.00901,
+   0.00534,
+   -0.046278,
+   -0.009632,
+   0.045594,
+   -0.058849,
+   0.063112,
+   -0.008219,
+   0.006476,
+   -0.058222,
+   0.022683,
+   0.0,
+   0.00519,
+   -0.041806,
+   0.043561,
+   0.0751,
+   -0.005265,
+   -0.045244,
+   0.031116,
+   0.02131,
+   -0.087472,
+   0.016981,
+   -0.102999,
+   -0.081129,
+   -0.042098,
+   0.027282,
+   -0.024532,
+   0.03275,
+   -0.015881,
+   -0.015114,
+   -0.007424,
+   0.057117,
+   0.015785,
+   0.088286,
+   0.059194,
+   0.034553,
+   0.002715,
+   -0.010754,
+   0.03613,
+   0.050296,
+   0.038059,
+   0.019706,
+   -0.013576,
+   -0.034572,
+   0.060767,
+   0.027612,
+   0.049537,
+   -0.05013,
+   -0.079247,
+   -0.083586,
+   -0.065855,
+   0.027758,
+   -0.05656,
+   0.016156,
+   -0.0073,
+   -0.025579,
+   -0.056716,
+   -0.04086,
+   -0.020339,
+   -0.067926,
+   -0.035771,
+   0.091695,
+   -0.012133,
+   -0.002763,
+   -0.039646,
+   -0.035545,
+   0.011488,
+   -0.048384,
+   -0.031103,
+   -0.038,
+   -0.005757,
+   0.004445,
+   -0.073339,
+   0.009622,
+   -0.078653,
+   0.003285,
+   0.054031,
+   0.086836,
+   -0.060703,
+   -0.021555,
+   0.030525,
+   -0.002557,
+   -0.027312,
+   -0.042819,
+   -0.015492,
+   0.021193,
+   0.06529,
+   0.056171,
+   0.049771,
+   -0.005676,
+   0.002879,
+   -0.058086,
+   -0.106793,
+   -0.002129,
+   0.057438,
+   0.08558,
+   0.021011,
+   -0.075312,
+   -0.129359,
+   -0.124691,
+   0.006949,
+   -0.033146,
+   0.037571,
+   -0.048564,
+   0.006937,
+   -0.006292,
+   -0.04,
+   -0.0,
+   0.008095,
+   0.00631,
+   -0.013088,
+   -0.057346,
+   0.121925,
+   -0.006364,
+   -0.103187,
+   -0.006133,
+   0.034699,
+   -0.021039,
+   -0.164231,
+   0.008891,
+   0.011722,
+   0.075233,
+   0.071396,
+   0.014411,
+   0.13826,
+   -0.022613,
+   -0.010172,
+   0.025259,
+   0.094401,
+   0.021226,
+   0.012673,
+   -0.020169,
+   -0.009959,
+   0.045618,
+   0.004991,
+   0.027125,
+   -0.047123,
+   -0.007471,
+   0.028757,
+   -0.027011,
+   0.007397,
+   0.059852,
+   0.032863,
+   -0.043825,
+   -0.042554,
+   0.009919,
+   -0.027205,
+   0.008628,
+   -0.001109,
+   -0.00406,
+   -0.006694,
+   0.046833,
+   -0.046051,
+   -0.067939,
+   0.009974,
+   0.117057,
+   0.017654,
+   0.075766,
+   -0.111432,
+   -0.049653,
+   0.030165,
+   -0.05824,
+   -0.020477,
+   0.064067,
+   0.016112,
+   0.011644,
+   0.12397,
+   -0.00849,
+   0.023658,
+   -0.028706,
+   0.024748,
+   0.011194,
+   -0.054919,
+   -0.020825,
+   0.029006,
+   0.015075,
+   -0.050158,
+   -0.062471,
+   0.035918,
+   0.046544,
+   -0.025488,
+   0.055584,
+   0.020871,
+   -0.105787,
+   -0.074047,
+   -0.060061,
+   0.05326,
+   0.016821,
+   0.001101,
+   0.030411,
+   0.065928,
+   0.007669,
+   0.032179,
+   0.095319,
+   -0.013989,
+   0.005679,
+   0.003242,
+   -0.082482,
+   0.029075,
+   -0.017196,
+   0.068687,
+   0.043028,
+   -0.0126,
+   -0.0,
+   0.000956,
+   0.0402,
+   0.01093,
+   -0.08329,
+   -0.026934,
+   0.016069,
+   -0.077721,
+   0.039532,
+   0.046065,
+   0.029173,
+   0.009848,
+   0.083231,
+   0.000672,
+   -0.042877,
+   -0.014668,
+   0.067064,
+   0.070351,
+   -0.039758,
+   -0.090367,
+   -0.046755,
+   -0.0369,
+   -0.075279,
+   0.03252,
+   -0.026121,
+   -0.029801,
+   0.017334,
+   -0.067865,
+   -0.030222,
+   -0.016592,
+   -0.018342,
+   -0.031656,
+   0.063474,
+   -0.044621,
+   -0.05068,
+   -0.009395,
+   0.050767,
+   0.047791,
+   -0.048757,
+   -0.017554,
+   0.030875,
+   0.052879,
+   0.153075,
+   0.013836,
+   0.038175,
+   0.018266,
+   0.007449,
+   0.019534,
+   -0.115831,
+   -0.032313,
+   -0.074171,
+   -0.021297,
+   -0.001016,
+   -0.071751,
+   0.045852,
+   0.024802,
+   -0.002688,
+   -0.020625,
+   -0.009111,
+   -0.031389,
+   0.030142,
+   0.096452,
+   -0.027575,
+   0.019411,
+   0.013232
+  ]
+ },
+ "emb_column": "embedding_minilm",
+ "cases": {
+  "genre_same": [
+   {
+    "id": 969681,
+    "title": "Spider-Man: Brand New Day",
+    "title_en": "Spider-Man: Brand New Day",
+    "media_type": "movie",
+    "vote_average": 7.864,
+    "vote_count": 2896,
+    "popularity": 658.2244,
+    "collection_id": 531241,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1084244,
+    "title": "Toy Story 5",
+    "title_en": "Toy Story 5",
+    "media_type": "movie",
+    "vote_average": 8.326,
+    "vote_count": 2358,
+    "popularity": 186.2877,
+    "collection_id": 10194,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Comedy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 299534,
+    "title": "Avengers: Endgame",
+    "title_en": "Avengers: Endgame",
+    "media_type": "movie",
+    "vote_average": 8.245,
+    "vote_count": 28809,
+    "popularity": 121.8788,
+    "collection_id": 86311,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 687163,
+    "title": "Project Hail Mary",
+    "title_en": "Project Hail Mary",
+    "media_type": "movie",
+    "vote_average": 8.6,
+    "vote_count": 7991,
+    "popularity": 101.9608,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 299536,
+    "title": "Avengers: Infinity War",
+    "title_en": "Avengers: Infinity War",
+    "media_type": "movie",
+    "vote_average": 8.244,
+    "vote_count": 32996,
+    "popularity": 99.9965,
+    "collection_id": 86311,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1275779,
+    "title": "Disclosure Day",
+    "title_en": "Disclosure Day",
+    "media_type": "movie",
+    "vote_average": 7.469,
+    "vote_count": 3457,
+    "popularity": 84.1578,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Thriller",
+     "Science Fiction"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1621552,
+    "title": "Facing El Chapo",
+    "title_en": "Facing El Chapo",
+    "media_type": "movie",
+    "vote_average": 8.792,
+    "vote_count": 816,
+    "popularity": 80.8496,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1228710,
+    "title": "The Mandalorian and Grogu",
+    "title_en": "The Mandalorian and Grogu",
+    "media_type": "movie",
+    "vote_average": 7.463,
+    "vote_count": 1732,
+    "popularity": 80.0038,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 83533,
+    "title": "Avatar: Fire and Ash",
+    "title_en": "Avatar: Fire and Ash",
+    "media_type": "movie",
+    "vote_average": 7.644,
+    "vote_count": 4390,
+    "popularity": 75.6257,
+    "collection_id": 87096,
+    "release_year": 2025,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Fantasy"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1084242,
+    "title": "Zootopia 2",
+    "title_en": "Zootopia 2",
+    "media_type": "movie",
+    "vote_average": 7.672,
+    "vote_count": 3471,
+    "popularity": 74.759,
+    "collection_id": 1084247,
+    "release_year": 2025,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Mystery",
+     "Comedy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 157336,
+    "title": "Interstellar",
+    "title_en": "Interstellar",
+    "media_type": "movie",
+    "vote_average": 8.488,
+    "vote_count": 41284,
+    "popularity": 73.4799,
+    "collection_id": null,
+    "release_year": 2014,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Drama"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 980431,
+    "title": "Avatar Aang: The Last Airbender",
+    "title_en": "Avatar Aang: The Last Airbender",
+    "media_type": "movie",
+    "vote_average": 9.146,
+    "vote_count": 1195,
+    "popularity": 72.7436,
+    "collection_id": 1136366,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1419406,
+    "title": "The Shadow's Edge",
+    "title_en": "The Shadow's Edge",
+    "media_type": "movie",
+    "vote_average": 8.293,
+    "vote_count": 1465,
+    "popularity": 72.509,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 24428,
+    "title": "The Avengers",
+    "title_en": "The Avengers",
+    "media_type": "movie",
+    "vote_average": 8.078,
+    "vote_count": 39849,
+    "popularity": 68.7592,
+    "collection_id": 86311,
+    "release_year": 2012,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1127384,
+    "title": "Deep Water",
+    "title_en": "Deep Water",
+    "media_type": "movie",
+    "vote_average": 7.396,
+    "vote_count": 625,
+    "popularity": 65.2053,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Thriller",
+     "Adventure",
+     "Horror"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1280738,
+    "title": "The Furious",
+    "title_en": "The Furious",
+    "media_type": "movie",
+    "vote_average": 8.192,
+    "vote_count": 772,
+    "popularity": 64.2786,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1560520,
+    "title": "Batman: Knightfall Part 1: Knightfall",
+    "title_en": "Batman: Knightfall Part 1: Knightfall",
+    "media_type": "movie",
+    "vote_average": 9.158,
+    "vote_count": 387,
+    "popularity": 63.7476,
+    "collection_id": 1560779,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Drama",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 155,
+    "title": "The Dark Knight",
+    "title_en": "The Dark Knight",
+    "media_type": "movie",
+    "vote_average": 8.536,
+    "vote_count": 36821,
+    "popularity": 63.6572,
+    "collection_id": 263,
+    "release_year": 2008,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 634649,
+    "title": "Spider-Man: No Way Home",
+    "title_en": "Spider-Man: No Way Home",
+    "media_type": "movie",
+    "vote_average": 7.947,
+    "vote_count": 23199,
+    "popularity": 61.5699,
+    "collection_id": 531241,
+    "release_year": 2021,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 20352,
+    "title": "Despicable Me",
+    "title_en": "Despicable Me",
+    "media_type": "movie",
+    "vote_average": 7.3,
+    "vote_count": 16413,
+    "popularity": 60.5365,
+    "collection_id": 86066,
+    "release_year": 2010,
+    "genres": [
+     "Crime",
+     "Science Fiction",
+     "Family",
+     "Comedy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1311031,
+    "title": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",
+    "title_en": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",
+    "media_type": "movie",
+    "vote_average": 8.801,
+    "vote_count": 2186,
+    "popularity": 59.1078,
+    "collection_id": 925155,
+    "release_year": 2025,
+    "genres": [
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 27205,
+    "title": "Inception",
+    "title_en": "Inception",
+    "media_type": "movie",
+    "vote_average": 8.374,
+    "vote_count": 40278,
+    "popularity": 57.4822,
+    "collection_id": null,
+    "release_year": 2010,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1184918,
+    "title": "The Wild Robot",
+    "title_en": "The Wild Robot",
+    "media_type": "movie",
+    "vote_average": 8.309,
+    "vote_count": 6644,
+    "popularity": 57.3736,
+    "collection_id": 1370345,
+    "release_year": 2024,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Family",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1226863,
+    "title": "The Super Mario Galaxy Movie",
+    "title_en": "The Super Mario Galaxy Movie",
+    "media_type": "movie",
+    "vote_average": 8.222,
+    "vote_count": 3730,
+    "popularity": 55.7221,
+    "collection_id": 1434561,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Fantasy",
+     "Comedy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 10138,
+    "title": "Iron Man 2",
+    "title_en": "Iron Man 2",
+    "media_type": "movie",
+    "vote_average": 6.855,
+    "vote_count": 22960,
+    "popularity": 53.7929,
+    "collection_id": 131292,
+    "release_year": 2010,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 120,
+    "title": "The Lord of the Rings: The Fellowship of the Ring",
+    "title_en": "The Lord of the Rings: The Fellowship of the Ring",
+    "media_type": "movie",
+    "vote_average": 8.445,
+    "vote_count": 28430,
+    "popularity": 53.546,
+    "collection_id": 119,
+    "release_year": 2001,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 569094,
+    "title": "Spider-Man: Across the Spider-Verse",
+    "title_en": "Spider-Man: Across the Spider-Verse",
+    "media_type": "movie",
+    "vote_average": 8.35,
+    "vote_count": 9307,
+    "popularity": 52.7461,
+    "collection_id": 573436,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 4935,
+    "title": "Howl's Moving Castle",
+    "title_en": "Howl's Moving Castle",
+    "media_type": "movie",
+    "vote_average": 8.387,
+    "vote_count": 11486,
+    "popularity": 52.5694,
+    "collection_id": null,
+    "release_year": 2004,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 19995,
+    "title": "Avatar",
+    "title_en": "Avatar",
+    "media_type": "movie",
+    "vote_average": 7.61,
+    "vote_count": 34733,
+    "popularity": 51.5256,
+    "collection_id": 87096,
+    "release_year": 2009,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 603,
+    "title": "The Matrix",
+    "title_en": "The Matrix",
+    "media_type": "movie",
+    "vote_average": 8.259,
+    "vote_count": 28816,
+    "popularity": 50.9712,
+    "collection_id": 2344,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1007757,
+    "title": "Swapped",
+    "title_en": "Swapped",
+    "media_type": "movie",
+    "vote_average": 8.868,
+    "vote_count": 2207,
+    "popularity": 38.737,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Fantasy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1218925,
+    "title": "Chainsaw Man - The Movie: Reze Arc",
+    "title_en": "Chainsaw Man - The Movie: Reze Arc",
+    "media_type": "movie",
+    "vote_average": 8.554,
+    "vote_count": 1204,
+    "popularity": 29.7213,
+    "collection_id": 1544712,
+    "release_year": 2025,
+    "genres": [
+     "Fantasy",
+     "Action",
+     "Romance",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 122,
+    "title": "The Lord of the Rings: The Return of the King",
+    "title_en": "The Lord of the Rings: The Return of the King",
+    "media_type": "movie",
+    "vote_average": 8.505,
+    "vote_count": 27429,
+    "popularity": 49.6711,
+    "collection_id": 119,
+    "release_year": 2003,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 14537,
+    "title": "Harakiri",
+    "title_en": "Harakiri",
+    "media_type": "movie",
+    "vote_average": 8.465,
+    "vote_count": 1290,
+    "popularity": 10.69,
+    "collection_id": null,
+    "release_year": 1962,
+    "genres": [
+     "Drama",
+     "History",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 346,
+    "title": "Seven Samurai",
+    "title_en": "Seven Samurai",
+    "media_type": "movie",
+    "vote_average": 8.453,
+    "vote_count": 4383,
+    "popularity": 16.4183,
+    "collection_id": null,
+    "release_year": 1954,
+    "genres": [
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 121,
+    "title": "The Lord of the Rings: The Two Towers",
+    "title_en": "The Lord of the Rings: The Two Towers",
+    "media_type": "movie",
+    "vote_average": 8.429,
+    "vote_count": 24636,
+    "popularity": 42.4314,
+    "collection_id": 119,
+    "release_year": 2002,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 324857,
+    "title": "Spider-Man: Into the Spider-Verse",
+    "title_en": "Spider-Man: Into the Spider-Verse",
+    "media_type": "movie",
+    "vote_average": 8.401,
+    "vote_count": 17924,
+    "popularity": 39.3804,
+    "collection_id": 573436,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1383731,
+    "title": "Protector",
+    "title_en": "Protector",
+    "media_type": "movie",
+    "vote_average": 8.4,
+    "vote_count": 601,
+    "popularity": 15.2422,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Thriller",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 620249,
+    "title": "The Legend of Hei",
+    "title_en": "The Legend of Hei",
+    "media_type": "movie",
+    "vote_average": 8.4,
+    "vote_count": 561,
+    "popularity": 10.3842,
+    "collection_id": 1444577,
+    "release_year": 2019,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1891,
+    "title": "The Empire Strikes Back",
+    "title_en": "The Empire Strikes Back",
+    "media_type": "movie",
+    "vote_average": 8.392,
+    "vote_count": 18893,
+    "popularity": 18.2861,
+    "collection_id": 10,
+    "release_year": 1980,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 128,
+    "title": "Princess Mononoke",
+    "title_en": "Princess Mononoke",
+    "media_type": "movie",
+    "vote_average": 8.321,
+    "vote_count": 9319,
+    "popularity": 22.0994,
+    "collection_id": null,
+    "release_year": 1997,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 105,
+    "title": "Back to the Future",
+    "title_en": "Back to the Future",
+    "media_type": "movie",
+    "vote_average": 8.3,
+    "vote_count": 22458,
+    "popularity": 38.3735,
+    "collection_id": 264,
+    "release_year": 1985,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Comedy"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 18491,
+    "title": "Neon Genesis Evangelion: The End of Evangelion",
+    "title_en": "Neon Genesis Evangelion: The End of Evangelion",
+    "media_type": "movie",
+    "vote_average": 8.3,
+    "vote_count": 1965,
+    "popularity": 14.8288,
+    "collection_id": 96850,
+    "release_year": 1997,
+    "genres": [
+     "Science Fiction",
+     "Drama",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1356039,
+    "title": "Counterattack",
+    "title_en": "Counterattack",
+    "media_type": "movie",
+    "vote_average": 8.3,
+    "vote_count": 863,
+    "popularity": 11.4325,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Thriller",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 101,
+    "title": "Léon: The Professional",
+    "title_en": "Léon: The Professional",
+    "media_type": "movie",
+    "vote_average": 8.29,
+    "vote_count": 16566,
+    "popularity": 26.0245,
+    "collection_id": null,
+    "release_year": 1994,
+    "genres": [
+     "Crime",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1439930,
+    "title": "The Punisher: One Last Kill",
+    "title_en": "The Punisher: One Last Kill",
+    "media_type": "movie",
+    "vote_average": 8.266,
+    "vote_count": 2268,
+    "popularity": 44.358,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Crime",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 24188,
+    "title": "Il Sorpasso",
+    "title_en": "Il Sorpasso",
+    "media_type": "movie",
+    "vote_average": 8.232,
+    "vote_count": 870,
+    "popularity": 3.8799,
+    "collection_id": null,
+    "release_year": 1962,
+    "genres": [
+     "Adventure",
+     "Drama",
+     "Comedy"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 635302,
+    "title": "Demon Slayer -Kimetsu no Yaiba- The Movie: Mugen Train",
+    "title_en": "Demon Slayer -Kimetsu no Yaiba- The Movie: Mugen Train",
+    "media_type": "movie",
+    "vote_average": 8.228,
+    "vote_count": 4692,
+    "popularity": 16.5858,
+    "collection_id": 925155,
+    "release_year": 2020,
+    "genres": [
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 315162,
+    "title": "Puss in Boots: The Last Wish",
+    "title_en": "Puss in Boots: The Last Wish",
+    "media_type": "movie",
+    "vote_average": 8.218,
+    "vote_count": 9252,
+    "popularity": 34.6328,
+    "collection_id": 94602,
+    "release_year": 2022,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Fantasy",
+     "Comedy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 283566,
+    "title": "Evangelion: 3.0+1.0 Thrice Upon a Time",
+    "title_en": "Evangelion: 3.0+1.0 Thrice Upon a Time",
+    "media_type": "movie",
+    "vote_average": 8.216,
+    "vote_count": 1000,
+    "popularity": 10.4925,
+    "collection_id": 210303,
+    "release_year": 2021,
+    "genres": [
+     "Science Fiction",
+     "Drama",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1124,
+    "title": "The Prestige",
+    "title_en": "The Prestige",
+    "media_type": "movie",
+    "vote_average": 8.211,
+    "vote_count": 18176,
+    "popularity": 28.1081,
+    "collection_id": null,
+    "release_year": 2006,
+    "genres": [
+     "Science Fiction",
+     "Drama",
+     "Mystery"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 537061,
+    "title": "Steven Universe: The Movie",
+    "title_en": "Steven Universe: The Movie",
+    "media_type": "movie",
+    "vote_average": 8.204,
+    "vote_count": 884,
+    "popularity": 8.7001,
+    "collection_id": null,
+    "release_year": 2019,
+    "genres": [
+     "Adventure",
+     "Drama",
+     "Family",
+     "Fantasy",
+     "TV Movie",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 98,
+    "title": "Gladiator",
+    "title_en": "Gladiator",
+    "media_type": "movie",
+    "vote_average": 8.2,
+    "vote_count": 21551,
+    "popularity": 39.0221,
+    "collection_id": 1069584,
+    "release_year": 2000,
+    "genres": [
+     "Adventure",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   }
+  ],
+  "genre_cross": [
+   {
+    "id": 27205,
+    "title": "Inception",
+    "title_en": "Inception",
+    "media_type": "movie",
+    "vote_average": 8.374,
+    "vote_count": 40278,
+    "popularity": 57.4822,
+    "collection_id": null,
+    "release_year": 2010,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 24428,
+    "title": "The Avengers",
+    "title_en": "The Avengers",
+    "media_type": "movie",
+    "vote_average": 8.078,
+    "vote_count": 39849,
+    "popularity": 68.7592,
+    "collection_id": 86311,
+    "release_year": 2012,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 299536,
+    "title": "Avengers: Infinity War",
+    "title_en": "Avengers: Infinity War",
+    "media_type": "movie",
+    "vote_average": 8.244,
+    "vote_count": 32996,
+    "popularity": 99.9965,
+    "collection_id": 86311,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 19995,
+    "title": "Avatar",
+    "title_en": "Avatar",
+    "media_type": "movie",
+    "vote_average": 7.61,
+    "vote_count": 34733,
+    "popularity": 51.5256,
+    "collection_id": 87096,
+    "release_year": 2009,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 118340,
+    "title": "Guardians of the Galaxy",
+    "title_en": "Guardians of the Galaxy",
+    "media_type": "movie",
+    "vote_average": 7.908,
+    "vote_count": 30355,
+    "popularity": 19.1756,
+    "collection_id": 284433,
+    "release_year": 2014,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 299534,
+    "title": "Avengers: Endgame",
+    "title_en": "Avengers: Endgame",
+    "media_type": "movie",
+    "vote_average": 8.245,
+    "vote_count": 28809,
+    "popularity": 121.8788,
+    "collection_id": 86311,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 634649,
+    "title": "Spider-Man: No Way Home",
+    "title_en": "Spider-Man: No Way Home",
+    "media_type": "movie",
+    "vote_average": 7.947,
+    "vote_count": 23199,
+    "popularity": 61.5699,
+    "collection_id": 531241,
+    "release_year": 2021,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 284054,
+    "title": "Black Panther",
+    "title_en": "Black Panther",
+    "media_type": "movie",
+    "vote_average": 7.362,
+    "vote_count": 24007,
+    "popularity": 30.4405,
+    "collection_id": 529892,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 284053,
+    "title": "Thor: Ragnarok",
+    "title_en": "Thor: Ragnarok",
+    "media_type": "movie",
+    "vote_average": 7.579,
+    "vote_count": 22532,
+    "popularity": 32.774,
+    "collection_id": 131296,
+    "release_year": 2017,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Comedy"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1891,
+    "title": "The Empire Strikes Back",
+    "title_en": "The Empire Strikes Back",
+    "media_type": "movie",
+    "vote_average": 8.392,
+    "vote_count": 18893,
+    "popularity": 18.2861,
+    "collection_id": 10,
+    "release_year": 1980,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 10138,
+    "title": "Iron Man 2",
+    "title_en": "Iron Man 2",
+    "media_type": "movie",
+    "vote_average": 6.855,
+    "vote_count": 22960,
+    "popularity": 53.7929,
+    "collection_id": 131292,
+    "release_year": 2010,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 140607,
+    "title": "Star Wars: The Force Awakens",
+    "title_en": "Star Wars: The Force Awakens",
+    "media_type": "movie",
+    "vote_average": 7.241,
+    "vote_count": 20941,
+    "popularity": 23.1766,
+    "collection_id": 10,
+    "release_year": 2015,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 324857,
+    "title": "Spider-Man: Into the Spider-Verse",
+    "title_en": "Spider-Man: Into the Spider-Verse",
+    "media_type": "movie",
+    "vote_average": 8.401,
+    "vote_count": 17924,
+    "popularity": 39.3804,
+    "collection_id": 573436,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1930,
+    "title": "The Amazing Spider-Man",
+    "title_en": "The Amazing Spider-Man",
+    "media_type": "movie",
+    "vote_average": 6.763,
+    "vote_count": 19146,
+    "popularity": 37.1892,
+    "collection_id": 125574,
+    "release_year": 2012,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 127585,
+    "title": "X-Men: Days of Future Past",
+    "title_en": "X-Men: Days of Future Past",
+    "media_type": "movie",
+    "vote_average": 7.537,
+    "vote_count": 16699,
+    "popularity": 29.7905,
+    "collection_id": 748,
+    "release_year": 2014,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 299537,
+    "title": "Captain Marvel",
+    "title_en": "Captain Marvel",
+    "media_type": "movie",
+    "vote_average": 6.77,
+    "vote_count": 17182,
+    "popularity": 26.5558,
+    "collection_id": 623911,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 181808,
+    "title": "Star Wars: The Last Jedi",
+    "title_en": "Star Wars: The Last Jedi",
+    "media_type": "movie",
+    "vote_average": 6.736,
+    "vote_count": 16703,
+    "popularity": 28.7275,
+    "collection_id": 10,
+    "release_year": 2017,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 49521,
+    "title": "Man of Steel",
+    "title_en": "Man of Steel",
+    "media_type": "movie",
+    "vote_average": 6.7,
+    "vote_count": 16631,
+    "popularity": 27.5796,
+    "collection_id": 209131,
+    "release_year": 2013,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 559,
+    "title": "Spider-Man 3",
+    "title_en": "Spider-Man 3",
+    "media_type": "movie",
+    "vote_average": 6.484,
+    "vote_count": 15812,
+    "popularity": 33.4933,
+    "collection_id": 556,
+    "release_year": 2007,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 157350,
+    "title": "Divergent",
+    "title_en": "Divergent",
+    "media_type": "movie",
+    "vote_average": 6.899,
+    "vote_count": 13749,
+    "popularity": 17.6381,
+    "collection_id": 283579,
+    "release_year": 2014,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 604,
+    "title": "The Matrix Reloaded",
+    "title_en": "The Matrix Reloaded",
+    "media_type": "movie",
+    "vote_average": 7.085,
+    "vote_count": 12346,
+    "popularity": 27.6749,
+    "collection_id": 2344,
+    "release_year": 2003,
+    "genres": [
+     "Thriller",
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 141052,
+    "title": "Justice League",
+    "title_en": "Justice League",
+    "media_type": "movie",
+    "vote_average": 6.066,
+    "vote_count": 13965,
+    "popularity": 22.2987,
+    "collection_id": null,
+    "release_year": 2017,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1724,
+    "title": "The Incredible Hulk",
+    "title_en": "The Incredible Hulk",
+    "media_type": "movie",
+    "vote_average": 6.261,
+    "vote_count": 13172,
+    "popularity": 30.1218,
+    "collection_id": null,
+    "release_year": 2008,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 13475,
+    "title": "Star Trek",
+    "title_en": "Star Trek",
+    "media_type": "movie",
+    "vote_average": 7.437,
+    "vote_count": 10738,
+    "popularity": 16.9947,
+    "collection_id": 115575,
+    "release_year": 2009,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 75612,
+    "title": "Oblivion",
+    "title_en": "Oblivion",
+    "media_type": "movie",
+    "vote_average": 6.693,
+    "vote_count": 11854,
+    "popularity": 19.15,
+    "collection_id": null,
+    "release_year": 2013,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Mystery"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 569094,
+    "title": "Spider-Man: Across the Spider-Verse",
+    "title_en": "Spider-Man: Across the Spider-Verse",
+    "media_type": "movie",
+    "vote_average": 8.35,
+    "vote_count": 9307,
+    "popularity": 52.7461,
+    "collection_id": 573436,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 399579,
+    "title": "Alita: Battle Angel",
+    "title_en": "Alita: Battle Angel",
+    "media_type": "movie",
+    "vote_average": 7.278,
+    "vote_count": 10412,
+    "popularity": 19.4213,
+    "collection_id": null,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 54138,
+    "title": "Star Trek Into Darkness",
+    "title_en": "Star Trek Into Darkness",
+    "media_type": "movie",
+    "vote_average": 7.32,
+    "vote_count": 9886,
+    "popularity": 16.205,
+    "collection_id": 115575,
+    "release_year": 2013,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 447365,
+    "title": "Guardians of the Galaxy Vol. 3",
+    "title_en": "Guardians of the Galaxy Vol. 3",
+    "media_type": "movie",
+    "vote_average": 7.933,
+    "vote_count": 8861,
+    "popularity": 39.4666,
+    "collection_id": 284433,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 181812,
+    "title": "Star Wars: The Rise of Skywalker",
+    "title_en": "Star Wars: The Rise of Skywalker",
+    "media_type": "movie",
+    "vote_average": 6.247,
+    "vote_count": 11177,
+    "popularity": 25.8977,
+    "collection_id": 10,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 348350,
+    "title": "Solo: A Star Wars Story",
+    "title_en": "Solo: A Star Wars Story",
+    "media_type": "movie",
+    "vote_average": 6.552,
+    "vote_count": 9528,
+    "popularity": 15.6483,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 20526,
+    "title": "TRON: Legacy",
+    "title_en": "TRON: Legacy",
+    "media_type": "movie",
+    "vote_average": 6.549,
+    "vote_count": 8171,
+    "popularity": 19.2741,
+    "collection_id": 63043,
+    "release_year": 2010,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 436270,
+    "title": "Black Adam",
+    "title_en": "Black Adam",
+    "media_type": "movie",
+    "vote_average": 6.8,
+    "vote_count": 7277,
+    "popularity": 28.9402,
+    "collection_id": null,
+    "release_year": 2022,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 188927,
+    "title": "Star Trek Beyond",
+    "title_en": "Star Trek Beyond",
+    "media_type": "movie",
+    "vote_average": 6.791,
+    "vote_count": 7273,
+    "popularity": 15.7637,
+    "collection_id": 115575,
+    "release_year": 2016,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 262504,
+    "title": "Allegiant",
+    "title_en": "Allegiant",
+    "media_type": "movie",
+    "vote_average": 6.104,
+    "vote_count": 7121,
+    "popularity": 14.1589,
+    "collection_id": 283579,
+    "release_year": 2016,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Mystery"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 49529,
+    "title": "John Carter",
+    "title_en": "John Carter",
+    "media_type": "movie",
+    "vote_average": 6.386,
+    "vote_count": 6303,
+    "popularity": 15.6518,
+    "collection_id": null,
+    "release_year": 2012,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1061474,
+    "title": "Superman",
+    "title_en": "Superman",
+    "media_type": "movie",
+    "vote_average": 7.3,
+    "vote_count": 5509,
+    "popularity": 43.0213,
+    "collection_id": 1540907,
+    "release_year": 2025,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 640146,
+    "title": "Ant-Man and the Wasp: Quantumania",
+    "title_en": "Ant-Man and the Wasp: Quantumania",
+    "media_type": "movie",
+    "vote_average": 6.2,
+    "vote_count": 6123,
+    "popularity": 24.1276,
+    "collection_id": 422834,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 46529,
+    "title": "I Am Number Four",
+    "title_en": "I Am Number Four",
+    "media_type": "movie",
+    "vote_average": 6.207,
+    "vote_count": 5138,
+    "popularity": 13.1028,
+    "collection_id": null,
+    "release_year": 2011,
+    "genres": [
+     "Thriller",
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 871,
+    "title": "Planet of the Apes",
+    "title_en": "Planet of the Apes",
+    "media_type": "movie",
+    "vote_average": 7.7,
+    "vote_count": 4125,
+    "popularity": 14.3968,
+    "collection_id": 1709,
+    "release_year": 1968,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 986056,
+    "title": "Thunderbolts*",
+    "title_en": "Thunderbolts*",
+    "media_type": "movie",
+    "vote_average": 7.297,
+    "vote_count": 4092,
+    "popularity": 37.4468,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 670292,
+    "title": "The Creator",
+    "title_en": "The Creator",
+    "media_type": "movie",
+    "vote_average": 7.026,
+    "vote_count": 4192,
+    "popularity": 20.9486,
+    "collection_id": null,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 406759,
+    "title": "Moonfall",
+    "title_en": "Moonfall",
+    "media_type": "movie",
+    "vote_average": 6.286,
+    "vote_count": 3807,
+    "popularity": 11.4001,
+    "collection_id": null,
+    "release_year": 2022,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 969681,
+    "title": "Spider-Man: Brand New Day",
+    "title_en": "Spider-Man: Brand New Day",
+    "media_type": "movie",
+    "vote_average": 7.864,
+    "vote_count": 2896,
+    "popularity": 658.2244,
+    "collection_id": 531241,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 609681,
+    "title": "The Marvels",
+    "title_en": "The Marvels",
+    "media_type": "movie",
+    "vote_average": 5.908,
+    "vote_count": 3657,
+    "popularity": 23.5801,
+    "collection_id": 623911,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 199,
+    "title": "Star Trek: First Contact",
+    "title_en": "Star Trek: First Contact",
+    "media_type": "movie",
+    "vote_average": 7.308,
+    "vote_count": 2038,
+    "popularity": 10.3106,
+    "collection_id": 115570,
+    "release_year": 1996,
+    "genres": [
+     "Thriller",
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1228710,
+    "title": "The Mandalorian and Grogu",
+    "title_en": "The Mandalorian and Grogu",
+    "media_type": "movie",
+    "vote_average": 7.463,
+    "vote_count": 1732,
+    "popularity": 80.0038,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 777443,
+    "title": "The Electric State",
+    "title_en": "The Electric State",
+    "media_type": "movie",
+    "vote_average": 6.469,
+    "vote_count": 1819,
+    "popularity": 16.3163,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 201,
+    "title": "Star Trek: Nemesis",
+    "title_en": "Star Trek: Nemesis",
+    "media_type": "movie",
+    "vote_average": 6.309,
+    "vote_count": 1655,
+    "popularity": 9.9251,
+    "collection_id": 115570,
+    "release_year": 2002,
+    "genres": [
+     "Thriller",
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 630656,
+    "title": "The Death and Return of Superman",
+    "title_en": "The Death and Return of Superman",
+    "media_type": "movie",
+    "vote_average": 6.743,
+    "vote_count": 1259,
+    "popularity": 6.5425,
+    "collection_id": null,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Drama",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 487242,
+    "title": "Suicide Squad: Hell to Pay",
+    "title_en": "Suicide Squad: Hell to Pay",
+    "media_type": "movie",
+    "vote_average": 7.093,
+    "vote_count": 734,
+    "popularity": 7.3819,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 166076,
+    "title": "Superman: Unbound",
+    "title_en": "Superman: Unbound",
+    "media_type": "movie",
+    "vote_average": 6.6,
+    "vote_count": 477,
+    "popularity": 6.7585,
+    "collection_id": null,
+    "release_year": 2013,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 828898,
+    "title": "The Venture Bros.: Radiant Is the Blood of the Baboon Heart",
+    "title_en": "The Venture Bros.: Radiant Is the Blood of the Baboon Heart",
+    "media_type": "movie",
+    "vote_average": 7.3,
+    "vote_count": 98,
+    "popularity": 5.7327,
+    "collection_id": null,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 157336,
+    "title": "Interstellar",
+    "title_en": "Interstellar",
+    "media_type": "movie",
+    "vote_average": 8.488,
+    "vote_count": 41284,
+    "popularity": 73.4799,
+    "collection_id": null,
+    "release_year": 2014,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Drama"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 120,
+    "title": "The Lord of the Rings: The Fellowship of the Ring",
+    "title_en": "The Lord of the Rings: The Fellowship of the Ring",
+    "media_type": "movie",
+    "vote_average": 8.445,
+    "vote_count": 28430,
+    "popularity": 53.546,
+    "collection_id": 119,
+    "release_year": 2001,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 603,
+    "title": "The Matrix",
+    "title_en": "The Matrix",
+    "media_type": "movie",
+    "vote_average": 8.259,
+    "vote_count": 28816,
+    "popularity": 50.9712,
+    "collection_id": 2344,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 122,
+    "title": "The Lord of the Rings: The Return of the King",
+    "title_en": "The Lord of the Rings: The Return of the King",
+    "media_type": "movie",
+    "vote_average": 8.505,
+    "vote_count": 27429,
+    "popularity": 49.6711,
+    "collection_id": 119,
+    "release_year": 2003,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 121,
+    "title": "The Lord of the Rings: The Two Towers",
+    "title_en": "The Lord of the Rings: The Two Towers",
+    "media_type": "movie",
+    "vote_average": 8.429,
+    "vote_count": 24636,
+    "popularity": 42.4314,
+    "collection_id": 119,
+    "release_year": 2002,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 105,
+    "title": "Back to the Future",
+    "title_en": "Back to the Future",
+    "media_type": "movie",
+    "vote_average": 8.3,
+    "vote_count": 22458,
+    "popularity": 38.3735,
+    "collection_id": 264,
+    "release_year": 1985,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Comedy"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 980431,
+    "title": "Avatar Aang: The Last Airbender",
+    "title_en": "Avatar Aang: The Last Airbender",
+    "media_type": "movie",
+    "vote_average": 9.146,
+    "vote_count": 1195,
+    "popularity": 72.7436,
+    "collection_id": 1136366,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1007757,
+    "title": "Swapped",
+    "title_en": "Swapped",
+    "media_type": "movie",
+    "vote_average": 8.868,
+    "vote_count": 2207,
+    "popularity": 38.737,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Fantasy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1311031,
+    "title": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",
+    "title_en": "Demon Slayer: Kimetsu no Yaiba Infinity Castle",
+    "media_type": "movie",
+    "vote_average": 8.801,
+    "vote_count": 2186,
+    "popularity": 59.1078,
+    "collection_id": 925155,
+    "release_year": 2025,
+    "genres": [
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1621552,
+    "title": "Facing El Chapo",
+    "title_en": "Facing El Chapo",
+    "media_type": "movie",
+    "vote_average": 8.792,
+    "vote_count": 816,
+    "popularity": 80.8496,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 687163,
+    "title": "Project Hail Mary",
+    "title_en": "Project Hail Mary",
+    "media_type": "movie",
+    "vote_average": 8.6,
+    "vote_count": 7991,
+    "popularity": 101.9608,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1218925,
+    "title": "Chainsaw Man - The Movie: Reze Arc",
+    "title_en": "Chainsaw Man - The Movie: Reze Arc",
+    "media_type": "movie",
+    "vote_average": 8.554,
+    "vote_count": 1204,
+    "popularity": 29.7213,
+    "collection_id": 1544712,
+    "release_year": 2025,
+    "genres": [
+     "Fantasy",
+     "Action",
+     "Romance",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 155,
+    "title": "The Dark Knight",
+    "title_en": "The Dark Knight",
+    "media_type": "movie",
+    "vote_average": 8.536,
+    "vote_count": 36821,
+    "popularity": 63.6572,
+    "collection_id": 263,
+    "release_year": 2008,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 14537,
+    "title": "Harakiri",
+    "title_en": "Harakiri",
+    "media_type": "movie",
+    "vote_average": 8.465,
+    "vote_count": 1290,
+    "popularity": 10.69,
+    "collection_id": null,
+    "release_year": 1962,
+    "genres": [
+     "Drama",
+     "History",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 346,
+    "title": "Seven Samurai",
+    "title_en": "Seven Samurai",
+    "media_type": "movie",
+    "vote_average": 8.453,
+    "vote_count": 4383,
+    "popularity": 16.4183,
+    "collection_id": null,
+    "release_year": 1954,
+    "genres": [
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1383731,
+    "title": "Protector",
+    "title_en": "Protector",
+    "media_type": "movie",
+    "vote_average": 8.4,
+    "vote_count": 601,
+    "popularity": 15.2422,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Thriller",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 620249,
+    "title": "The Legend of Hei",
+    "title_en": "The Legend of Hei",
+    "media_type": "movie",
+    "vote_average": 8.4,
+    "vote_count": 561,
+    "popularity": 10.3842,
+    "collection_id": 1444577,
+    "release_year": 2019,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 4935,
+    "title": "Howl's Moving Castle",
+    "title_en": "Howl's Moving Castle",
+    "media_type": "movie",
+    "vote_average": 8.387,
+    "vote_count": 11486,
+    "popularity": 52.5694,
+    "collection_id": null,
+    "release_year": 2004,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1084244,
+    "title": "Toy Story 5",
+    "title_en": "Toy Story 5",
+    "media_type": "movie",
+    "vote_average": 8.326,
+    "vote_count": 2358,
+    "popularity": 186.2877,
+    "collection_id": 10194,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Comedy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 128,
+    "title": "Princess Mononoke",
+    "title_en": "Princess Mononoke",
+    "media_type": "movie",
+    "vote_average": 8.321,
+    "vote_count": 9319,
+    "popularity": 22.0994,
+    "collection_id": null,
+    "release_year": 1997,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1184918,
+    "title": "The Wild Robot",
+    "title_en": "The Wild Robot",
+    "media_type": "movie",
+    "vote_average": 8.309,
+    "vote_count": 6644,
+    "popularity": 57.3736,
+    "collection_id": 1370345,
+    "release_year": 2024,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Family",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 18491,
+    "title": "Neon Genesis Evangelion: The End of Evangelion",
+    "title_en": "Neon Genesis Evangelion: The End of Evangelion",
+    "media_type": "movie",
+    "vote_average": 8.3,
+    "vote_count": 1965,
+    "popularity": 14.8288,
+    "collection_id": 96850,
+    "release_year": 1997,
+    "genres": [
+     "Science Fiction",
+     "Drama",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1356039,
+    "title": "Counterattack",
+    "title_en": "Counterattack",
+    "media_type": "movie",
+    "vote_average": 8.3,
+    "vote_count": 863,
+    "popularity": 11.4325,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Thriller",
+     "Adventure",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1419406,
+    "title": "The Shadow's Edge",
+    "title_en": "The Shadow's Edge",
+    "media_type": "movie",
+    "vote_average": 8.293,
+    "vote_count": 1465,
+    "popularity": 72.509,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 101,
+    "title": "Léon: The Professional",
+    "title_en": "Léon: The Professional",
+    "media_type": "movie",
+    "vote_average": 8.29,
+    "vote_count": 16566,
+    "popularity": 26.0245,
+    "collection_id": null,
+    "release_year": 1994,
+    "genres": [
+     "Crime",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1439930,
+    "title": "The Punisher: One Last Kill",
+    "title_en": "The Punisher: One Last Kill",
+    "media_type": "movie",
+    "vote_average": 8.266,
+    "vote_count": 2268,
+    "popularity": 44.358,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Crime",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 24188,
+    "title": "Il Sorpasso",
+    "title_en": "Il Sorpasso",
+    "media_type": "movie",
+    "vote_average": 8.232,
+    "vote_count": 870,
+    "popularity": 3.8799,
+    "collection_id": null,
+    "release_year": 1962,
+    "genres": [
+     "Adventure",
+     "Drama",
+     "Comedy"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 635302,
+    "title": "Demon Slayer -Kimetsu no Yaiba- The Movie: Mugen Train",
+    "title_en": "Demon Slayer -Kimetsu no Yaiba- The Movie: Mugen Train",
+    "media_type": "movie",
+    "vote_average": 8.228,
+    "vote_count": 4692,
+    "popularity": 16.5858,
+    "collection_id": 925155,
+    "release_year": 2020,
+    "genres": [
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1226863,
+    "title": "The Super Mario Galaxy Movie",
+    "title_en": "The Super Mario Galaxy Movie",
+    "media_type": "movie",
+    "vote_average": 8.222,
+    "vote_count": 3730,
+    "popularity": 55.7221,
+    "collection_id": 1434561,
+    "release_year": 2026,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Fantasy",
+     "Comedy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 315162,
+    "title": "Puss in Boots: The Last Wish",
+    "title_en": "Puss in Boots: The Last Wish",
+    "media_type": "movie",
+    "vote_average": 8.218,
+    "vote_count": 9252,
+    "popularity": 34.6328,
+    "collection_id": 94602,
+    "release_year": 2022,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Fantasy",
+     "Comedy",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 283566,
+    "title": "Evangelion: 3.0+1.0 Thrice Upon a Time",
+    "title_en": "Evangelion: 3.0+1.0 Thrice Upon a Time",
+    "media_type": "movie",
+    "vote_average": 8.216,
+    "vote_count": 1000,
+    "popularity": 10.4925,
+    "collection_id": 210303,
+    "release_year": 2021,
+    "genres": [
+     "Science Fiction",
+     "Drama",
+     "Action",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 1124,
+    "title": "The Prestige",
+    "title_en": "The Prestige",
+    "media_type": "movie",
+    "vote_average": 8.211,
+    "vote_count": 18176,
+    "popularity": 28.1081,
+    "collection_id": null,
+    "release_year": 2006,
+    "genres": [
+     "Science Fiction",
+     "Drama",
+     "Mystery"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 537061,
+    "title": "Steven Universe: The Movie",
+    "title_en": "Steven Universe: The Movie",
+    "media_type": "movie",
+    "vote_average": 8.204,
+    "vote_count": 884,
+    "popularity": 8.7001,
+    "collection_id": null,
+    "release_year": 2019,
+    "genres": [
+     "Adventure",
+     "Drama",
+     "Family",
+     "Fantasy",
+     "TV Movie",
+     "Animation"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   },
+   {
+    "id": 98,
+    "title": "Gladiator",
+    "title_en": "Gladiator",
+    "media_type": "movie",
+    "vote_average": 8.2,
+    "vote_count": 21551,
+    "popularity": 39.0221,
+    "collection_id": 1069584,
+    "release_year": 2000,
+    "genres": [
+     "Adventure",
+     "Drama",
+     "Action"
+    ],
+    "via": null,
+    "tmdb_rank": null,
+    "knn_similarity": null
+   }
+  ],
+  "knn_movie": [
+   {
+    "id": 1891,
+    "title": "The Empire Strikes Back",
+    "title_en": "The Empire Strikes Back",
+    "media_type": "movie",
+    "vote_average": 8.392,
+    "vote_count": 18893,
+    "popularity": 18.2861,
+    "collection_id": 10,
+    "release_year": 1980,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.647158
+   },
+   {
+    "id": 181808,
+    "title": "Star Wars: The Last Jedi",
+    "title_en": "Star Wars: The Last Jedi",
+    "media_type": "movie",
+    "vote_average": 6.736,
+    "vote_count": 16703,
+    "popularity": 28.7275,
+    "collection_id": 10,
+    "release_year": 2017,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.566635
+   },
+   {
+    "id": 140607,
+    "title": "Star Wars: The Force Awakens",
+    "title_en": "Star Wars: The Force Awakens",
+    "media_type": "movie",
+    "vote_average": 7.241,
+    "vote_count": 20941,
+    "popularity": 23.1766,
+    "collection_id": 10,
+    "release_year": 2015,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.560659
+   },
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.545823
+   },
+   {
+    "id": 181812,
+    "title": "Star Wars: The Rise of Skywalker",
+    "title_en": "Star Wars: The Rise of Skywalker",
+    "media_type": "movie",
+    "vote_average": 6.247,
+    "vote_count": 11177,
+    "popularity": 25.8977,
+    "collection_id": 10,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.540427
+   },
+   {
+    "id": 348350,
+    "title": "Solo: A Star Wars Story",
+    "title_en": "Solo: A Star Wars Story",
+    "media_type": "movie",
+    "vote_average": 6.552,
+    "vote_count": 9528,
+    "popularity": 15.6483,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.539245
+   },
+   {
+    "id": 299537,
+    "title": "Captain Marvel",
+    "title_en": "Captain Marvel",
+    "media_type": "movie",
+    "vote_average": 6.77,
+    "vote_count": 17182,
+    "popularity": 26.5558,
+    "collection_id": 623911,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.426748
+   },
+   {
+    "id": 57737,
+    "title": "Barbie: A Fairy Secret",
+    "title_en": "Barbie: A Fairy Secret",
+    "media_type": "movie",
+    "vote_average": 6.9,
+    "vote_count": 555,
+    "popularity": 8.5153,
+    "collection_id": null,
+    "release_year": 2011,
+    "genres": [
+     "Family",
+     "Fantasy",
+     "Animation"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.415412
+   },
+   {
+    "id": 141052,
+    "title": "Justice League",
+    "title_en": "Justice League",
+    "media_type": "movie",
+    "vote_average": 6.066,
+    "vote_count": 13965,
+    "popularity": 22.2987,
+    "collection_id": null,
+    "release_year": 2017,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.40952
+   },
+   {
+    "id": 533514,
+    "title": "Violet Evergarden: The Movie",
+    "title_en": "Violet Evergarden: The Movie",
+    "media_type": "movie",
+    "vote_average": 8.291,
+    "vote_count": 546,
+    "popularity": 9.8874,
+    "collection_id": 1431054,
+    "release_year": 2020,
+    "genres": [
+     "Drama",
+     "Fantasy",
+     "Romance",
+     "Animation"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.409472
+   },
+   {
+    "id": 609681,
+    "title": "The Marvels",
+    "title_en": "The Marvels",
+    "media_type": "movie",
+    "vote_average": 5.908,
+    "vote_count": 3657,
+    "popularity": 23.5801,
+    "collection_id": 623911,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.397279
+   },
+   {
+    "id": 1356039,
+    "title": "Counterattack",
+    "title_en": "Counterattack",
+    "media_type": "movie",
+    "vote_average": 8.3,
+    "vote_count": 863,
+    "popularity": 11.4325,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Thriller",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.385455
+   },
+   {
+    "id": 1228710,
+    "title": "The Mandalorian and Grogu",
+    "title_en": "The Mandalorian and Grogu",
+    "media_type": "movie",
+    "vote_average": 7.463,
+    "vote_count": 1732,
+    "popularity": 80.0038,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.378347
+   },
+   {
+    "id": 487242,
+    "title": "Suicide Squad: Hell to Pay",
+    "title_en": "Suicide Squad: Hell to Pay",
+    "media_type": "movie",
+    "vote_average": 7.093,
+    "vote_count": 734,
+    "popularity": 7.3819,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.377724
+   },
+   {
+    "id": 640146,
+    "title": "Ant-Man and the Wasp: Quantumania",
+    "title_en": "Ant-Man and the Wasp: Quantumania",
+    "media_type": "movie",
+    "vote_average": 6.2,
+    "vote_count": 6123,
+    "popularity": 24.1276,
+    "collection_id": 422834,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.37578
+   },
+   {
+    "id": 346698,
+    "title": "Barbie",
+    "title_en": "Barbie",
+    "media_type": "movie",
+    "vote_average": 6.907,
+    "vote_count": 11613,
+    "popularity": 33.0367,
+    "collection_id": null,
+    "release_year": 2023,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Comedy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.37433
+   },
+   {
+    "id": 2493,
+    "title": "The Princess Bride",
+    "title_en": "The Princess Bride",
+    "media_type": "movie",
+    "vote_average": 7.7,
+    "vote_count": 5301,
+    "popularity": 18.6024,
+    "collection_id": null,
+    "release_year": 1987,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Fantasy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.373523
+   },
+   {
+    "id": 3176,
+    "title": "Battle Royale",
+    "title_en": "Battle Royale",
+    "media_type": "movie",
+    "vote_average": 7.264,
+    "vote_count": 3957,
+    "popularity": 9.5317,
+    "collection_id": 16302,
+    "release_year": 2000,
+    "genres": [
+     "Thriller",
+     "Drama",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.359372
+   },
+   {
+    "id": 152,
+    "title": "Star Trek: The Motion Picture",
+    "title_en": "Star Trek: The Motion Picture",
+    "media_type": "movie",
+    "vote_average": 6.484,
+    "vote_count": 2013,
+    "popularity": 10.095,
+    "collection_id": 151,
+    "release_year": 1979,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Mystery"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.358329
+   },
+   {
+    "id": 4413,
+    "title": "The Brave One",
+    "title_en": "The Brave One",
+    "media_type": "movie",
+    "vote_average": 6.581,
+    "vote_count": 1128,
+    "popularity": 7.4191,
+    "collection_id": null,
+    "release_year": 2007,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.355883
+   }
+  ],
+  "knn_tv": [
+   {
+    "id": 250307,
+    "title": "The Pitt",
+    "title_en": "The Pitt",
+    "media_type": "tv",
+    "vote_average": 8.7,
+    "vote_count": 986,
+    "popularity": 135.2247,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.329796
+   },
+   {
+    "id": 31356,
+    "title": "Big Time Rush",
+    "title_en": "Big Time Rush",
+    "media_type": "tv",
+    "vote_average": 8.566,
+    "vote_count": 1688,
+    "popularity": 20.4314,
+    "collection_id": null,
+    "release_year": 2009,
+    "genres": [
+     "Kids",
+     "Comedy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.286473
+   },
+   {
+    "id": 273240,
+    "title": "Off Campus",
+    "title_en": "Off Campus",
+    "media_type": "tv",
+    "vote_average": 8.89,
+    "vote_count": 866,
+    "popularity": 77.8306,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.274515
+   },
+   {
+    "id": 299167,
+    "title": "Dutton Ranch",
+    "title_en": "Dutton Ranch",
+    "media_type": "tv",
+    "vote_average": 9.131,
+    "vote_count": 604,
+    "popularity": 45.155,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Drama",
+     "Western"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.264663
+   },
+   {
+    "id": 87108,
+    "title": "Chernobyl",
+    "title_en": "Chernobyl",
+    "media_type": "tv",
+    "vote_average": 8.727,
+    "vote_count": 8341,
+    "popularity": 43.3288,
+    "collection_id": null,
+    "release_year": 2019,
+    "genres": [
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.257297
+   },
+   {
+    "id": 31132,
+    "title": "Regular Show",
+    "title_en": "Regular Show",
+    "media_type": "tv",
+    "vote_average": 8.6,
+    "vote_count": 2318,
+    "popularity": 142.7312,
+    "collection_id": null,
+    "release_year": 2010,
+    "genres": [
+     "Action & Adventure",
+     "Comedy",
+     "Animation",
+     "Sci-Fi & Fantasy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.256475
+   },
+   {
+    "id": 1398,
+    "title": "The Sopranos",
+    "title_en": "The Sopranos",
+    "media_type": "tv",
+    "vote_average": 8.673,
+    "vote_count": 3696,
+    "popularity": 138.5866,
+    "collection_id": null,
+    "release_year": 1999,
+    "genres": [
+     "Crime",
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.254747
+   },
+   {
+    "id": 60625,
+    "title": "Rick and Morty",
+    "title_en": "Rick and Morty",
+    "media_type": "tv",
+    "vote_average": 8.681,
+    "vote_count": 11425,
+    "popularity": 197.033,
+    "collection_id": null,
+    "release_year": 2013,
+    "genres": [
+     "Action & Adventure",
+     "Comedy",
+     "Animation",
+     "Sci-Fi & Fantasy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.249357
+   },
+   {
+    "id": 4613,
+    "title": "Band of Brothers",
+    "title_en": "Band of Brothers",
+    "media_type": "tv",
+    "vote_average": 8.605,
+    "vote_count": 4379,
+    "popularity": 64.2741,
+    "collection_id": null,
+    "release_year": 2001,
+    "genres": [
+     "Drama",
+     "War & Politics"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.242708
+   },
+   {
+    "id": 117376,
+    "title": "Vincenzo",
+    "title_en": "Vincenzo",
+    "media_type": "tv",
+    "vote_average": 8.509,
+    "vote_count": 1108,
+    "popularity": 20.3097,
+    "collection_id": null,
+    "release_year": 2021,
+    "genres": [
+     "Crime",
+     "Drama",
+     "Action & Adventure",
+     "Comedy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.241467
+   },
+   {
+    "id": 2316,
+    "title": "The Office",
+    "title_en": "The Office",
+    "media_type": "tv",
+    "vote_average": 8.6,
+    "vote_count": 5508,
+    "popularity": 359.0661,
+    "collection_id": null,
+    "release_year": 2005,
+    "genres": [
+     "Comedy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.23984
+   },
+   {
+    "id": 1438,
+    "title": "The Wire",
+    "title_en": "The Wire",
+    "media_type": "tv",
+    "vote_average": 8.639,
+    "vote_count": 2836,
+    "popularity": 77.7203,
+    "collection_id": null,
+    "release_year": 2002,
+    "genres": [
+     "Crime",
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.239306
+   },
+   {
+    "id": 124834,
+    "title": "Heartstopper",
+    "title_en": "Heartstopper",
+    "media_type": "tv",
+    "vote_average": 8.562,
+    "vote_count": 1776,
+    "popularity": 19.4844,
+    "collection_id": null,
+    "release_year": 2022,
+    "genres": [
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.237488
+   },
+   {
+    "id": 1044,
+    "title": "Planet Earth",
+    "title_en": "Planet Earth",
+    "media_type": "tv",
+    "vote_average": 8.638,
+    "vote_count": 1292,
+    "popularity": 15.2532,
+    "collection_id": null,
+    "release_year": 2006,
+    "genres": [
+     "Documentary"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.228231
+   },
+   {
+    "id": 200709,
+    "title": "Weak Hero",
+    "title_en": "Weak Hero",
+    "media_type": "tv",
+    "vote_average": 8.691,
+    "vote_count": 536,
+    "popularity": 50.7218,
+    "collection_id": null,
+    "release_year": 2022,
+    "genres": [
+     "Drama",
+     "Action & Adventure"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.22232
+   },
+   {
+    "id": 72637,
+    "title": "Once",
+    "title_en": "Once",
+    "media_type": "tv",
+    "vote_average": 8.628,
+    "vote_count": 1536,
+    "popularity": 16.8461,
+    "collection_id": null,
+    "release_year": 2017,
+    "genres": [
+     "Family",
+     "Soap",
+     "Comedy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.221753
+   },
+   {
+    "id": 120089,
+    "title": "SPY x FAMILY",
+    "title_en": "SPY x FAMILY",
+    "media_type": "tv",
+    "vote_average": 8.502,
+    "vote_count": 2354,
+    "popularity": 87.8054,
+    "collection_id": null,
+    "release_year": 2022,
+    "genres": [
+     "Action & Adventure",
+     "Comedy",
+     "Animation"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.218426
+   },
+   {
+    "id": 197067,
+    "title": "Extraordinary Attorney Woo",
+    "title_en": "Extraordinary Attorney Woo",
+    "media_type": "tv",
+    "vote_average": 8.489,
+    "vote_count": 986,
+    "popularity": 20.3855,
+    "collection_id": null,
+    "release_year": 2022,
+    "genres": [
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.212919
+   },
+   {
+    "id": 89456,
+    "title": "Primal",
+    "title_en": "Primal",
+    "media_type": "tv",
+    "vote_average": 8.656,
+    "vote_count": 1619,
+    "popularity": 18.9264,
+    "collection_id": null,
+    "release_year": 2019,
+    "genres": [
+     "Action & Adventure",
+     "Animation"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.212814
+   },
+   {
+    "id": 66732,
+    "title": "Stranger Things",
+    "title_en": "Stranger Things",
+    "media_type": "tv",
+    "vote_average": 8.55,
+    "vote_count": 21883,
+    "popularity": 142.1472,
+    "collection_id": null,
+    "release_year": 2016,
+    "genres": [
+     "Mystery",
+     "Action & Adventure",
+     "Sci-Fi & Fantasy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.212173
+   }
+  ],
+  "knn_cross": [
+   {
+    "id": 1891,
+    "title": "The Empire Strikes Back",
+    "title_en": "The Empire Strikes Back",
+    "media_type": "movie",
+    "vote_average": 8.392,
+    "vote_count": 18893,
+    "popularity": 18.2861,
+    "collection_id": 10,
+    "release_year": 1980,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.647158
+   },
+   {
+    "id": 181808,
+    "title": "Star Wars: The Last Jedi",
+    "title_en": "Star Wars: The Last Jedi",
+    "media_type": "movie",
+    "vote_average": 6.736,
+    "vote_count": 16703,
+    "popularity": 28.7275,
+    "collection_id": 10,
+    "release_year": 2017,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.566635
+   },
+   {
+    "id": 140607,
+    "title": "Star Wars: The Force Awakens",
+    "title_en": "Star Wars: The Force Awakens",
+    "media_type": "movie",
+    "vote_average": 7.241,
+    "vote_count": 20941,
+    "popularity": 23.1766,
+    "collection_id": 10,
+    "release_year": 2015,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.560659
+   },
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.545823
+   },
+   {
+    "id": 181812,
+    "title": "Star Wars: The Rise of Skywalker",
+    "title_en": "Star Wars: The Rise of Skywalker",
+    "media_type": "movie",
+    "vote_average": 6.247,
+    "vote_count": 11177,
+    "popularity": 25.8977,
+    "collection_id": 10,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.540427
+   },
+   {
+    "id": 348350,
+    "title": "Solo: A Star Wars Story",
+    "title_en": "Solo: A Star Wars Story",
+    "media_type": "movie",
+    "vote_average": 6.552,
+    "vote_count": 9528,
+    "popularity": 15.6483,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.539245
+   },
+   {
+    "id": 299537,
+    "title": "Captain Marvel",
+    "title_en": "Captain Marvel",
+    "media_type": "movie",
+    "vote_average": 6.77,
+    "vote_count": 17182,
+    "popularity": 26.5558,
+    "collection_id": 623911,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.426748
+   },
+   {
+    "id": 57737,
+    "title": "Barbie: A Fairy Secret",
+    "title_en": "Barbie: A Fairy Secret",
+    "media_type": "movie",
+    "vote_average": 6.9,
+    "vote_count": 555,
+    "popularity": 8.5153,
+    "collection_id": null,
+    "release_year": 2011,
+    "genres": [
+     "Family",
+     "Fantasy",
+     "Animation"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.415412
+   },
+   {
+    "id": 141052,
+    "title": "Justice League",
+    "title_en": "Justice League",
+    "media_type": "movie",
+    "vote_average": 6.066,
+    "vote_count": 13965,
+    "popularity": 22.2987,
+    "collection_id": null,
+    "release_year": 2017,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.40952
+   },
+   {
+    "id": 533514,
+    "title": "Violet Evergarden: The Movie",
+    "title_en": "Violet Evergarden: The Movie",
+    "media_type": "movie",
+    "vote_average": 8.291,
+    "vote_count": 546,
+    "popularity": 9.8874,
+    "collection_id": 1431054,
+    "release_year": 2020,
+    "genres": [
+     "Drama",
+     "Fantasy",
+     "Romance",
+     "Animation"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.409472
+   },
+   {
+    "id": 609681,
+    "title": "The Marvels",
+    "title_en": "The Marvels",
+    "media_type": "movie",
+    "vote_average": 5.908,
+    "vote_count": 3657,
+    "popularity": 23.5801,
+    "collection_id": 623911,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.397279
+   },
+   {
+    "id": 1356039,
+    "title": "Counterattack",
+    "title_en": "Counterattack",
+    "media_type": "movie",
+    "vote_average": 8.3,
+    "vote_count": 863,
+    "popularity": 11.4325,
+    "collection_id": null,
+    "release_year": 2025,
+    "genres": [
+     "Thriller",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.385455
+   },
+   {
+    "id": 1228710,
+    "title": "The Mandalorian and Grogu",
+    "title_en": "The Mandalorian and Grogu",
+    "media_type": "movie",
+    "vote_average": 7.463,
+    "vote_count": 1732,
+    "popularity": 80.0038,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.378347
+   },
+   {
+    "id": 487242,
+    "title": "Suicide Squad: Hell to Pay",
+    "title_en": "Suicide Squad: Hell to Pay",
+    "media_type": "movie",
+    "vote_average": 7.093,
+    "vote_count": 734,
+    "popularity": 7.3819,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Fantasy",
+     "Action",
+     "Animation"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.377724
+   },
+   {
+    "id": 640146,
+    "title": "Ant-Man and the Wasp: Quantumania",
+    "title_en": "Ant-Man and the Wasp: Quantumania",
+    "media_type": "movie",
+    "vote_average": 6.2,
+    "vote_count": 6123,
+    "popularity": 24.1276,
+    "collection_id": 422834,
+    "release_year": 2023,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.37578
+   },
+   {
+    "id": 346698,
+    "title": "Barbie",
+    "title_en": "Barbie",
+    "media_type": "movie",
+    "vote_average": 6.907,
+    "vote_count": 11613,
+    "popularity": 33.0367,
+    "collection_id": null,
+    "release_year": 2023,
+    "genres": [
+     "Adventure",
+     "Fantasy",
+     "Comedy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.37433
+   },
+   {
+    "id": 2493,
+    "title": "The Princess Bride",
+    "title_en": "The Princess Bride",
+    "media_type": "movie",
+    "vote_average": 7.7,
+    "vote_count": 5301,
+    "popularity": 18.6024,
+    "collection_id": null,
+    "release_year": 1987,
+    "genres": [
+     "Adventure",
+     "Family",
+     "Fantasy"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.373523
+   },
+   {
+    "id": 3176,
+    "title": "Battle Royale",
+    "title_en": "Battle Royale",
+    "media_type": "movie",
+    "vote_average": 7.264,
+    "vote_count": 3957,
+    "popularity": 9.5317,
+    "collection_id": 16302,
+    "release_year": 2000,
+    "genres": [
+     "Thriller",
+     "Drama",
+     "Action"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.359372
+   },
+   {
+    "id": 152,
+    "title": "Star Trek: The Motion Picture",
+    "title_en": "Star Trek: The Motion Picture",
+    "media_type": "movie",
+    "vote_average": 6.484,
+    "vote_count": 2013,
+    "popularity": 10.095,
+    "collection_id": 151,
+    "release_year": 1979,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Mystery"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.358329
+   },
+   {
+    "id": 4413,
+    "title": "The Brave One",
+    "title_en": "The Brave One",
+    "media_type": "movie",
+    "vote_average": 6.581,
+    "vote_count": 1128,
+    "popularity": 7.4191,
+    "collection_id": null,
+    "release_year": 2007,
+    "genres": [
+     "Crime",
+     "Thriller",
+     "Drama"
+    ],
+    "via": "knn",
+    "tmdb_rank": null,
+    "knn_similarity": 0.355883
+   }
+  ],
+  "tmdb_single": [
+   {
+    "id": 1891,
+    "title": "The Empire Strikes Back",
+    "title_en": "The Empire Strikes Back",
+    "media_type": "movie",
+    "vote_average": 8.392,
+    "vote_count": 18893,
+    "popularity": 18.2861,
+    "collection_id": 10,
+    "release_year": 1980,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 1,
+    "knn_similarity": null
+   },
+   {
+    "id": 140607,
+    "title": "Star Wars: The Force Awakens",
+    "title_en": "Star Wars: The Force Awakens",
+    "media_type": "movie",
+    "vote_average": 7.241,
+    "vote_count": 20941,
+    "popularity": 23.1766,
+    "collection_id": 10,
+    "release_year": 2015,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 2,
+    "knn_similarity": null
+   },
+   {
+    "id": 348350,
+    "title": "Solo: A Star Wars Story",
+    "title_en": "Solo: A Star Wars Story",
+    "media_type": "movie",
+    "vote_average": 6.552,
+    "vote_count": 9528,
+    "popularity": 15.6483,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 3,
+    "knn_similarity": null
+   },
+   {
+    "id": 181812,
+    "title": "Star Wars: The Rise of Skywalker",
+    "title_en": "Star Wars: The Rise of Skywalker",
+    "media_type": "movie",
+    "vote_average": 6.247,
+    "vote_count": 11177,
+    "popularity": 25.8977,
+    "collection_id": 10,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 6,
+    "knn_similarity": null
+   },
+   {
+    "id": 54138,
+    "title": "Star Trek Into Darkness",
+    "title_en": "Star Trek Into Darkness",
+    "media_type": "movie",
+    "vote_average": 7.32,
+    "vote_count": 9886,
+    "popularity": 16.205,
+    "collection_id": 115575,
+    "release_year": 2013,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 8,
+    "knn_similarity": null
+   },
+   {
+    "id": 118340,
+    "title": "Guardians of the Galaxy",
+    "title_en": "Guardians of the Galaxy",
+    "media_type": "movie",
+    "vote_average": 7.908,
+    "vote_count": 30355,
+    "popularity": 19.1756,
+    "collection_id": 284433,
+    "release_year": 2014,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 11,
+    "knn_similarity": null
+   },
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 14,
+    "knn_similarity": null
+   },
+   {
+    "id": 1228710,
+    "title": "The Mandalorian and Grogu",
+    "title_en": "The Mandalorian and Grogu",
+    "media_type": "movie",
+    "vote_average": 7.463,
+    "vote_count": 1732,
+    "popularity": 80.0038,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 16,
+    "knn_similarity": null
+   },
+   {
+    "id": 152,
+    "title": "Star Trek: The Motion Picture",
+    "title_en": "Star Trek: The Motion Picture",
+    "media_type": "movie",
+    "vote_average": 6.484,
+    "vote_count": 2013,
+    "popularity": 10.095,
+    "collection_id": 151,
+    "release_year": 1979,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Mystery"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 17,
+    "knn_similarity": null
+   },
+   {
+    "id": 13475,
+    "title": "Star Trek",
+    "title_en": "Star Trek",
+    "media_type": "movie",
+    "vote_average": 7.437,
+    "vote_count": 10738,
+    "popularity": 16.9947,
+    "collection_id": 115575,
+    "release_year": 2009,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 18,
+    "knn_similarity": null
+   },
+   {
+    "id": 75612,
+    "title": "Oblivion",
+    "title_en": "Oblivion",
+    "media_type": "movie",
+    "vote_average": 6.693,
+    "vote_count": 11854,
+    "popularity": 19.15,
+    "collection_id": null,
+    "release_year": 2013,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Mystery"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 19,
+    "knn_similarity": null
+   }
+  ],
+  "tmdb_batch": [
+   {
+    "id": 1891,
+    "title": "The Empire Strikes Back",
+    "title_en": "The Empire Strikes Back",
+    "media_type": "movie",
+    "vote_average": 8.392,
+    "vote_count": 18893,
+    "popularity": 18.2861,
+    "collection_id": 10,
+    "release_year": 1980,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 1,
+    "knn_similarity": null
+   },
+   {
+    "id": 140607,
+    "title": "Star Wars: The Force Awakens",
+    "title_en": "Star Wars: The Force Awakens",
+    "media_type": "movie",
+    "vote_average": 7.241,
+    "vote_count": 20941,
+    "popularity": 23.1766,
+    "collection_id": 10,
+    "release_year": 2015,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 2,
+    "knn_similarity": null
+   },
+   {
+    "id": 348350,
+    "title": "Solo: A Star Wars Story",
+    "title_en": "Solo: A Star Wars Story",
+    "media_type": "movie",
+    "vote_average": 6.552,
+    "vote_count": 9528,
+    "popularity": 15.6483,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 3,
+    "knn_similarity": null
+   },
+   {
+    "id": 181812,
+    "title": "Star Wars: The Rise of Skywalker",
+    "title_en": "Star Wars: The Rise of Skywalker",
+    "media_type": "movie",
+    "vote_average": 6.247,
+    "vote_count": 11177,
+    "popularity": 25.8977,
+    "collection_id": 10,
+    "release_year": 2019,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 6,
+    "knn_similarity": null
+   },
+   {
+    "id": 54138,
+    "title": "Star Trek Into Darkness",
+    "title_en": "Star Trek Into Darkness",
+    "media_type": "movie",
+    "vote_average": 7.32,
+    "vote_count": 9886,
+    "popularity": 16.205,
+    "collection_id": 115575,
+    "release_year": 2013,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 8,
+    "knn_similarity": null
+   },
+   {
+    "id": 118340,
+    "title": "Guardians of the Galaxy",
+    "title_en": "Guardians of the Galaxy",
+    "media_type": "movie",
+    "vote_average": 7.908,
+    "vote_count": 30355,
+    "popularity": 19.1756,
+    "collection_id": 284433,
+    "release_year": 2014,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 11,
+    "knn_similarity": null
+   },
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 14,
+    "knn_similarity": null
+   },
+   {
+    "id": 1228710,
+    "title": "The Mandalorian and Grogu",
+    "title_en": "The Mandalorian and Grogu",
+    "media_type": "movie",
+    "vote_average": 7.463,
+    "vote_count": 1732,
+    "popularity": 80.0038,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 16,
+    "knn_similarity": null
+   },
+   {
+    "id": 152,
+    "title": "Star Trek: The Motion Picture",
+    "title_en": "Star Trek: The Motion Picture",
+    "media_type": "movie",
+    "vote_average": 6.484,
+    "vote_count": 2013,
+    "popularity": 10.095,
+    "collection_id": 151,
+    "release_year": 1979,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Mystery"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 17,
+    "knn_similarity": null
+   },
+   {
+    "id": 13475,
+    "title": "Star Trek",
+    "title_en": "Star Trek",
+    "media_type": "movie",
+    "vote_average": 7.437,
+    "vote_count": 10738,
+    "popularity": 16.9947,
+    "collection_id": 115575,
+    "release_year": 2009,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 18,
+    "knn_similarity": null
+   },
+   {
+    "id": 75612,
+    "title": "Oblivion",
+    "title_en": "Oblivion",
+    "media_type": "movie",
+    "vote_average": 6.693,
+    "vote_count": 11854,
+    "popularity": 19.15,
+    "collection_id": null,
+    "release_year": 2013,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action",
+     "Mystery"
+    ],
+    "via": "tmdb",
+    "tmdb_rank": 19,
+    "knn_similarity": null
+   }
+  ],
+  "director_single": [
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "director",
+    "tmdb_rank": null,
+    "knn_similarity": null
+   }
+  ],
+  "director_batch": [
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": [
+     "Science Fiction",
+     "Adventure",
+     "Action"
+    ],
+    "via": "director",
+    "tmdb_rank": null,
+    "knn_similarity": null
+   }
+  ],
+  "uvec": [
+   {
+    "id": 11,
+    "title": "Star Wars",
+    "title_en": "Star Wars",
+    "media_type": "movie",
+    "vote_average": 8.207,
+    "vote_count": 22915,
+    "popularity": 34.6298,
+    "collection_id": 10,
+    "release_year": 1977,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 1.0
+   },
+   {
+    "id": 1891,
+    "title": "The Empire Strikes Back",
+    "title_en": "The Empire Strikes Back",
+    "media_type": "movie",
+    "vote_average": 8.392,
+    "vote_count": 18893,
+    "popularity": 18.2861,
+    "collection_id": 10,
+    "release_year": 1980,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.647158
+   },
+   {
+    "id": 181808,
+    "title": "Star Wars: The Last Jedi",
+    "title_en": "Star Wars: The Last Jedi",
+    "media_type": "movie",
+    "vote_average": 6.736,
+    "vote_count": 16703,
+    "popularity": 28.7275,
+    "collection_id": 10,
+    "release_year": 2017,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.566635
+   },
+   {
+    "id": 140607,
+    "title": "Star Wars: The Force Awakens",
+    "title_en": "Star Wars: The Force Awakens",
+    "media_type": "movie",
+    "vote_average": 7.241,
+    "vote_count": 20941,
+    "popularity": 23.1766,
+    "collection_id": 10,
+    "release_year": 2015,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.560659
+   },
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.545823
+   },
+   {
+    "id": 181812,
+    "title": "Star Wars: The Rise of Skywalker",
+    "title_en": "Star Wars: The Rise of Skywalker",
+    "media_type": "movie",
+    "vote_average": 6.247,
+    "vote_count": 11177,
+    "popularity": 25.8977,
+    "collection_id": 10,
+    "release_year": 2019,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.540427
+   },
+   {
+    "id": 348350,
+    "title": "Solo: A Star Wars Story",
+    "title_en": "Solo: A Star Wars Story",
+    "media_type": "movie",
+    "vote_average": 6.552,
+    "vote_count": 9528,
+    "popularity": 15.6483,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.539245
+   },
+   {
+    "id": 799883,
+    "title": "Hollywood Stargirl",
+    "title_en": "Hollywood Stargirl",
+    "media_type": "movie",
+    "vote_average": 6.592,
+    "vote_count": 65,
+    "popularity": 5.9511,
+    "collection_id": 970645,
+    "release_year": 2022,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.462939
+   },
+   {
+    "id": 299537,
+    "title": "Captain Marvel",
+    "title_en": "Captain Marvel",
+    "media_type": "movie",
+    "vote_average": 6.77,
+    "vote_count": 17182,
+    "popularity": 26.5558,
+    "collection_id": 623911,
+    "release_year": 2019,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.426748
+   },
+   {
+    "id": 289219,
+    "title": "Star Wars: Maul - Shadow Lord",
+    "title_en": "Star Wars: Maul - Shadow Lord",
+    "media_type": "tv",
+    "vote_average": 8.607,
+    "vote_count": 231,
+    "popularity": 28.3108,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.418037
+   }
+  ],
+  "discovery": [
+   {
+    "id": 11,
+    "title": "Star Wars",
+    "title_en": "Star Wars",
+    "media_type": "movie",
+    "vote_average": 8.207,
+    "vote_count": 22915,
+    "popularity": 34.6298,
+    "collection_id": 10,
+    "release_year": 1977,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 1.0
+   },
+   {
+    "id": 1891,
+    "title": "The Empire Strikes Back",
+    "title_en": "The Empire Strikes Back",
+    "media_type": "movie",
+    "vote_average": 8.392,
+    "vote_count": 18893,
+    "popularity": 18.2861,
+    "collection_id": 10,
+    "release_year": 1980,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.647158
+   },
+   {
+    "id": 181808,
+    "title": "Star Wars: The Last Jedi",
+    "title_en": "Star Wars: The Last Jedi",
+    "media_type": "movie",
+    "vote_average": 6.736,
+    "vote_count": 16703,
+    "popularity": 28.7275,
+    "collection_id": 10,
+    "release_year": 2017,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.566635
+   },
+   {
+    "id": 140607,
+    "title": "Star Wars: The Force Awakens",
+    "title_en": "Star Wars: The Force Awakens",
+    "media_type": "movie",
+    "vote_average": 7.241,
+    "vote_count": 20941,
+    "popularity": 23.1766,
+    "collection_id": 10,
+    "release_year": 2015,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.560659
+   },
+   {
+    "id": 1893,
+    "title": "Star Wars: Episode I - The Phantom Menace",
+    "title_en": "Star Wars: Episode I - The Phantom Menace",
+    "media_type": "movie",
+    "vote_average": 6.583,
+    "vote_count": 16246,
+    "popularity": 19.4263,
+    "collection_id": 10,
+    "release_year": 1999,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.545823
+   },
+   {
+    "id": 181812,
+    "title": "Star Wars: The Rise of Skywalker",
+    "title_en": "Star Wars: The Rise of Skywalker",
+    "media_type": "movie",
+    "vote_average": 6.247,
+    "vote_count": 11177,
+    "popularity": 25.8977,
+    "collection_id": 10,
+    "release_year": 2019,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.540427
+   },
+   {
+    "id": 348350,
+    "title": "Solo: A Star Wars Story",
+    "title_en": "Solo: A Star Wars Story",
+    "media_type": "movie",
+    "vote_average": 6.552,
+    "vote_count": 9528,
+    "popularity": 15.6483,
+    "collection_id": null,
+    "release_year": 2018,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.539245
+   },
+   {
+    "id": 799883,
+    "title": "Hollywood Stargirl",
+    "title_en": "Hollywood Stargirl",
+    "media_type": "movie",
+    "vote_average": 6.592,
+    "vote_count": 65,
+    "popularity": 5.9511,
+    "collection_id": 970645,
+    "release_year": 2022,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.462939
+   },
+   {
+    "id": 299537,
+    "title": "Captain Marvel",
+    "title_en": "Captain Marvel",
+    "media_type": "movie",
+    "vote_average": 6.77,
+    "vote_count": 17182,
+    "popularity": 26.5558,
+    "collection_id": 623911,
+    "release_year": 2019,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.426748
+   },
+   {
+    "id": 289219,
+    "title": "Star Wars: Maul - Shadow Lord",
+    "title_en": "Star Wars: Maul - Shadow Lord",
+    "media_type": "tv",
+    "vote_average": 8.607,
+    "vote_count": 231,
+    "popularity": 28.3108,
+    "collection_id": null,
+    "release_year": 2026,
+    "genres": null,
+    "via": "uvec",
+    "tmdb_rank": null,
+    "knn_similarity": 0.418037
+   }
+  ],
+  "popular": [
+   {
+    "tmdb_id": 969681,
+    "title": "Spider-Man: Brand New Day",
+    "rating": 7.864,
+    "vote_count": 2896,
+    "media_type": "movie",
+    "release_year": 2026,
+    "title_en": "Spider-Man: Brand New Day"
+   },
+   {
+    "tmdb_id": 2316,
+    "title": "The Office",
+    "rating": 8.6,
+    "vote_count": 5508,
+    "media_type": "tv",
+    "release_year": 2005,
+    "title_en": "The Office"
+   },
+   {
+    "tmdb_id": 1084244,
+    "title": "Toy Story 5",
+    "rating": 8.326,
+    "vote_count": 2358,
+    "media_type": "movie",
+    "release_year": 2026,
+    "title_en": "Toy Story 5"
+   },
+   {
+    "tmdb_id": 79744,
+    "title": "The Rookie",
+    "rating": 8.539,
+    "vote_count": 3551,
+    "media_type": "tv",
+    "release_year": 2018,
+    "title_en": "The Rookie"
+   },
+   {
+    "tmdb_id": 1339713,
+    "title": "Obsession",
+    "rating": 8.189,
+    "vote_count": 5761,
+    "media_type": "movie",
+    "release_year": 2026,
+    "title_en": "Obsession"
+   },
+   {
+    "tmdb_id": 1408,
+    "title": "House",
+    "rating": 8.561,
+    "vote_count": 7910,
+    "media_type": "tv",
+    "release_year": 2004,
+    "title_en": "House"
+   },
+   {
+    "tmdb_id": 299534,
+    "title": "Avengers: Endgame",
+    "rating": 8.245,
+    "vote_count": 28809,
+    "media_type": "movie",
+    "release_year": 2019,
+    "title_en": "Avengers: Endgame"
+   },
+   {
+    "tmdb_id": 1396,
+    "title": "Breaking Bad",
+    "rating": 8.952,
+    "vote_count": 18704,
+    "media_type": "tv",
+    "release_year": 2008,
+    "title_en": "Breaking Bad"
+   }
+  ],
+  "embeddings_keys": [
+   "140607|movie",
+   "181808|movie",
+   "181812|movie",
+   "1891|movie",
+   "1893|movie",
+   "348350|movie"
+  ],
+  "enrich": {
+   "155": {
+    "director": "Christopher Nolan",
+    "director_ids": [
+     525
+    ],
+    "cast_list": [
+     "Christian Bale",
+     "Heath Ledger",
+     "Aaron Eckhart"
+    ],
+    "cast_ids": [
+     3894,
+     1810,
+     6383
+    ],
+    "keywords": [
+     "crime fighter",
+     "secret identity",
+     "anti hero"
+    ],
+    "companies": [
+     "Syncopy",
+     "Legendary Pictures"
+    ]
+   },
+   "10138": {
+    "director": "Jon Favreau",
+    "director_ids": [
+     15277
+    ],
+    "cast_list": [
+     "Robert Downey Jr.",
+     "Gwyneth Paltrow",
+     "Don Cheadle"
+    ],
+    "cast_ids": [
+     3223,
+     12052,
+     1896
+    ],
+    "keywords": [
+     "technology",
+     "malibu",
+     "sequel"
+    ],
+    "companies": [
+     "Marvel Entertainment",
+     "Marvel Studios"
+    ]
+   },
+   "20352": {
+    "director": "Chris Renaud",
+    "director_ids": [
+     124748,
+     124747
+    ],
+    "cast_list": [
+     "Steve Carell",
+     "Jason Segel",
+     "Russell Brand"
+    ],
+    "cast_ids": [
+     4495,
+     41088,
+     59919
+    ],
+    "keywords": [
+     "moon",
+     "parent child relationship",
+     "villain"
+    ],
+    "companies": [
+     "Illumination",
+     "Universal Pictures"
+    ]
+   },
+   "24428": {
+    "director": "Joss Whedon",
+    "director_ids": [
+     12891
+    ],
+    "cast_list": [
+     "Robert Downey Jr.",
+     "Chris Evans",
+     "Mark Ruffalo"
+    ],
+    "cast_ids": [
+     3223,
+     16828,
+     103
+    ],
+    "keywords": [
+     "new york city",
+     "shield",
+     "superhero"
+    ],
+    "companies": [
+     "Marvel Studios"
+    ]
+   },
+   "27205": {
+    "director": "Christopher Nolan",
+    "director_ids": [
+     525
+    ],
+    "cast_list": [
+     "Leonardo DiCaprio",
+     "Joseph Gordon-Levitt",
+     "Ken Watanabe"
+    ],
+    "cast_ids": [
+     6193,
+     24045,
+     3899
+    ],
+    "keywords": [
+     "spy",
+     "allegory",
+     "dreams"
+    ],
+    "companies": [
+     "Warner Bros. Pictures"
+    ]
+   },
+   "83533": {
+    "director": "James Cameron",
+    "director_ids": [
+     2710
+    ],
+    "cast_list": [
+     "Sam Worthington",
+     "Zoe Saldaña",
+     "Sigourney Weaver"
+    ],
+    "cast_ids": [
+     65731,
+     8691,
+     10205
+    ],
+    "keywords": [
+     "clone",
+     "witch",
+     "space war"
+    ],
+    "companies": [
+     "Lightstorm Entertainment",
+     "TSG Entertainment"
+    ]
+   },
+   "157336": {
+    "director": "Christopher Nolan",
+    "director_ids": [
+     525
+    ],
+    "cast_list": [
+     "Matthew McConaughey",
+     "Anne Hathaway",
+     "Michael Caine"
+    ],
+    "cast_ids": [
+     10297,
+     1813,
+     3895
+    ],
+    "keywords": [
+     "artificial intelligence (a.i.)",
+     "nasa",
+     "time warp"
+    ],
+    "companies": [
+     "Lynda Obst Productions",
+     "Syncopy"
+    ]
+   },
+   "299534": {
+    "director": "Anthony Russo",
+    "director_ids": [
+     19271,
+     19272
+    ],
+    "cast_list": [
+     "Robert Downey Jr.",
+     "Chris Evans",
+     "Mark Ruffalo"
+    ],
+    "cast_ids": [
+     3223,
+     16828,
+     103
+    ],
+    "keywords": [
+     "space travel",
+     "time travel",
+     "time machine"
+    ],
+    "companies": [
+     "Marvel Studios"
+    ]
+   },
+   "299536": {
+    "director": "Anthony Russo",
+    "director_ids": [
+     19272,
+     19271
+    ],
+    "cast_list": [
+     "Robert Downey Jr.",
+     "Chris Evans",
+     "Chris Hemsworth"
+    ],
+    "cast_ids": [
+     3223,
+     16828,
+     74568
+    ],
+    "keywords": [
+     "magic",
+     "sacrifice",
+     "superhero"
+    ],
+    "companies": [
+     "Marvel Studios"
+    ]
+   },
+   "634649": {
+    "director": "Jon Watts",
+    "director_ids": [
+     1293994
+    ],
+    "cast_list": [
+     "Tom Holland",
+     "Zendaya",
+     "Benedict Cumberbatch"
+    ],
+    "cast_ids": [
+     1136406,
+     505710,
+     71580
+    ],
+    "keywords": [
+     "new york city",
+     "loss of loved one",
+     "showdown"
+    ],
+    "companies": [
+     "Pascal Pictures",
+     "Columbia Pictures"
+    ]
+   },
+   "687163": {
+    "director": "Christopher Miller",
+    "director_ids": [
+     107446,
+     155267
+    ],
+    "cast_list": [
+     "Ryan Gosling",
+     "Sandra Hüller",
+     "James Ortiz"
+    ],
+    "cast_ids": [
+     30614,
+     7152,
+     2096164
+    ],
+    "keywords": [
+     "coma",
+     "based on novel or book",
+     "sun"
+    ],
+    "companies": [
+     "Open Invite Entertainment",
+     "Waypoint Entertainment"
+    ]
+   },
+   "969681": {
+    "director": "Destin Daniel Cretton",
+    "director_ids": [
+     1144604
+    ],
+    "cast_list": [
+     "Tom Holland",
+     "Zendaya",
+     "Mark Ruffalo"
+    ],
+    "cast_ids": [
+     1136406,
+     505710,
+     103
+    ],
+    "keywords": [
+     "new york city",
+     "secret identity",
+     "hero"
+    ],
+    "companies": [
+     "Pascal Pictures",
+     "Columbia Pictures"
+    ]
+   },
+   "980431": {
+    "director": "Lauren Montgomery",
+    "director_ids": [
+     74863
+    ],
+    "cast_list": [
+     "Eric Nam",
+     "Dave Bautista",
+     "Jessica Matten"
+    ],
+    "cast_ids": [
+     1610783,
+     543530,
+     1703912
+    ],
+    "keywords": [
+     "martial arts",
+     "extinction",
+     "quest"
+    ],
+    "companies": [
+     "Flying Bark Productions",
+     "Studio Mir"
+    ]
+   },
+   "1084242": {
+    "director": "Byron Howard",
+    "director_ids": [
+     1318201,
+     76595
+    ],
+    "cast_list": [
+     "Ginnifer Goodwin",
+     "Jason Bateman",
+     "Ke Huy Quan"
+    ],
+    "cast_ids": [
+     417,
+     23532,
+     690
+    ],
+    "keywords": [
+     "snake",
+     "fox",
+     "bunny"
+    ],
+    "companies": [
+     "Walt Disney Animation Studios",
+     "Walt Disney Animation Studios"
+    ]
+   },
+   "1084244": {
+    "director": "Andrew Stanton",
+    "director_ids": [
+     7
+    ],
+    "cast_list": [
+     "Joan Cusack",
+     "Tom Hanks",
+     "Tim Allen"
+    ],
+    "cast_ids": [
+     3234,
+     31,
+     12898
+    ],
+    "keywords": [
+     "island",
+     "horse",
+     "pig"
+    ],
+    "companies": [
+     "Pixar"
+    ]
+   },
+   "1127384": {
+    "director": "Renny Harlin",
+    "director_ids": [
+     16938
+    ],
+    "cast_list": [
+     "Aaron Eckhart",
+     "Ben Kingsley",
+     "Molly Belle Wright"
+    ],
+    "cast_ids": [
+     6383,
+     2282,
+     3663805
+    ],
+    "keywords": [
+     "deep sea",
+     "shark"
+    ],
+    "companies": [
+     "Magenta Light Studios",
+     "Arclight Films"
+    ]
+   },
+   "1184918": {
+    "director": "Chris Sanders",
+    "director_ids": [
+     66193
+    ],
+    "cast_list": [
+     "Lupita Nyong'o",
+     "Pedro Pascal",
+     "Kit Connor"
+    ],
+    "cast_ids": [
+     1267329,
+     1253360,
+     1538851
+    ],
+    "keywords": [
+     "based on novel or book",
+     "parent child relationship",
+     "island"
+    ],
+    "companies": [
+     "DreamWorks Animation"
+    ]
+   },
+   "1226863": {
+    "director": "Aaron Horvath",
+    "director_ids": [
+     1719706,
+     113901
+    ],
+    "cast_list": [
+     "Chris Pratt",
+     "Charlie Day",
+     "Anya Taylor-Joy"
+    ],
+    "cast_ids": [
+     73457,
+     95101,
+     1397778
+    ],
+    "keywords": [
+     "sibling relationship",
+     "space travel",
+     "galaxy"
+    ],
+    "companies": [
+     "Illumination",
+     "Nintendo"
+    ]
+   },
+   "1228710": {
+    "director": "Jon Favreau",
+    "director_ids": [
+     15277
+    ],
+    "cast_list": [
+     "Pedro Pascal",
+     "Jeremy Allen White",
+     "Sigourney Weaver"
+    ],
+    "cast_ids": [
+     1253360,
+     206905,
+     10205
+    ],
+    "keywords": [
+     "bounty hunter",
+     "galaxy",
+     "spin off"
+    ],
+    "companies": [
+     "Lucasfilm Ltd.",
+     "Fairview Entertainment"
+    ]
+   },
+   "1275779": {
+    "director": "Steven Spielberg",
+    "director_ids": [
+     488
+    ],
+    "cast_list": [
+     "Emily Blunt",
+     "Josh O'Connor",
+     "Colin Firth"
+    ],
+    "cast_ids": [
+     5081,
+     1206334,
+     5472
+    ],
+    "keywords": [
+     "new york city",
+     "childhood trauma",
+     "alien"
+    ],
+    "companies": [
+     "Amblin Entertainment",
+     "Universal Pictures"
+    ]
+   },
+   "1280738": {
+    "director": "Kenji Tanigaki",
+    "director_ids": [
+     1113443
+    ],
+    "cast_list": [
+     "Xie Miao",
+     "Joe Taslim",
+     "Yang Enyou"
+    ],
+    "cast_ids": [
+     83487,
+     592496,
+     2956442
+    ],
+    "keywords": [
+     "martial arts",
+     "kung fu",
+     "rescue mission"
+    ],
+    "companies": [
+     "Edko Films",
+     "Zhejiang Hengdian Film Production"
+    ]
+   },
+   "1311031": {
+    "director": "Haruo Sotozaki",
+    "director_ids": [
+     1283010
+    ],
+    "cast_list": [
+     "Natsuki Hanae",
+     "Takahiro Sakurai",
+     "Akira Ishida"
+    ],
+    "cast_ids": [
+     1256603,
+     9705,
+     81244
+    ],
+    "keywords": [
+     "supernatural",
+     "sequel",
+     "based on manga"
+    ],
+    "companies": [
+     "Shueisha",
+     "ufotable"
+    ]
+   },
+   "1419406": {
+    "director": "Larry Yang",
+    "director_ids": [
+     1452270
+    ],
+    "cast_list": [
+     "Jackie Chan",
+     "Zhang Zifeng",
+     "Tony Leung Ka-fai"
+    ],
+    "cast_ids": [
+     18897,
+     1173805,
+     56861
+    ],
+    "keywords": [
+     "race against time",
+     "ex-cop",
+     "betrayal"
+    ],
+    "companies": [
+     "iQIYI Pictures （重复 同 iQiyi Motion Pictures）",
+     "Tao Piao Piao 淘票票"
+    ]
+   },
+   "1560520": {
+    "director": "Jeff Wamester",
+    "director_ids": [
+     2927725
+    ],
+    "cast_list": [
+     "Anson Mount",
+     "Michael Mando",
+     "Pablo Schreiber"
+    ],
+    "cast_ids": [
+     56675,
+     829372,
+     59254
+    ],
+    "keywords": [
+     "asylum",
+     "superhero",
+     "based on comic"
+    ],
+    "companies": [
+     "Warner Bros. Animation",
+     "DC"
+    ]
+   },
+   "1621552": {
+    "director": "Chava Cartas",
+    "director_ids": [
+     964826
+    ],
+    "cast_list": [
+     "Alfonso Herrera",
+     "Noé Hernández",
+     "Hector Kotsifakis"
+    ],
+    "cast_ids": [
+     220496,
+     89445,
+     133766
+    ],
+    "keywords": [
+     "fast-paced",
+     "based on true events"
+    ],
+    "companies": [
+     "Draco Films"
+    ]
+   }
+  }
+ }
+}

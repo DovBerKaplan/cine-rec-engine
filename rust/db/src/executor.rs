@@ -141,6 +141,24 @@ impl Db {
         Ok(self.map.resolve(template)?)
     }
 
+    /// SET a session GUC and fetch on ONE acquired connection
+    /// (hnsw.ef_search only applies to the connection it ran on).
+    /// `guc` must be a literal SET statement (no user input).
+    pub async fn set_and_fetch(
+        &self,
+        guc: &str,
+        sql: &str,
+        binds: &[(&'static str, Bind)],
+    ) -> Result<Vec<sqlx::postgres::PgRow>, DbError> {
+        let mut conn = self.pool.acquire().await?;
+        let _ = sqlx::query(guc).execute(&mut *conn).await;
+        let mut q = sqlx::query(sql);
+        for (_, b) in binds {
+            q = b.apply(q);
+        }
+        Ok(q.fetch_all(&mut *conn).await?)
+    }
+
     /// fetch (many rows) — the resolved-SQL `db.fetch`.
     pub async fn fetch(
         &self,
@@ -190,33 +208,65 @@ impl Bind {
 }
 
 /// Row-extraction helpers matching the asyncpg record access the
-/// Python rows use (missing/NULL → None).
+/// Python rows use (`dict.get` semantics):
+/// * NULL or column ABSENT → `Ok(None)` — Python's `r.get(k)` returns
+///   None for a missing key (channels select different column sets)
+/// * column PRESENT but the wrong TYPE (e.g. an INT4 read as text) is
+///   an ERROR — swallowing it hid real bugs (the phase-3 H-1: every
+///   INT4 read as i64 silently became None)
+///
+/// INT columns decode as `i32` first (sqlx is strict about width) and
+/// widen to `i64`.
 pub mod row {
     use sqlx::Row;
 
-    pub fn opt_i64(row: &sqlx::postgres::PgRow, col: &str) -> Option<i64> {
-        row.try_get(col).ok()
+    pub type RowResult<T> = Result<T, sqlx::Error>;
+
+    fn missing_is_none<T>(r: RowResult<Option<T>>) -> RowResult<Option<T>> {
+        match r {
+            Err(sqlx::Error::ColumnNotFound(_)) => Ok(None),
+            other => other,
+        }
     }
 
-    pub fn opt_f64(row: &sqlx::postgres::PgRow, col: &str) -> Option<f64> {
-        row.try_get(col).ok()
+    pub fn opt_i64(row: &sqlx::postgres::PgRow, col: &str) -> RowResult<Option<i64>> {
+        if let Ok(v) = row.try_get::<Option<i32>, _>(col) {
+            return Ok(v.map(i64::from));
+        }
+        missing_is_none(row.try_get::<Option<i64>, _>(col))
     }
 
-    pub fn opt_text(row: &sqlx::postgres::PgRow, col: &str) -> Option<String> {
-        row.try_get(col).ok()
+    pub fn opt_f64(row: &sqlx::postgres::PgRow, col: &str) -> RowResult<Option<f64>> {
+        if let Ok(v) = row.try_get::<Option<f32>, _>(col) {
+            return Ok(v.map(f64::from));
+        }
+        missing_is_none(row.try_get::<Option<f64>, _>(col))
     }
 
-    pub fn opt_text_array(row: &sqlx::postgres::PgRow, col: &str) -> Option<Vec<String>> {
-        row.try_get(col).ok()
+    pub fn opt_bool(row: &sqlx::postgres::PgRow, col: &str) -> RowResult<Option<bool>> {
+        missing_is_none(row.try_get::<Option<bool>, _>(col))
     }
 
-    pub fn opt_i64_array(row: &sqlx::postgres::PgRow, col: &str) -> Option<Vec<i64>> {
-        row.try_get(col).ok()
+    pub fn opt_text(row: &sqlx::postgres::PgRow, col: &str) -> RowResult<Option<String>> {
+        missing_is_none(row.try_get::<Option<String>, _>(col))
     }
 
-    pub fn opt_vector(row: &sqlx::postgres::PgRow, col: &str) -> Option<Vec<f32>> {
-        row.try_get::<pgvector::Vector, _>(col)
-            .ok()
-            .map(|v| v.to_vec())
+    pub fn opt_text_array(
+        row: &sqlx::postgres::PgRow,
+        col: &str,
+    ) -> RowResult<Option<Vec<String>>> {
+        missing_is_none(row.try_get::<Option<Vec<String>>, _>(col))
+    }
+
+    pub fn opt_i64_array(row: &sqlx::postgres::PgRow, col: &str) -> RowResult<Option<Vec<i64>>> {
+        if let Ok(v) = row.try_get::<Option<Vec<i32>>, _>(col) {
+            return Ok(v.map(|a| a.into_iter().map(i64::from).collect()));
+        }
+        missing_is_none(row.try_get::<Option<Vec<i64>>, _>(col))
+    }
+
+    pub fn opt_vector(row: &sqlx::postgres::PgRow, col: &str) -> RowResult<Option<Vec<f32>>> {
+        missing_is_none(row.try_get::<Option<pgvector::Vector>, _>(col))
+            .map(|v| v.map(|vec| vec.to_vec()))
     }
 }
