@@ -331,24 +331,19 @@ HEURISTIC_WEIGHTS = {
     "low_votes_high_rating": 1.5,
     "rating_bonus": 1.0,
     "pop_action_leak": POP_ACTION_PENALTY,
-    # Cinematic-DNA features start at 0.0 — pure learned-scorer inputs until
-    # prices them (Johann Johannsson scored BOTH Arrival and Sicario; the
-    # heuristic has no principled prior for them yet).
-    # 0.0 — heuristic pricing lost
-    # (19.9/19.2 vs 20.5). The LTR oracle priced them 3.86/2.52 as
-    # directions, but partial catalog coverage makes them noisy at
-    # heuristic strength. LTR-only inputs until coverage completes.
+    # Cinematic-DNA features are LTR inputs, weight 0.0 in the heuristic
+    # baseline: the heuristic has no principled prior for them (Johann
+    # Johannsson scored BOTH Arrival and Sicario), and partial catalog
+    # coverage makes them noisy at heuristic strength. LTR-only inputs
+    # until coverage completes.
     "composer_match": 0.0,
     "dp_match": 0.0,
-    # The medium signal must be LEARNED, not imposed. Bonus form
-    # (+1.5) measured 22.4/22.7 and penalty form (-2.0) 22.6/22.6 — both
-    # under the 22.9/23.7 baseline, because the evaluation data deliberately
-    # encodes cross-medium taste (The Boys -> INVINCIBLE) that a global
-    # rule contradicts. The feature stays for the LTR (with N4 modality
-    # hard negatives in the miner) to learn WHEN medium matters.
-    # → Re-enabled 2026-09: user feedback showed anime→live-action dark
-
-    # The evaluation set's cross-medium edge case is rarer than the damage.
+    # The medium signal must be LEARNED, not imposed: taste genuinely
+    # crosses media, so a global medium rule can contradict real
+    # preferences. Re-enabled 2026-09 after user feedback on
+    # cross-medium recommendations; the feature stays for the LTR
+    # (with N4 modality hard negatives in the miner) to learn WHEN
+    # medium matters.
     "medium_mismatch": -2.0,
     # Narrative-structure agreement (linear vs anthology): +1 same
     # structure, -1 clash.
