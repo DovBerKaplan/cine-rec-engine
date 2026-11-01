@@ -7,8 +7,11 @@
 //! is wired in through a PyO3 bridge only after live parity holds.
 
 pub mod cache;
+pub mod explain;
+pub mod recommend;
 #[cfg(feature = "pyo3")]
 pub mod pybridge;
 pub mod similar;
+pub mod user_context;
 
 pub use cache::{NoopCache, ResultCache};

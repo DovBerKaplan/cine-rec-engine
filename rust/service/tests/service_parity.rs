@@ -122,3 +122,67 @@ fn field_of(
         _ => return None,
     })
 }
+
+#[tokio::test]
+async fn recommend_full_matches_python_on_frozen_inputs() {
+    let Some(dsn) = dsn() else {
+        if std::env::var("CINE_REC_REQUIRE_DB")
+            .ok()
+            .is_some_and(|v| v == "1")
+        {
+            panic!("CINE_REC_REQUIRE_DB=1 but no CINE_REC_INTEGRATION_DSN");
+        }
+        eprintln!("skipping (no CINE_REC_INTEGRATION_DSN)");
+        return;
+    };
+    let fx = fixture();
+    let case = &fx["recommend_910001_full"];
+    let spec: cine_rec_service::recommend::RecommendSpec =
+        serde_json::from_value(case["spec"].clone()).unwrap();
+    let db = Db::connect(&dsn).await.unwrap();
+    let got = cine_rec_service::recommend::recommend_for_user(&db, &spec)
+        .await
+        .unwrap();
+
+    // n>0
+    let want = case["results"].as_array().unwrap();
+    assert!(!want.is_empty());
+    assert_eq!(got.results.len(), want.len(),
+        "recommend: {} vs {}", got.results.len(), want.len());
+    assert_eq!(got.reason, case["reason"].as_str().unwrap());
+    assert_eq!(got.vector_used, case["vector_used"].as_bool().unwrap());
+    // seeds: (id, mt, w-rounded-3)
+    let want_seeds = case["seeds"].as_array().unwrap();
+    assert_eq!(got.seeds.len(), want_seeds.len());
+    for (g, w) in got.seeds.iter().zip(want_seeds) {
+        assert_eq!(g.0, w[0].as_i64().unwrap(), "seed id");
+        assert_eq!(g.1, w[1].as_str().unwrap(), "seed mt");
+        assert!((g.2 - w[2].as_f64().unwrap()).abs() < 1e-9, "seed w");
+    }
+    for (i, (g, w)) in got.results.iter().zip(want).enumerate() {
+        assert_eq!(g.tmdb_id, w["tmdb_id"].as_i64().unwrap(), "rec[{i}].tmdb_id");
+        let gv = |key: &str| -> serde_json::Value {
+            match key {
+                "title" => serde_json::to_value(&g.title).unwrap(),
+                "title_en" => serde_json::to_value(&g.title_en).unwrap(),
+                "media_type" => serde_json::to_value(&g.media_type).unwrap(),
+                "genres" => serde_json::to_value(&g.genres).unwrap(),
+                "poster_path" => serde_json::to_value(&g.poster_path).unwrap(),
+                "collection_id" => serde_json::to_value(g.collection_id).unwrap(),
+                "release_year" => serde_json::to_value(g.release_year).unwrap(),
+                "director_ids" => serde_json::to_value(&g.director_ids).unwrap(),
+                _ => unreachable!(),
+            }
+        };
+        for key in ["title", "title_en", "media_type", "genres",
+                    "poster_path", "collection_id", "release_year",
+                    "director_ids"] {
+            assert_eq!(gv(key), w[key], "rec[{i}].{key}");
+        }
+        assert!(
+            (g.score - w["score"].as_f64().unwrap()).abs() <= 1e-9,
+            "rec[{i}].score {} vs {}", g.score, w["score"]
+        );
+    }
+    println!("recommend full: {} rows OK", got.results.len());
+}

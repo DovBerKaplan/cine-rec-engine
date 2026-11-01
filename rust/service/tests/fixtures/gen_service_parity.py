@@ -177,6 +177,39 @@ async def main() -> None:
             "plan_seeds_910001": plan_seeds,
             "cases": out_cases,
         }
+
+        # ---- phase 5c: FULL recommend parity (frozen instant) ----
+        # Seeds carry recency drift; the recorded uvec is frozen so the
+        # Rust replay is deterministic; the pytest also runs a fresh
+        # live-vs-live compare (no fixture drift possible there).
+        rec_uvec = await uvec_of(USER)
+        rec = await svc.recommend_for_user(USER, limit=30, include_why=False)
+        assert rec["reason"] == "personalized", rec["reason"]
+        assert len(rec["results"]) > 0
+        payload["recommend_910001_full"] = {
+            "spec": {
+                "user_id": USER,
+                "limit": 30,
+                "explore": None,
+                "emb_column": EMBEDDING_COLUMN,
+                "knn_ft_enabled": os.getenv("ENABLE_KNN_FINETUNED", "true").lower() != "false",
+                "weights": {
+                    "active": list(svc_mod.ACTIVE_WEIGHTS.values()),
+                    "heuristic27": list(svc_mod.HEURISTIC_WEIGHTS_LIST),
+                },
+                "uvec": [f for f in rec_uvec] if rec_uvec else None,
+            },
+            "reason": rec["reason"],
+            "vector_used": rec["vector_used"],
+            "seeds": rec["seeds"],
+            "results": [
+                {k: r.get(k) for k in
+                 ("tmdb_id", "score", "title", "title_en", "media_type",
+                  "rating", "genres", "poster_path", "collection_id",
+                  "release_year", "director_ids")}
+                for r in rec["results"]
+            ],
+        }
     finally:
         await pool.close()
 

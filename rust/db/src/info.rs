@@ -633,3 +633,69 @@ pub async fn semantic_overview_similarity_batch(
     }
     Ok(out)
 }
+
+// ---------------------------------------------------------------------------
+// User genre context (queries.py tail) — exploration inputs
+// ---------------------------------------------------------------------------
+
+/// `top_user_genre_ids` — top genre clusters by weighted watch share.
+/// Degrades to empty — the caller falls back to global rows.
+pub async fn top_user_genre_ids(
+    db: &Db,
+    user_id: i64,
+    limit: i64,
+) -> Result<Vec<i64>, DbError> {
+    let sql = db.sql(
+        "SELECT genre_id, SUM(weighted_sum) AS w \
+         FROM {t_user_genre_stats} WHERE user_id = $1 \
+         GROUP BY genre_id ORDER BY w DESC NULLS LAST, genre_id LIMIT $2",
+    )?;
+    let rows = match db
+        .fetch(
+            &sql,
+            &[
+                ("user", Bind::I64(user_id)),
+                ("limit", Bind::I64(limit)),
+            ],
+        )
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Ok(Vec::new()), // degrade — exploration skips
+    };
+    Ok(rows
+        .iter()
+        .map(|r| row::opt_i64(r, "genre_id").ok().flatten().unwrap_or_default())
+        .collect())
+}
+
+/// `genre_names_for_ids` — genre NAMES for ids across both per-medium
+/// genre lists (the engine's vocabulary is names; stats store ids).
+/// Degrades to empty — exploration then skips, never misfires.
+pub async fn genre_names_for_ids(
+    db: &Db,
+    genre_ids: &[i64],
+) -> Result<HashSet<String>, DbError> {
+    if genre_ids.is_empty() {
+        return Ok(HashSet::new());
+    }
+    let mut sorted: Vec<i64> = genre_ids.to_vec();
+    sorted.sort_unstable();
+    sorted.dedup();
+    let sql = db.sql(
+        "SELECT name FROM {t_tmdb_movie_genres} WHERE id = ANY($1::int[]) \
+         UNION \
+         SELECT name FROM {t_tmdb_tv_genres} WHERE id = ANY($1::int[])",
+    )?;
+    let rows = match db
+        .fetch(&sql, &[("ids", Bind::I64Array(sorted))])
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Ok(HashSet::new()), // degrade
+    };
+    Ok(rows
+        .iter()
+        .filter_map(|r| row::opt_text(r, "name").ok().flatten())
+        .collect())
+}

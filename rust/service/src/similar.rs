@@ -26,6 +26,9 @@ pub struct ScoredItem {
     pub release_year: Option<i64>,
     pub director_ids: Vec<i64>,
     pub genres: Vec<String>,
+    /// the tilt's boost value (`user_affinity`, round(boost,3)) — None
+    /// on rows the tilt never touched
+    pub user_affinity: Option<f64>,
 }
 
 /// Python's `round()` is BANKER'S rounding (ties to even); Rust's
@@ -463,6 +466,68 @@ mod tests {
         assert_eq!(
             out.iter().map(|r| r.tmdb_id).collect::<Vec<_>>(),
             vec![2, 3, 5]
+        );
+    }
+
+
+    // ---- noise/MMR locks (phase 5c) ----
+
+    #[test]
+    fn noise_identity_and_head_pinning_contract() {
+        // r=0: identity — THE parity regime (the Mersenne stream stays
+        // Python-side; verified against _apply_noise above)
+        let rows: Vec<ScoredItem> = (0..8)
+            .map(|i| item(i, "movie", 10.0 - i as f64))
+            .collect();
+        let out = apply_noise_identity(rows.clone(), 0.0);
+        assert_eq!(
+            out.iter().map(|r| r.tmdb_id).collect::<Vec<_>>(),
+            (0..8).collect::<Vec<_>>(),
+            "r=0 must be identity"
+        );
+        // negative r: Python `randomness <= 0` → identity as well
+        let out = apply_noise_identity(rows, -0.5);
+        assert_eq!(out.len(), 8);
+    }
+
+    #[test]
+    fn mmr_noop_when_within_limit() {
+        // Python: `len(results) > (limit or 0)` — at/below limit MMR
+        // never runs (the score_candidates gate pins it; lock the
+        // pure helper's behavior at k >= len too)
+        let rows = vec![
+            item(1, "movie", 9.0),
+            item(2, "movie", 8.0),
+            item(3, "movie", 7.0),
+        ];
+        let out = mmr_order(&rows, 0.8, 3);
+        assert_eq!(
+            out.iter().map(|r| r.tmdb_id).collect::<Vec<_>>(),
+            vec![1, 2, 3],
+            "k >= len keeps score order (no diversification needed)"
+        );
+    }
+
+    #[test]
+    fn mmr_lambda_one_pure_relevance() {
+        // λ=1.0: the penalty term vanishes — pure relevance order
+        let mk = |id: i64, score: f64, coll: Option<i64>| ScoredItem {
+            tmdb_id: id,
+            score,
+            collection_id: coll,
+            media_type: "movie".into(),
+            ..Default::default()
+        };
+        let rows = vec![
+            mk(1, 9.0, Some(10)),
+            mk(2, 8.8, Some(10)),
+            mk(3, 8.7, None),
+        ];
+        let out = mmr_order(&rows, 1.0, 3);
+        assert_eq!(
+            out.iter().map(|r| r.tmdb_id).collect::<Vec<_>>(),
+            vec![1, 2, 3],
+            "lambda=1 ignores diversity entirely"
         );
     }
 
@@ -908,7 +973,7 @@ fn py_sum(items: impl Iterator<Item = f64>) -> f64 {
     sum
 }
 
-fn seed_entity(s: &SeedInfo) -> Entity {
+pub fn seed_entity(s: &SeedInfo) -> Entity {
     Entity {
         id: s.id,
         media_type: s.media_type.clone(),
@@ -941,7 +1006,7 @@ fn seed_entity(s: &SeedInfo) -> Entity {
     }
 }
 
-fn cand_entity(c: &CandidateRow) -> Entity {
+pub fn cand_entity(c: &CandidateRow) -> Entity {
     Entity {
         id: c.id,
         media_type: c.media_type.clone().unwrap_or_default(),
@@ -960,7 +1025,7 @@ fn cand_entity(c: &CandidateRow) -> Entity {
     }
 }
 
-fn enrichment_entity(e: &Enrichment) -> Entity {
+pub fn enrichment_entity(e: &Enrichment) -> Entity {
     Entity {
         director: e.director.clone(),
         director_ids: e.director_ids.clone(),
@@ -1116,6 +1181,7 @@ pub fn score_candidates(
             release_year: cand.release_year,
             director_ids: data.director_ids.clone(),
             genres: cand_genres,
+            user_affinity: None,
         });
     }
 

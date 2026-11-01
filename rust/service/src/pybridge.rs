@@ -21,6 +21,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
+use crate::recommend::{recommend_for_user, RecommendSpec};
 use crate::similar::{compute_find_similar, ComputeSpec};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -69,6 +70,20 @@ fn compute(py: Python, dsn: String, spec_json: String) -> PyResult<String> {
         .map_err(|e| PyRuntimeError::new_err(format!("result serialize: {e}")))
 }
 
+/// recommend_for_user, whole request in ONE crossing (spec → result).
+#[pyfunction]
+fn recommend(py: Python, dsn: String, spec_json: String) -> PyResult<String> {
+    let spec: RecommendSpec = serde_json::from_str(&spec_json)
+        .map_err(|e| PyRuntimeError::new_err(format!("bad recommend spec json: {e}")))?;
+    let db = db_for(&dsn).map_err(PyRuntimeError::new_err)?;
+    let result = py.allow_threads(|| {
+        runtime().block_on(async move { recommend_for_user(&db, &spec).await })
+    })
+    .map_err(|e| PyRuntimeError::new_err(format!("recommend failed: {e}")))?;
+    serde_json::to_string(&result)
+        .map_err(|e| PyRuntimeError::new_err(format!("result serialize: {e}")))
+}
+
 #[pyfunction]
 fn cached_dsn_count(py: Python) -> PyResult<usize> {
     let n = py.allow_threads(|| {
@@ -84,6 +99,7 @@ fn cached_dsn_count(py: Python) -> PyResult<usize> {
 #[pymodule]
 fn _service_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compute, m)?)?;
+    m.add_function(wrap_pyfunction!(recommend, m)?)?;
     m.add_function(wrap_pyfunction!(cached_dsn_count, m)?)?;
     m.add("VERSION", VERSION)?;
     Ok(())

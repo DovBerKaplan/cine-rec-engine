@@ -76,3 +76,68 @@ def test_extension_reports_itself():
     rs = _service_rs()
     assert rs.VERSION
     assert callable(rs.compute)
+
+
+def test_recommend_full_live_vs_live():
+    """The strongest parity claim: Python recommend_for_user vs the
+    extension's recommend entry at the SAME instant on the SAME DB —
+    no frozen fixture, so seed-recency drift cannot mask a bug."""
+    rs = _service_rs()
+    dsn = _dsn()
+    import asyncio
+    import asyncpg
+
+    from cine_rec_engine import find_similar as fs
+
+    async def _no_cache():
+        return None
+
+    fs._get_cache = _no_cache  # the documented parity deployment
+
+    from cine_rec_engine import service as svc_mod
+    from cine_rec_engine.config import EMBEDDING_COLUMN
+    from cine_rec_engine.user_vector import load_user_vector
+
+    async def run_both():
+        pool = await asyncpg.create_pool(dsn, min_size=1, max_size=4)
+        svc = svc_mod.RecommendationService()
+        await svc.initialize(pool)
+        try:
+            py = await svc.recommend_for_user(910001, limit=30)
+            uvec = await load_user_vector(pool, 910001, None)
+            spec = {
+                "user_id": 910001,
+                "limit": 30,
+                "explore": None,
+                "emb_column": EMBEDDING_COLUMN,
+                "knn_ft_enabled": True,
+                "weights": {
+                    "active": list(svc_mod.ACTIVE_WEIGHTS.values()),
+                    "heuristic27": list(svc_mod.HEURISTIC_WEIGHTS_LIST),
+                },
+                "uvec": uvec,
+            }
+            return py, spec
+        finally:
+            await pool.close()
+
+    py, spec = asyncio.run(run_both())
+    got = json.loads(asyncio.run(asyncio.to_thread(
+        rs.recommend, dsn, json.dumps(spec))))
+
+    assert py["reason"] == "personalized"
+    assert got["reason"] == py["reason"]
+    assert got["vector_used"] == py["vector_used"]
+    assert len(py["results"]) > 0, "n>0"
+    assert len(got["results"]) == len(py["results"]), (
+        f"{len(got['results'])} vs {len(py['results'])}"
+    )
+    # seeds: same selection at the same instant
+    for g, w in zip(got["seeds"], py["seeds"]):
+        assert g[0] == w[0] and g[1] == w[1]
+        assert abs(g[2] - w[2]) < 1e-9
+    for i, (g, w) in enumerate(zip(got["results"], py["results"])):
+        assert g["tmdb_id"] == w["tmdb_id"], f"row {i}"
+        for key in ("title", "media_type", "genres"):
+            assert g[key] == w[key], f"row {i}.{key}"
+        assert abs(g["score"] - w["score"]) <= 1e-9, f"row {i}.score"
