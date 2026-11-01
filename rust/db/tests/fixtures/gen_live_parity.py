@@ -25,7 +25,6 @@ sys.path.insert(0, str(REPO_ROOT))
 import asyncpg  # noqa: E402
 
 from cine_rec_engine import queries as Q  # noqa: E402
-from cine_rec_engine.service import HEURISTIC_WEIGHTS  # noqa: E402
 
 DSN = os.environ.get("CINE_REC_INTEGRATION_DSN", "")
 EMB = "embedding_minilm"
@@ -106,6 +105,12 @@ async def main() -> None:
             pool, vec, 10, EMB))
         cases["discovery"] = slim(await Q.generate_discovery_candidates(
             pool, vec, [1, 2], 10, EMB))
+        # L-7 coverage: tv genre seed, deep KNN (floors bite at 120),
+        # gems/trending page rows, popular with a year range
+        cases["genre_same_tv"] = slim(await Q.generate_candidates(
+            pool, tv["id"], tg, "tv", 30, False))
+        cases["knn_tv_deep"] = slim(await Q.generate_knn_candidates(
+            pool, tv["id"], "tv", 120, False, EMB))
         cases["popular"] = [
             {"tmdb_id": r["tmdb_id"], "title": r["title"],
              "rating": r["rating"], "vote_count": r["vote_count"],
@@ -113,20 +118,53 @@ async def main() -> None:
              "title_en": r["title_en"]}
             for r in await Q.generate_popular_candidates(pool, 8)
         ]
+        cases["popular_years"] = [
+            {"tmdb_id": r["tmdb_id"], "release_year": r["release_year"]}
+            for r in await Q.generate_popular_candidates(
+                pool, 8, filters={"year_min": 1990, "year_max": 2015})
+        ]
         emb = await Q.fetch_embeddings_batch(
             pool, [(c["id"], c["media_type"]) for c in cases["knn_movie"][:6]], EMB)
         cases["embeddings_keys"] = sorted([f"{k[0]}|{k[1]}" for k in emb])
+
+        gems = await Q.generate_hidden_gems(pool, 6)
+        cases["gems"] = [
+            {"tmdb_id": r["tmdb_id"], "title": r["title"], "rating": r["rating"],
+             "vote_count": r["vote_count"], "media_type": r["media_type"],
+             "release_year": r["release_year"], "title_en": r["title_en"]}
+            for r in gems
+        ]
+        gids = None
+        if gems:
+            async with pool.acquire() as c:
+                gids = await c.fetchval(
+                    "SELECT genre_id FROM tmdb_movie_genres_map "
+                    "WHERE movie_id = $1 LIMIT 1", gems[0]["tmdb_id"])
+        if gids:
+            trend = await Q.generate_trending_genre(pool, gids, 6)
+            cases["trending"] = [
+                {"tmdb_id": r["tmdb_id"], "title": r["title"], "rating": r["rating"],
+                 "vote_count": r["vote_count"], "media_type": r["media_type"],
+                 "release_year": r["release_year"], "title_en": r["title_en"]}
+                for r in trend
+            ]
 
         enrich = await Q.enrich_candidates_batch(
             pool, [c["id"] for c in cases["genre_same"][:25]],
             [c["media_type"] for c in cases["genre_same"][:25]])
         cases["enrich"] = {
             str(k): {"director": v["director"],
-                     "director_ids": v["director_ids"],
+                     "director_ids": sorted(v["director_ids"]),
+                     "writer_ids": sorted(v["writer_ids"]),
+                     "composer_ids": sorted(v["composer_ids"]),
+                     "dp_ids": sorted(v["dp_ids"]),
                      "cast_list": v["cast_list"][:3],
                      "cast_ids": v["cast_ids"][:3],
-                     "keywords": v["keywords"][:3],
-                     "companies": v["companies"][:2]}
+                     "keywords": sorted(v["keywords"]),
+                     "companies": sorted(v["companies"]),
+                     "networks": sorted(v["networks"]),
+                     "collection_id": v["collection_id"],
+                     "original_language": v["original_language"]}
             for k, v in sorted(enrich.items())
         }
 

@@ -289,16 +289,8 @@ async fn live_parity_replays_python_fields() {
             want["director"].as_str(),
             "enrich[{id}].director"
         );
-        assert_eq!(
-            got.director_ids,
-            want["director_ids"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .filter_map(|v| v.as_i64())
-                .collect::<Vec<_>>(),
-            "enrich[{id}].director_ids"
-        );
+        // director_ids comes from unordered ARRAY_AGG — compared as a
+        // SET below together with the other id fields
         // the fixture stores the first 3 names (spot-check budget)
         let want_cast: Vec<String> = want["cast_list"]
             .as_array()
@@ -319,12 +311,90 @@ async fn live_parity_replays_python_fields() {
             .filter_map(|v| v.as_i64())
             .collect();
         assert!(got.cast_ids.starts_with(&want_ids), "enrich[{id}].cast_ids");
-        let want_kw: Vec<String> = want["keywords"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter_map(|v| v.as_str().map(String::from))
-            .collect();
-        assert!(got.keywords.starts_with(&want_kw), "enrich[{id}].keywords");
+        // unordered fields compare as SETS — the batch SQL carries no
+        // ORDER BY on keywords/companies/networks, so the order is
+        // instance-dependent (the review's L-6)
+        let s: Vec<&str> = Vec::new();
+        let _ = s;
+        let str_set = |v: &Value| -> std::collections::BTreeSet<String> {
+            v.as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|x| x.as_str().map(String::from))
+                .collect()
+        };
+        let i_set = |v: &Value| -> std::collections::BTreeSet<i64> {
+            v.as_array()
+                .unwrap()
+                .iter()
+                .filter_map(Value::as_i64)
+                .collect()
+        };
+        assert_eq!(
+            got.keywords
+                .iter()
+                .cloned()
+                .collect::<std::collections::BTreeSet<_>>(),
+            str_set(&want["keywords"]),
+            "enrich[{id}].keywords (set)"
+        );
+        assert_eq!(
+            got.companies
+                .iter()
+                .cloned()
+                .collect::<std::collections::BTreeSet<_>>(),
+            str_set(&want["companies"]),
+            "enrich[{id}].companies (set)"
+        );
+        assert_eq!(
+            got.networks
+                .iter()
+                .cloned()
+                .collect::<std::collections::BTreeSet<_>>(),
+            str_set(&want["networks"]),
+            "enrich[{id}].networks (set)"
+        );
+        assert_eq!(
+            got.director_ids
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>(),
+            i_set(&want["director_ids"]),
+            "enrich[{id}].director_ids (set)"
+        );
+        assert_eq!(
+            got.writer_ids
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>(),
+            i_set(&want["writer_ids"]),
+            "enrich[{id}].writer_ids (set)"
+        );
+        assert_eq!(
+            got.composer_ids
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>(),
+            i_set(&want["composer_ids"]),
+            "enrich[{id}].composer_ids (set)"
+        );
+        assert_eq!(
+            got.dp_ids
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>(),
+            i_set(&want["dp_ids"]),
+            "enrich[{id}].dp_ids (set)"
+        );
+        assert_eq!(
+            got.collection_id,
+            want["collection_id"].as_i64(),
+            "enrich[{id}].collection_id"
+        );
+        assert_eq!(
+            got.original_language.as_deref(),
+            want["original_language"].as_str(),
+            "enrich[{id}].original_language"
+        );
     }
 }

@@ -103,12 +103,24 @@ pub struct Db {
 }
 
 impl Db {
+    fn pool_options() -> PgPoolOptions {
+        // asyncpg parity: it runs RESET ALL when a connection returns to
+        // the pool; sqlx does not, so a session GUC set on one borrower
+        // (e.g. hnsw.ef_search) would LEAK to every later one and make
+        // results connection-history-dependent (the review's M-7).
+        PgPoolOptions::new()
+            .max_connections(10)
+            .after_release(|conn, _meta| {
+                Box::pin(async move {
+                    sqlx::query("RESET ALL").execute(conn).await?;
+                    Ok(true)
+                })
+            })
+    }
+
     /// Connect with default table mapping.
     pub async fn connect(dsn: &str) -> Result<Self, DbError> {
-        let pool = PgPoolOptions::new()
-            .max_connections(10)
-            .connect(dsn)
-            .await?;
+        let pool = Self::pool_options().connect(dsn).await?;
         Ok(Self {
             pool,
             map: Arc::new(SchemaMap::new()),
@@ -117,10 +129,7 @@ impl Db {
 
     /// Connect with an explicit map (tests, remapped deployments).
     pub async fn connect_with_map(dsn: &str, map: SchemaMap) -> Result<Self, DbError> {
-        let pool = PgPoolOptions::new()
-            .max_connections(10)
-            .connect(dsn)
-            .await?;
+        let pool = Self::pool_options().connect(dsn).await?;
         Ok(Self {
             pool,
             map: Arc::new(map),
@@ -151,7 +160,9 @@ impl Db {
         binds: &[(&'static str, Bind)],
     ) -> Result<Vec<sqlx::postgres::PgRow>, DbError> {
         let mut conn = self.pool.acquire().await?;
-        let _ = sqlx::query(guc).execute(&mut *conn).await;
+        // a failed SET must propagate (Python: db.execute raises) — a
+        // silently-missed GUC is a silently-wrong query plan
+        sqlx::query(guc).execute(&mut *conn).await?;
         let mut q = sqlx::query(sql);
         for (_, b) in binds {
             q = b.apply(q);

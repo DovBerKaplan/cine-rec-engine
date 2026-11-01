@@ -211,11 +211,9 @@ pub async fn fetch_embeddings_batch(
                     }
                 }
             }
-            Err(e) => match e.into_degraded("embeddings") {
-                // no embeddings, no tilt — never an error
-                DbError::ChannelOff { .. } => return Ok(HashMap::new()),
-                real => return Err(real),
-            },
+            // Python wraps the WHOLE body in `except Exception:
+            // return {}` — no embeddings, no tilt, never an error
+            Err(_) => return Ok(HashMap::new()),
         }
     }
     Ok(out)

@@ -726,8 +726,6 @@ pub async fn generate_knn_candidates(
     };
 
     // ef_search must be raised per session for pgvector's hnsw indexes
-    // to return deep-enough candidate lists.
-    // ef_search must be raised per session for pgvector's hnsw indexes
     // to return deep-enough candidate lists — on the SAME connection
     // the query runs on (a pool-level SET may land on another one).
     let resolved = db.sql(&sql)?;

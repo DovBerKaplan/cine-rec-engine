@@ -29,6 +29,14 @@ macro_rules! integration_test {
         #[tokio::test]
         async fn $name() {
             let Some(dsn) = dsn() else {
+                // CI sets CINE_REC_REQUIRE_DB=1 so a silently-skipped
+                // live suite fails loudly instead of looking green
+                if std::env::var("CINE_REC_REQUIRE_DB")
+                    .ok()
+                    .is_some_and(|v| v == "1")
+                {
+                    panic!("CINE_REC_REQUIRE_DB=1 but no CINE_REC_INTEGRATION_DSN");
+                }
                 eprintln!("skipping (no CINE_REC_INTEGRATION_DSN)");
                 return;
             };

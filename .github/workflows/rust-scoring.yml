@@ -90,3 +90,5 @@ jobs:
           python rust/db/tests/fixtures/gen_live_parity.py
       - name: db tests (unit + integration + live parity)
         run: cargo test --manifest-path rust/db/Cargo.toml
+        env:
+          CINE_REC_REQUIRE_DB: "1"
