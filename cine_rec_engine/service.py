@@ -118,75 +118,15 @@ def recommendation_plan(weighted_seeds, watchlist_seeds, min_titles=COLD_START_M
     return "cold_start", []
 
 
-FEATURE_LABELS = {
-    "cosine_sim": "plot similarity",
-    "keyword_sim": "shared keywords",
-    "cast_sim": "shared cast",
-    "director_match": "same director",
-    "director_channel": "director recall",
-    "writer_match": "same writer",
-    "composer_match": "same composer",
-    "dp_match": "same cinematographer",
-    "tmdb_rec_decay": "TMDB behavior graph",
-    "shared_collection": "same saga",
-    "shared_network": "same network",
-    "style_match": "same style tags",
-    "company_sim": "same studio",
-    "genre_priority_sum": "genre overlap",
-    "tone_compatibility": "same tone",
-    "narrative_match": "same narrative structure",
-    "emotional_arc_match": "same emotional arc",
-    "pacing_match": "same pacing",
-    "audience_compatibility": "same audience",
-}
-# near-constant features: they fire on ~everything, so they explain a
-# score but not a CHOICE — hidden from the why by default
-_BORING_FEATURES = frozenset({
-    "audience_compatibility", "tone_compatibility", "rating_bonus",
-    "votes_gt15k", "low_votes_high_rating", "year_le5", "year_le10",
-    "heuristic_score",
-})
-
-
-def explain_features(vec, weights, top=3, with_weights=False):
-    """Human-readable WHY for one (seed, candidate) score (pure).
-
-    Maps the feature vector to its top contributing features, skipping
-    near-constant ones by default (they score everything equally).
-    with_weights=True returns (label, contribution) tuples — the demo
-    shows the weight×feature number next to each reason.
-    """
-    contrib = sorted(
-        ((weights.get(name, 0.0) * val, name)
-         for name, val in zip(FEATURE_NAMES, vec)),
-        reverse=True,
-    )
-    # Only distinctive features. An empty answer is honest — "nothing
-    # set this apart" — never a fallback to features that fire on all
-    # candidates anyway.
-    picked = [
-        (FEATURE_LABELS.get(name, name), score)
-        for score, name in contrib
-        if score > 0 and name not in _BORING_FEATURES
-    ][:top]
-    if with_weights:
-        return picked
-    return [label for label, _score in picked]
-
-
-def explain_contributions(vec, weights, top=3):
-    """Machine-readable WHY: {feature name: weight×value} for the same
-    top non-boring picks explain_features labels — the numbers the
-    label-only path computes and drops. Pure published-weights
-    arithmetic: exposes nothing beyond weights.json."""
-    contrib = sorted(
-        ((weights.get(name, 0.0) * val, name)
-         for name, val in zip(FEATURE_NAMES, vec)),
-        reverse=True,
-    )
-    picked = [(name, score) for score, name in contrib
-              if score > 0 and name not in _BORING_FEATURES][:top]
-    return {name: round(score, 4) for name, score in picked}
+# --- WHY rendering: moved to explain.py (5a call-flow split) — re-exported
+# here so every pre-split import path keeps working (tests, demo, eval).
+from .explain import (  # noqa: E402
+    FEATURE_LABELS as FEATURE_LABELS,
+    _BORING_FEATURES as _BORING_FEATURES,
+    explain_contributions as explain_contributions,
+    explain_features as explain_features,
+)
+from . import explain as _explain  # noqa: E402
 
 
 class RecommendationService:
@@ -628,47 +568,15 @@ class RecommendationService:
         }
 
     async def _seed_info_for(self, seed: tuple) -> Optional[dict]:
-        """Full info dict for one (id, media_type) seed (why rendering)."""
-        try:
-            info = await get_movie_info_batch(self.pool, [seed[0]])
-            if info:
-                row = dict(info[seed[0]])
-                row.setdefault("media_type", seed[1])
-                return row
-        except Exception as e:
-            logger.debug(f"seed info fetch failed for {seed}: {e}")
-        return None
+        """Full info dict for one (id, media_type) seed (why rendering).
+        Moved to explain.py in the 5a split; thin delegate."""
+        return await _explain.seed_info_for(self.pool, seed)
 
     async def explain_results(self, results: list, seed: tuple) -> dict:
         """{"why": labels, "why_scores": {feature: contribution}} for an
         already-computed result list against ONE (id, media_type[, w])
-        seed. Re-derives the feature vector post-hoc (vs the first seed
-        only — an approximation by design, same as the /for-user path);
-        contributions are published-weights arithmetic only."""
-        empty: dict = {"why": {}, "why_scores": {}}
-        if not results:
-            return empty
-        try:
-            enriched = await enrich_candidates_batch(
-                self.pool, [r["tmdb_id"] for r in results])
-            top_seed = await self._seed_info_for(seed)
-            if not top_seed:
-                return empty
-        except Exception as e:
-            logger.debug(f"explain enrichment failed for seed {seed}: {e}")
-            return empty
-        why: dict = {}
-        why_scores: dict = {}
-        for r in results:
-            cand = dict(enriched.get(r["tmdb_id"], {}))
-            cand.setdefault("id", r["tmdb_id"])
-            for k, v in r.items():
-                cand.setdefault(k, v)
-            vec = feature_vector(cand, cand, cand.get("genres", []), top_seed)
-            key = str(r["tmdb_id"])
-            why[key] = explain_features(vec, ACTIVE_WEIGHTS)
-            why_scores[key] = explain_contributions(vec, ACTIVE_WEIGHTS)
-        return {"why": why, "why_scores": why_scores}
+        seed. Moved to explain.py in the 5a split; thin delegate."""
+        return await _explain.explain_results(self.pool, results, seed)
 
     async def find_similar(
         self,
