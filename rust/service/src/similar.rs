@@ -29,12 +29,15 @@ pub struct ScoredItem {
     /// the tilt's boost value (`user_affinity`, round(boost,3)) — None
     /// on rows the tilt never touched
     pub user_affinity: Option<f64>,
+    /// the pre-rounding weighted average — parity gate input (a naive
+    /// fold vs compensated shows here, rounding would mask it)
+    pub raw_score: f64,
 }
 
 /// Python's `round()` is BANKER'S rounding (ties to even); Rust's
 /// `f64::round` ties away from zero. Every slot count below must match
 /// Python exactly, so half-cases go to the even neighbor.
-fn py_round(x: f64) -> i64 {
+pub fn py_round(x: f64) -> i64 {
     let floor = x.floor();
     let diff = x - floor;
     if diff < 0.5 {
@@ -559,33 +562,52 @@ mod tests {
 
 
     #[test]
-    fn display_guard_blocks_titleless_candidates() {
-        // the reviewer's injection (ג) passed green — a candidate with
-        // no renderable title should never take a slot (empty Telegram
-        // button). Lock it.
-        let mk = |id: i64, title: &str, title_en: Option<&str>| ScoredItem {
-            tmdb_id: id,
-            title: title.to_string(),
-            title_en: title_en.map(String::from),
+    fn display_guard_blocks_titleless_via_score_candidates() {
+        // through the PRODUCTION scoring loop: a candidate with no
+        // renderable title must never take a slot. We build minimal
+        // seeds + candidates and verify score_candidates drops the
+        // title-less ones (NOT a re-implementation of the check).
+        use cine_rec_db::info::SeedInfo;
+        use cine_rec_db::recall::CandidateRow;
+        let seed = SeedInfo {
+            id: 1,
             media_type: "movie".into(),
-            score: 9.0,
+            genres: vec!["Action".into()],
             ..Default::default()
         };
-        // score_candidates' guard: empty after strip on BOTH fields
-        assert!("".trim().is_empty());
-        assert!("   ".trim().is_empty());
-        assert!(!"real".trim().is_empty());
-        // The guard lives inside score_candidates (the big async fn);
-        // the pure shape is: if title_en.strip() and title.strip()
-        // are both empty → skip. This lock documents the contract.
-        let title_ok = |item: &ScoredItem| {
-            item.title_en.as_deref().is_some_and(|t| !t.trim().is_empty())
-                || !item.title.trim().is_empty()
+        let mk = |id: i64, title: &str, title_en: Option<&str>| CandidateRow {
+            id,
+            title: Some(title.to_string()),
+            title_en: title_en.map(String::from),
+            media_type: Some("movie".into()),
+            genres: vec!["Action".into()],
+            vote_average: Some(8.0),
+            ..Default::default()
         };
-        assert!(!title_ok(&mk(1, "", None)), "both empty");
-        assert!(!title_ok(&mk(2, "  ", Some("  "))), "whitespace only");
-        assert!(title_ok(&mk(3, "real", None)), "title present");
-        assert!(title_ok(&mk(4, "", Some("real_en"))), "en present");
+        let candidates = vec![
+            mk(10, "Real Title", None),      // good
+            mk(11, "", None),                 // no title at all
+            mk(12, "   ", Some("   ")),       // whitespace only
+            mk(13, "", Some("Real EN")),      // en present → passes
+        ];
+        let weights = WeightLists {
+            active: vec![1.0; 28],
+            heuristic27: vec![1.0; 27],
+        };
+        let enriched = HashMap::new();
+        let seed_sims = HashMap::new();
+        let decay = DecayConfig::default();
+        let out = score_candidates(
+            &[seed], &candidates, &enriched, &seed_sims,
+            None, &weights, &decay, None,
+        );
+        let ids: Vec<i64> = out.results.iter().map(|r| r.tmdb_id).collect();
+        // 10 (title) and 13 (en title) pass; 11 (no title) and 12
+        // (whitespace) are dropped by the production guard
+        assert!(ids.contains(&10), "titled candidate kept");
+        assert!(ids.contains(&13), "en-titled candidate kept");
+        assert!(!ids.contains(&11), "untitled candidate dropped");
+        assert!(!ids.contains(&12), "whitespace-only title dropped");
     }
 
     #[test]
@@ -1232,6 +1254,7 @@ pub fn score_candidates(
         results.push(ScoredItem {
             tmdb_id: cid,
             score: avg_score,
+            raw_score: avg_score,
             title: cand.title.clone().unwrap_or_default(),
             title_en: cand.title_en.clone(),
             media_type: cand.media_type.clone().unwrap_or_else(|| "movie".into()),
@@ -1398,7 +1421,15 @@ pub struct ComputeSpec {
     /// INSIDE — the lazy factory's Rust equivalent (Python's laziness
     /// spares CACHE hits the query; the NoopCache path always computes)
     pub uvec_extra: Option<(Vec<f32>, i64)>,
+    /// when true, skip the final media balancing — the caller runs the
+    /// per-user passes FIRST and then balances (Python's find_similar
+    /// balances AFTER the user filters, not before; the recommend path
+    /// needs the FULL unbalanced list for exploration to pick from)
+    #[serde(default = "default_true")]
+    pub balance: bool,
 }
+
+fn default_true() -> bool { true }
 
 #[derive(Debug, Default, Serialize)]
 pub struct ComputeResult {
@@ -1421,6 +1452,8 @@ pub struct ScoredItemSerde {
     pub collection_id: Option<i64>,
     pub release_year: Option<i64>,
     pub director_ids: Vec<i64>,
+    pub user_affinity: Option<f64>,
+    pub raw_score: f64,
 }
 
 /// Steps 1–9 of Python's compute path (cache bypassed, exclude=None,
@@ -1574,11 +1607,14 @@ pub async fn compute_find_similar(
         spec.limit,
     );
 
-    // 9. media balancing on the final list (no user passes here; noise
-    //    is the Python-side Mersenne regime, r <= 0 by contract)
+    // 9. media balancing — skipped when the caller runs per-user passes
+    //    first (Python's order: filters → tilt → exploration → balance;
+    //    exploration needs the FULL list, not a pre-balanced cut)
     let mut results = outcome.results.clone();
-    if let Some(limit) = spec.limit {
-        results = balance_by_media_type(&results, outcome.movie_ratio, limit);
+    if spec.balance {
+        if let Some(limit) = spec.limit {
+            results = balance_by_media_type(&results, outcome.movie_ratio, limit);
+        }
     }
     Ok(ComputeResult {
         results: results
@@ -1595,6 +1631,8 @@ pub async fn compute_find_similar(
                 collection_id: r.collection_id,
                 release_year: r.release_year,
                 director_ids: r.director_ids,
+                user_affinity: r.user_affinity,
+                raw_score: r.raw_score,
             })
             .collect(),
         movie_ratio: outcome.movie_ratio,

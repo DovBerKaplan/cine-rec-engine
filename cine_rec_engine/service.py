@@ -335,11 +335,8 @@ HEURISTIC_WEIGHTS = {
     "low_votes_high_rating": 1.5,
     "rating_bonus": 1.0,
     "pop_action_leak": POP_ACTION_PENALTY,
-    # Cinematic-DNA features are LTR inputs, weight 0.0 in the heuristic
-    # baseline: the heuristic has no principled prior for them (Johann
-    # Johannsson scored BOTH Arrival and Sicario), and partial catalog
-    # coverage makes them noisy at heuristic strength. LTR-only inputs
-    # until coverage completes.
+    # Cinematic-DNA features: LTR inputs, weight 0.0 in the heuristic
+    # baseline.
     "composer_match": 0.0,
     "dp_match": 0.0,
     # The medium signal must be LEARNED, not imposed: taste genuinely

@@ -68,6 +68,13 @@ pub struct RecommendSpec {
     /// the uvec for the ANN extras: taken from the STORED vector (the
     /// parity fixture freezes it); None → ensure on demand
     pub uvec: Option<Vec<f32>>,
+    /// frozen inputs for parity replay: when present, these override
+    /// the live DB reads (the gate works on any DB that ran the
+    /// generator, not just the one that created the fixture)
+    #[serde(default)]
+    pub frozen_exclusions: Option<Vec<(i64, String)>>,
+    #[serde(default)]
+    pub frozen_user_genres: Option<Vec<String>>,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -132,6 +139,7 @@ pub async fn recommend_for_user(
         weights: spec.weights.clone(),
         decay: spec.decay.clone(),
         uvec_extra: uvec.as_ref().map(|v| (v.clone(), 60)),
+        balance: false, // the user passes + exploration run BEFORE balance
     };
     let computed = compute_find_similar(db, &compute_spec).await?;
 
@@ -140,7 +148,10 @@ pub async fn recommend_for_user(
     //    scores; the user pass RE-balances after filtering — exactly
     //    Python's double-balance shape)
     let seed_id_set: HashSet<i64> = seeds.iter().map(|s| s.0).collect();
-    let merged = merged_exclusions(db, Some(HashSet::new()), Some(spec.user_id)).await?;
+    let merged = match &spec.frozen_exclusions {
+        Some(frozen) => Some(frozen.iter().cloned().collect()),
+        None => merged_exclusions(db, Some(HashSet::new()), Some(spec.user_id)).await?,
+    };
     let blocked = seed_saga_blocked(db, &seed_id_set)
         .await?
         .unwrap_or_else(|| seed_id_set.clone());
@@ -165,6 +176,7 @@ pub async fn recommend_for_user(
             director_ids: r.director_ids.clone(),
             genres: r.genres.clone(),
             user_affinity: None,
+            raw_score: 0.0,
         })
         .collect();
 
@@ -184,16 +196,32 @@ pub async fn recommend_for_user(
     let explore_share = spec.explore.unwrap_or(EXPLORE_SHARE);
     let final_items = if let Some(limit) = limit {
         if !tilt_ctx.affinities.is_empty() && explore_share > 0.0 {
-            apply_exploration(
-                db,
-                tilted,
-                spec.user_id,
-                computed.movie_ratio,
-                limit,
-                explore_share,
-                &tilt_ctx,
-            )
-            .await?
+            // frozen genres override the live read (parity replay)
+            let genres = match &spec.frozen_user_genres {
+                Some(g) => g.iter().cloned().collect(),
+                None => HashSet::new(), // unused — see apply_exploration_frozen
+            };
+            if spec.frozen_user_genres.is_some() {
+                apply_exploration_frozen(
+                    tilted,
+                    &genres,
+                    computed.movie_ratio,
+                    limit,
+                    explore_share,
+                    &tilt_ctx,
+                )
+            } else {
+                apply_exploration(
+                    db,
+                    tilted,
+                    spec.user_id,
+                    computed.movie_ratio,
+                    limit,
+                    explore_share,
+                    &tilt_ctx,
+                )
+                .await?
+            }
         } else {
             balance_by_media_type(&tilted, computed.movie_ratio, limit)
         }
@@ -216,13 +244,15 @@ pub async fn recommend_for_user(
                 collection_id: r.collection_id,
                 release_year: r.release_year,
                 director_ids: r.director_ids,
+                user_affinity: r.user_affinity,
+                raw_score: r.raw_score,
             })
             .collect(),
         reason: mode.to_string(),
         seeds: seeds
             .iter()
             .take(10)
-            .map(|(id, mt, w)| (*id, mt.clone(), (w * 1000.0).round() / 1000.0))
+            .map(|(id, mt, w)| (*id, mt.clone(), crate::similar::py_round(w * 1000.0) as f64 / 1000.0))
             .collect(),
         vector_used: uvec.is_some(),
     })
@@ -255,4 +285,24 @@ async fn watchlist_seeds(
             )
         })
         .collect())
+}
+
+
+/// The frozen-input exploration (no DB reads — the fixture supplies
+/// the user genres). Same math as apply_exploration.
+pub fn apply_exploration_frozen(
+    results: Vec<crate::similar::ScoredItem>,
+    user_genres: &HashSet<String>,
+    movie_ratio: f64,
+    limit: usize,
+    share: f64,
+    tilt_ctx: &TiltContext,
+) -> Vec<crate::similar::ScoredItem> {
+    let (main, picks) = crate::user_context::exploration_slice(
+        &results, limit, user_genres, &tilt_ctx.affinities, share);
+    if picks.is_empty() {
+        return crate::similar::balance_by_media_type(&results, movie_ratio, limit);
+    }
+    let main = crate::similar::balance_by_media_type(&main, movie_ratio, limit - picks.len());
+    crate::user_context::insert_exploration(main, picks, limit)
 }

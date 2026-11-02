@@ -55,7 +55,7 @@ pub fn tilt_scores(
                     let boost = c.max(0.0);
                     let mut r = r;
                     r.score *= 1.0 + alpha * boost;
-                    r.user_affinity = Some((boost * 1000.0).round() / 1000.0); // round(boost, 3)
+                    r.user_affinity = Some(crate::similar::py_round(boost * 1000.0) as f64 / 1000.0); // round(boost, 3) — banker's
                     r
                 }
             }

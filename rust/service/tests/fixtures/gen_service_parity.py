@@ -26,13 +26,18 @@ sys.path.insert(0, str(REPO_ROOT))
 import asyncpg  # noqa: E402
 
 from cine_rec_engine import service as svc_mod  # noqa: E402
+from cine_rec_engine import config as _cfg  # noqa: E402
 from cine_rec_engine.config import (  # noqa: E402
     AUTEUR_DECAY_FACTORS,
-    EMBEDDING_COLUMN,
     GENRE_MISMATCH_AUTEUR_FACTOR,
     MMR_ENABLED,
     MMR_LAMBDA,
 )
+
+# ISOLATION: detect the column that EXISTS on this DB and use it for
+# the whole run; save/restore the module global so a pytest session
+# that runs us mid-suite doesn't leak the override to later tests
+_SAVED_EMB = _cfg.EMBEDDING_COLUMN
 from cine_rec_engine.queries import normalize_filters  # noqa: E402
 
 DSN = os.environ.get("CINE_REC_INTEGRATION_DSN", "")
@@ -57,7 +62,7 @@ async def pick_seeds(conn) -> dict:
             "genre": genre["id"]}
 
 
-def spec_of(case, seeds) -> dict:
+def spec_of(case, seeds, emb_col) -> dict:
     """The ComputeSpec the Rust side receives, built from the same
     module state the Python run used."""
     return {
@@ -66,7 +71,7 @@ def spec_of(case, seeds) -> dict:
         "limit": case.get("limit", 20),
         "allow_cross_media": case.get("allow_cross_media", False),
         "seed_weights": case.get("seed_weights"),
-        "emb_column": EMBEDDING_COLUMN,
+        "emb_column": emb_col,
         "knn_ft_enabled": os.getenv("ENABLE_KNN_FINETUNED", "true").lower() != "false",
         "filters": case.get("filters") or {},
         "weights": {
@@ -86,6 +91,17 @@ def spec_of(case, seeds) -> dict:
 async def main() -> None:
     assert DSN, "set CINE_REC_INTEGRATION_DSN"
     pool = await asyncpg.create_pool(DSN, min_size=1, max_size=4)
+    # detect an EXISTING embedding column — the default "embedding"
+    # does not exist on the demo DB and silently degrades ALL channels
+    async with pool.acquire() as c:
+        col = await c.fetchval(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='tmdb_movies' AND column_name LIKE 'embedding%' "
+            "ORDER BY column_name LIMIT 1")
+    EMBEDDING_COLUMN = col or _SAVED_EMB
+    _cfg.EMBEDDING_COLUMN = EMBEDDING_COLUMN  # for the service to pick up
+    assert col, "NO embedding column on tmdb_movies — the fixture would be vacuous"
+    print(f"embedding column: {EMBEDDING_COLUMN}")
     svc = svc_mod.RecommendationService()
     await svc.initialize(pool)
     try:
@@ -153,7 +169,17 @@ async def main() -> None:
                 extra_limit=uvec_extra[1] if uvec_extra else 60,
             )
             assert len(results) > 0, f"case {case['name']}: EMPTY — n>0 rule"
-            spec = spec_of(case, picks)
+            # ACTIVITY GATE: the embedding channels must be LIVE — a
+            # silently degraded cosine_sim is the double-degenerate
+            # false-parity the review caught
+            if case.get("check_embedding", True):
+                nonzero = sum(1 for r in results
+                             if r.get("genres") and r["score"] > 1.0)
+                assert nonzero > 0, (
+                    f"case {case['name']}: all scores ≤1.0 — "
+                    "embedding channels may be degraded (vacuous parity)"
+                )
+            spec = spec_of(case, picks, EMBEDDING_COLUMN)
             spec["filters"] = dict(normalized) if normalized else {}
             out_cases.append({
                 "name": case["name"],
@@ -185,6 +211,11 @@ async def main() -> None:
         # Rust replay is deterministic; the pytest also runs a fresh
         # live-vs-live compare (no fixture drift possible there).
         rec_uvec = await uvec_of(USER)
+        # freeze the volatile inputs so the gate works on ANY DB that
+        # ran this generator (not just this exact DB state)
+        from cine_rec_engine.user_context import user_top_genres, merged_exclusions
+        frozen_excl = await merged_exclusions(pool, set(), USER)
+        frozen_genres = sorted(await user_top_genres(pool, USER))
         rec = await svc.recommend_for_user(USER, limit=30, include_why=False)
         assert rec["reason"] == "personalized", rec["reason"]
         assert len(rec["results"]) > 0
@@ -200,6 +231,9 @@ async def main() -> None:
                     "heuristic27": list(svc_mod.HEURISTIC_WEIGHTS_LIST),
                 },
                 "uvec": [f for f in rec_uvec] if rec_uvec else None,
+                "frozen_exclusions": sorted(
+                    (list(x) for x in (frozen_excl or set()))),
+                "frozen_user_genres": frozen_genres,
             },
             "reason": rec["reason"],
             "vector_used": rec["vector_used"],
@@ -213,6 +247,7 @@ async def main() -> None:
             ],
         }
     finally:
+        _cfg.EMBEDDING_COLUMN = _SAVED_EMB
         await pool.close()
 
     dest = Path(__file__).parent / "service_parity.json"

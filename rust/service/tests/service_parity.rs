@@ -93,6 +93,24 @@ async fn service_compute_matches_python_on_frozen_seeds() {
                 "case {name}[{i}].score: {} vs {want_score}",
                 g.score
             );
+            // raw_score (pre-rounding) sanity: proves the scoring loop
+            // sets it (not just copies the rounded score), and that
+            // it differs by <0.001 (the rounding granularity). A naive
+            // fold would produce a different raw_score; the rounded
+            // score comparison above catches downstream divergence.
+            assert!(
+                (g.raw_score - g.score).abs() < 0.001 + 1e-15,
+                "case {name}[{i}]: raw_score {raw} vs rounded {score} — not a rounding pair",
+                raw = g.raw_score, score = g.score
+            );
+            // at least SOME results must have raw != rounded (proves
+            // raw_score is genuinely pre-rounding, not a copy)
+            if i == 0 {
+                let any_diff = got.results.iter()
+                    .any(|r| (r.raw_score - r.score).abs() > 1e-15);
+                assert!(any_diff || got.results.len() == 1,
+                    "case {name}: ALL raw_scores identical to rounded — suspicious");
+            }
             // director_ids: SET compare — the SQL aggregates crew ids
             // via ARRAY_AGG without ORDER BY, so the ordering is
             // nondeterministic across runs (the L-6/companies
