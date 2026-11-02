@@ -228,3 +228,102 @@ async fn recommend_full_matches_python_on_frozen_inputs() {
     }
     println!("recommend full: {} rows OK", got.results.len());
 }
+
+#[tokio::test]
+async fn explain_matches_python_on_frozen_sample() {
+    let Some(dsn) = dsn() else {
+        if std::env::var("CINE_REC_REQUIRE_DB")
+            .ok()
+            .is_some_and(|v| v == "1")
+        {
+            panic!("CINE_REC_REQUIRE_DB=1 but no CINE_REC_INTEGRATION_DSN");
+        }
+        eprintln!("skipping (no CINE_REC_INTEGRATION_DSN)");
+        return;
+    };
+    let fx = fixture();
+    let ex = &fx["explain_sample"];
+    let seed_id = ex["seed"][0].as_i64().unwrap();
+    let seed_mt = ex["seed"][1].as_str().unwrap();
+
+    // build the inputs from the DB + fixture
+    let db = Db::connect(&dsn).await.unwrap();
+    let mut infos = cine_rec_db::info::get_movie_info_batch(
+        &db, &[seed_id], Some(seed_mt),
+    ).await.unwrap();
+    let seed = infos.remove(&seed_id).expect("seed in DB");
+
+    // weights from the fixture's recommend spec
+    let rec_spec = &fx["recommend_910001_full"]["spec"];
+    let weights = cine_rec_service::similar::WeightLists {
+        active: rec_spec["weights"]["active"].as_array().unwrap()
+            .iter().filter_map(|v| v.as_f64()).collect(),
+        heuristic27: rec_spec["weights"]["heuristic27"].as_array().unwrap()
+            .iter().filter_map(|v| v.as_f64()).collect(),
+    };
+    // weights_by_name: zip FEATURE_NAMES with the active list
+    let weights_by_name: std::collections::HashMap<String, f64> =
+        cine_rec_service::explain::FEATURE_NAMES.iter()
+            .zip(&weights.active)
+            .map(|(n, w)| (n.to_string(), *w))
+            .collect();
+
+    // result ids + media types from the fixture
+    let ids: Vec<i64> = ex["results_ids"].as_array().unwrap()
+        .iter().filter_map(|v| v.as_i64()).collect();
+    let result_pairs: Vec<(i64, String)> = ids.iter()
+        .map(|&id| (id, "movie".to_string())) // recommend is movie-dominant
+        .collect();
+    // genres from the recommend results (Python's explain merges the
+    // result row into the enriched dict via setdefault)
+    let rec_results = fx["recommend_910001_full"]["results"].as_array().unwrap();
+    let genres_map: std::collections::HashMap<i64, Vec<String>> = rec_results
+        .iter()
+        .filter_map(|r| {
+            r["genres"].as_array().map(|gs| {
+                (r["tmdb_id"].as_i64().unwrap(),
+                 gs.iter().filter_map(|g| g.as_str().map(String::from)).collect())
+            })
+        })
+        .collect();
+
+    let got = cine_rec_service::explain::explain_results(
+        &db, &result_pairs, &genres_map, &seed,
+        &weights, &weights_by_name,
+    ).await.unwrap();
+
+    // DIRECTION-LEVEL parity (7.1): the SET of contributing feature
+    // names must match per candidate. Exact VALUE parity requires the
+    // candidate entity to carry the full enrichment (Python merges the
+    // enriched dict; Rust builds a minimal entity) — documented as a
+    // known gap; the exact fix lands with the bridge exposure (the
+    // reviewer's precondition).
+    let want_why = ex["why"].as_object().unwrap();
+    let want_scores = ex["why_scores"].as_object().unwrap();
+    assert!(!want_why.is_empty(), "fixture explain not empty");
+    for (id_str, _labels) in want_why {
+        let id: i64 = id_str.parse().unwrap();
+        let got_entry = got.get(&id)
+            .unwrap_or_else(|| panic!("explain: id {id} missing"));
+        let want_names: std::collections::HashSet<&str> = want_scores[id_str]
+            .as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        let got_names: std::collections::HashSet<&str> =
+            got_entry.1.iter().map(|(n, _)| n.as_str()).collect();
+        // the RUST side may have FEWER features (missing enrichment
+        // fields suppress some signals) but every feature it DOES
+        // report must exist in Python's set
+        for gn in &got_names {
+            assert!(want_names.contains(gn),
+                "explain[{id}]: Rust reports '{gn}' not in Python's {want_names:?}");
+        }
+        // both empty = both degraded the same way (a match)
+        // at least ONE overlap when either side is non-empty
+        if !got_names.is_empty() || !want_names.is_empty() {
+            assert!(
+                got_names.iter().any(|g| want_names.contains(g)),
+                "explain[{id}]: zero overlap — Rust {got_names:?} vs Python {want_names:?}"
+            );
+        }
+    }
+    println!("explain parity: {} ids OK", want_why.len());
+}

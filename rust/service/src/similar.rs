@@ -634,6 +634,20 @@ mod tests {
         // vector side; together they pin the folding rule.
     }
 
+
+    #[test]
+    fn py_round3_boundary_08305() {
+        // the reviewer's specific recommendation (session 5, L-a):
+        // 0.8305 → Python round=0.831, scaled-bankres=0.83
+        // this closes the boundary-blindness gap the fixture had
+        assert!((py_round3(0.8305) - 0.831).abs() < 1e-15,
+            "py_round3(0.8305) = {}, want 0.831", py_round3(0.8305));
+        // the scaled approach gives 0.83 (830.5 → banker's → 830 → 0.83)
+        // while Python's round(0.8305, 3) = 0.831 (correctly-rounded decimal)
+        assert!((py_round3(0.83051) - 0.831).abs() < 1e-15);
+        assert!((py_round3(0.83049) - 0.830).abs() < 1e-15);
+    }
+
     #[test]
     fn pair_similarity_truthiness() {
         // collection id 0 is FALSY in Python — never a saga match

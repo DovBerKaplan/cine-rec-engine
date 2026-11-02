@@ -134,6 +134,12 @@ async def main() -> None:
             {"name": "seed_weights",
              "seeds": [(picks["movie"], "movie"), (picks["movie2"], "movie")],
              "seed_weights": {str(picks["movie"]): 2.0, str(picks["movie2"]): 1.0}},
+            # COVERAGE GAP (documented, session 5 L-b): both cross-media
+            # cases produce single-type output (20/0 and 0/30) — the
+            # cross-media recall channel runs but the balancing keeps the
+            # seed's type dominant. A truly mixed-output case would need
+            # seeds whose genre neighborhoods span both media AND
+            # a movie_ratio near 0.5. Not blocking; documented here.
             {"name": "cross_media", "seeds": [(picks["movie"], "movie")],
              "allow_cross_media": True},
             {"name": "filters", "seeds": [(picks["movie"], "movie")],
@@ -230,6 +236,17 @@ async def main() -> None:
         rec = await svc.recommend_for_user(USER, limit=30, include_why=False)
         assert rec["reason"] == "personalized", rec["reason"]
         assert len(rec["results"]) > 0
+        # 7.1: explain parity — run Python's real explain_results on
+        # the recommend output and freeze it for the Rust gate
+        from cine_rec_engine.explain import explain_results as _explain
+        explained = await _explain(pool, rec["results"][:10], plan_seeds[0])
+        payload["explain_sample"] = {
+            "seed": list(plan_seeds[0]),
+            "results_ids": [r["tmdb_id"] for r in rec["results"][:10]],
+            "why": explained["why"],
+            "why_scores": explained["why_scores"],
+        }
+
         payload["recommend_910001_full"] = {
             "spec": {
                 "user_id": USER,

@@ -4645,6 +4645,82 @@
    "raw_per_seed": null
   }
  ],
+ "explain_sample": {
+  "seed": [
+   103,
+   "movie"
+  ],
+  "results_ids": [
+   524,
+   1517123,
+   2098,
+   5175,
+   1293162,
+   12104,
+   187,
+   11171,
+   515248,
+   289219
+  ],
+  "why": {
+   "524": [
+    "same director",
+    "genre overlap",
+    "shared cast"
+   ],
+   "1517123": [
+    "shared keywords"
+   ],
+   "2098": [],
+   "5175": [],
+   "1293162": [],
+   "12104": [
+    "genre overlap"
+   ],
+   "187": [
+    "same style tags",
+    "genre overlap",
+    "shared keywords"
+   ],
+   "11171": [
+    "genre overlap",
+    "shared keywords"
+   ],
+   "515248": [
+    "shared keywords"
+   ],
+   "289219": []
+  },
+  "why_scores": {
+   "524": {
+    "director_match": 3.0,
+    "genre_priority_sum": 1.0,
+    "cast_sim": 0.8
+   },
+   "1517123": {
+    "keyword_sim": 0.0698
+   },
+   "2098": {},
+   "5175": {},
+   "1293162": {},
+   "12104": {
+    "genre_priority_sum": 0.5
+   },
+   "187": {
+    "style_match": 3.0,
+    "genre_priority_sum": 0.5,
+    "keyword_sim": 0.0682
+   },
+   "11171": {
+    "genre_priority_sum": 0.5,
+    "keyword_sim": 0.0455
+   },
+   "515248": {
+    "keyword_sim": 0.0811
+   },
+   "289219": {}
+  }
+ },
  "recommend_910001_full": {
   "spec": {
    "user_id": 910001,

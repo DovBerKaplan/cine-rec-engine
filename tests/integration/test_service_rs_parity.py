@@ -152,3 +152,43 @@ def test_recommend_full_live_vs_live():
         assert set(g["director_ids"]) == set(w["director_ids"]), (
             f"row {i}.director_ids"
         )
+
+
+def test_facade_contract_similar_endpoint():
+    """7.2: the /similar endpoint works identically with the extension
+    active — same response shape, degrade-never-fail preserved."""
+    import cine_rec_engine.service as svc_mod
+
+    assert svc_mod.SCORING_RS.startswith("rust"), (
+        f"extension not active: {svc_mod.SCORING_RS}"
+    )
+    dsn = _dsn()
+    import asyncio
+    import asyncpg
+    import cine_rec_engine.find_similar as fs
+
+    async def _no_cache():
+        return None
+
+    fs._get_cache = _no_cache
+
+    async def run():
+        pool = await asyncpg.create_pool(dsn, min_size=1, max_size=2)
+        svc = svc_mod.RecommendationService()
+        await svc.initialize(pool)
+        try:
+            results = await svc.find_similar(11, limit=5)
+            return results
+        finally:
+            await pool.close()
+
+    results = asyncio.run(run())
+    assert len(results) > 0, "n>0"
+    # contract: every row has the documented fields
+    for r in results:
+        for field in ("tmdb_id", "score", "title", "media_type",
+                      "rating", "genres", "poster_path"):
+            assert field in r, f"missing {field} in response"
+        assert isinstance(r["tmdb_id"], int)
+        assert isinstance(r["score"], float)
+        assert isinstance(r["media_type"], str)
