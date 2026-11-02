@@ -65,6 +65,23 @@ include = ["cine_rec_engine*", "ingest*"]
 [tool.setuptools.package-data]
 cine_rec_engine = ["weights.json", "sql/*.sql", "py.typed"]
 
+# ── Rust extension build (maturin) ─────────────────────────────
+# The PURE-PYTHON wheel is built by setuptools (the default backend
+# above). This section configures the OPTIONAL Rust-enhanced wheel:
+# `maturin build --release` from the repo root produces a wheel that
+# bundles the compiled extension alongside the pure-Python fallback.
+# The extension is OPTIONAL at runtime — CINE_REC_SCORING_RS=0 forces
+# pure Python; a missing extension degrades silently.
+[tool.maturin]
+# the scoring crate is the one with the PyO3 bridge (abi3-py310)
+manifest-path = "rust/scoring/Cargo.toml"
+# include the pure-Python package alongside the extension
+python-source = "."
+# the extension module name (must match the #[pymodule] fn)
+module-name = "cine_rec_engine._scoring_rs"
+# features for the bridge
+features = ["pyo3"]
+
 [tool.mypy]
 # Not full-strict yet: the goal is a clean, meaningful pass today
 # (runtime deps are untyped; the core is annotated) with strictness

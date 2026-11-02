@@ -13,7 +13,7 @@ serde = { version = "1", features = ["derive"] }
 # golden bits ARE the contract (found via real-backend parity: case 0
 # slot 0 parsed 1 ULP high while Python/std parse agree)
 serde_json = { version = "1", features = ["float_roundtrip"] }
-pyo3 = { version = "0.23", features = ["abi3-py310", "macros"], optional = true }
+pyo3 = { version = "0.23", features = ["abi3-py310", "macros", "extension-module"], optional = true }
 
 [features]
 pyo3 = ["dep:pyo3"]

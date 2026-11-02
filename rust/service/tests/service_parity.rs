@@ -271,8 +271,17 @@ async fn explain_matches_python_on_frozen_sample() {
     // result ids + media types from the fixture
     let ids: Vec<i64> = ex["results_ids"].as_array().unwrap()
         .iter().filter_map(|v| v.as_i64()).collect();
+    // L-fix: real media_type from the results (was hardcoded "movie")
+    let rec_results = fx["recommend_910001_full"]["results"].as_array().unwrap();
+    let id_to_mt: std::collections::HashMap<i64, String> = rec_results.iter()
+        .filter_map(|r| {
+            r["tmdb_id"].as_i64().and_then(|id| {
+                r["media_type"].as_str().map(|mt| (id, mt.to_string()))
+            })
+        })
+        .collect();
     let result_pairs: Vec<(i64, String)> = ids.iter()
-        .map(|&id| (id, "movie".to_string())) // recommend is movie-dominant
+        .filter_map(|&id| id_to_mt.get(&id).map(|mt| (id, mt.clone())))
         .collect();
     // genres from the recommend results (Python's explain merges the
     // result row into the enriched dict via setdefault)
@@ -309,13 +318,14 @@ async fn explain_matches_python_on_frozen_sample() {
             .as_object().unwrap().keys().map(|k| k.as_str()).collect();
         let got_names: std::collections::HashSet<&str> =
             got_entry.1.iter().map(|(n, _)| n.as_str()).collect();
-        // the RUST side may have FEWER features (missing enrichment
-        // fields suppress some signals) but every feature it DOES
-        // report must exist in Python's set
-        for gn in &got_names {
-            assert!(want_names.contains(gn),
-                "explain[{id}]: Rust reports '{gn}' not in Python's {want_names:?}");
-        }
+        // EXACT-SET: the sets must be IDENTICAL (the coordinator's
+        // L-fix: a subset check lets mislabeled features through).
+        // If the entity gap causes divergence, this will catch it
+        // LOUDLY rather than silently passing.
+        assert_eq!(
+            got_names, want_names,
+            "explain[{id}]: feature set mismatch — Rust has extras or is missing features"
+        );
         // both empty = both degraded the same way (a match)
         // at least ONE overlap when either side is non-empty
         if !got_names.is_empty() || !want_names.is_empty() {
