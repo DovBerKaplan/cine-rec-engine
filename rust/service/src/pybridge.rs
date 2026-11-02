@@ -37,9 +37,13 @@ fn runtime() -> &'static tokio::runtime::Runtime {
     })
 }
 
-fn db_for(dsn: &str) -> Result<Arc<cine_rec_db::Db>, String> {
+fn dbs_map() -> &'static Mutex<HashMap<String, Arc<cine_rec_db::Db>>> {
     static DBS: OnceLock<Mutex<HashMap<String, Arc<cine_rec_db::Db>>>> = OnceLock::new();
-    let dbs = DBS.get_or_init(|| Mutex::new(HashMap::new()));
+    DBS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn db_for(dsn: &str) -> Result<Arc<cine_rec_db::Db>, String> {
+    let dbs = dbs_map();
     let mut guard = dbs.lock().expect("db cache");
     if let Some(db) = guard.get(dsn) {
         return Ok(db.clone());
@@ -86,13 +90,7 @@ fn recommend(py: Python, dsn: String, spec_json: String) -> PyResult<String> {
 
 #[pyfunction]
 fn cached_dsn_count(py: Python) -> PyResult<usize> {
-    let n = py.allow_threads(|| {
-        static DBS: OnceLock<Mutex<HashMap<String, Arc<cine_rec_db::Db>>>> = OnceLock::new();
-        match DBS.get() {
-            Some(dbs) => dbs.lock().map(|g| g.len()).unwrap_or(0),
-            None => 0,
-        }
-    });
+    let n = py.allow_threads(|| dbs_map().lock().map(|g| g.len()).unwrap_or(0));
     Ok(n)
 }
 

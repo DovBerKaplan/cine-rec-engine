@@ -211,6 +211,13 @@ async fn recommend_full_matches_python_on_frozen_inputs() {
             (g.score - w["score"].as_f64().unwrap()).abs() <= 1e-12,
             "rec[{i}].score {} vs {}", g.score, w["score"]
         );
+        // user_affinity: exact (None or Some(f64) at round(x,3))
+        match (g.user_affinity, w["user_affinity"].as_f64()) {
+            (Some(a), Some(b)) => assert!((a - b).abs() < 1e-12,
+                "rec[{i}].user_affinity {a} vs {b}"),
+            (None, None) => {}
+            (a, b) => panic!("rec[{i}].user_affinity presence: {a:?} vs {b:?}"),
+        }
         // director_ids: set compare (ARRAY_AGG unordered — see above)
         let want_dirs: std::collections::HashSet<i64> =
             w["director_ids"].as_array().unwrap()

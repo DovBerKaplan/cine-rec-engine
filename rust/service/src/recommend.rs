@@ -75,6 +75,11 @@ pub struct RecommendSpec {
     pub frozen_exclusions: Option<Vec<(i64, String)>>,
     #[serde(default)]
     pub frozen_user_genres: Option<Vec<String>>,
+    /// frozen seeds: (id, media_type, w) — when present, skip the
+    /// live top_weighted_seeds read (the gate works across time;
+    /// w_item decays with recency)
+    #[serde(default)]
+    pub frozen_seeds: Option<Vec<(i64, String, f64)>>,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -93,7 +98,10 @@ pub async fn recommend_for_user(
     // 1. the three request inputs (Python gathers concurrently — the
     //    wall time shape differs, the result does not; seeds/vector
     //    are independent reads)
-    let weighted = top_weighted_seeds(db, spec.user_id, USER_SEEDS).await?;
+    let weighted = match &spec.frozen_seeds {
+        Some(frozen) => frozen.clone(),
+        None => top_weighted_seeds(db, spec.user_id, USER_SEEDS).await?,
+    };
     let watchlist = watchlist_seeds(db, spec.user_id).await?;
     let uvec = match &spec.uvec {
         Some(v) => Some(v.clone()),
@@ -194,6 +202,12 @@ pub async fn recommend_for_user(
     .await?;
 
     let explore_share = spec.explore.unwrap_or(EXPLORE_SHARE);
+    // Python validates [0.0, 0.5] and raises; the bridge must too
+    if !(0.0..=0.5).contains(&explore_share) {
+        return Err(cine_rec_db::DbError::Invalid(format!(
+            "explore must be in [0.0, 0.5], got {explore_share}"
+        )));
+    }
     let final_items = if let Some(limit) = limit {
         if !tilt_ctx.affinities.is_empty() && explore_share > 0.0 {
             // frozen genres override the live read (parity replay)
@@ -252,7 +266,7 @@ pub async fn recommend_for_user(
         seeds: seeds
             .iter()
             .take(10)
-            .map(|(id, mt, w)| (*id, mt.clone(), crate::similar::py_round(w * 1000.0) as f64 / 1000.0))
+            .map(|(id, mt, w)| (*id, mt.clone(), crate::similar::py_round3(*w)))
             .collect(),
         vector_used: uvec.is_some(),
     })

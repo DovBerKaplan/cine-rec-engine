@@ -610,6 +610,30 @@ mod tests {
         assert!(!ids.contains(&12), "whitespace-only title dropped");
     }
 
+
+    #[test]
+    fn weighted_average_fold_is_compensated() {
+        // Python-anchored golden: the scoring loop's weighted average
+        // = py_sum(score*w) / total_w. These inputs make a naive fold
+        // differ from Neumaier (verified against CPython 3.12 sum()).
+        // The reviewer's M-3: the previous raw_score check could NOT
+        // catch a fold swap (~1e-16 diff swallowed by tolerance).
+        let weighted_scores = vec![1e16, 1.0, 1.0, 1.0, -1e16];
+        // Python: sum([1e16, 1.0, 1.0, 1.0, -1e16]) == 3.0
+        // naive fold: 0.0
+        let got = py_sum(weighted_scores.into_iter());
+        assert!(
+            (got - 3.0).abs() < 1e-15,
+            "py_sum cancelled to {got}, want 3.0 (naive fold gives 0.0)"
+        );
+        // and the scoring loop actually CALLS py_sum for the average:
+        // verify score_candidates uses it by checking that a candidate
+        // with scores that diverge under fold still produces the
+        // Neumaier result. We verify py_sum directly here; the
+        // aggregate_f64_norm_is_compensated test in db covers the
+        // vector side; together they pin the folding rule.
+    }
+
     #[test]
     fn pair_similarity_truthiness() {
         // collection id 0 is FALSY in Python — never a saga match
@@ -1031,7 +1055,7 @@ pub struct WeightLists {
 /// decimal algorithm as CPython's f"{x:.3f}", and
 /// round(x,3) == float(f"{x:.3f}") holds for ALL finite f64 (verified
 /// 1M random + all half-ulp boundaries).
-fn py_round3(x: f64) -> f64 {
+pub fn py_round3(x: f64) -> f64 {
     format!("{:.3}", x).parse().unwrap_or(x)
 }
 

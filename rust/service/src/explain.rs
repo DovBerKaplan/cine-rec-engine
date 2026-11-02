@@ -153,7 +153,7 @@ pub fn explain_contributions(
         .map(|(score, i)| {
             (
                 FEATURE_NAMES[i].to_string(),
-                (score * 10000.0).round() / 10000.0,
+                format!("{:.4}", score).parse().unwrap_or(score),
             )
         })
         .collect()

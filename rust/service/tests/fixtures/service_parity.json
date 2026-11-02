@@ -128,7 +128,8 @@
      "release_year": 1980,
      "director_ids": [
       10930
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3176,
@@ -147,7 +148,8 @@
      "release_year": 2000,
      "director_ids": [
       31074
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 348,
@@ -165,7 +167,8 @@
      "release_year": 1979,
      "director_ids": [
       578
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 903,
@@ -183,7 +186,8 @@
      "release_year": 1967,
      "director_ids": [
       13859
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 25237,
@@ -203,7 +207,8 @@
      "release_year": 1985,
      "director_ids": [
       93406
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 280,
@@ -222,7 +227,8 @@
      "release_year": 1991,
      "director_ids": [
       2710
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 152,
@@ -241,7 +247,8 @@
      "release_year": 1979,
      "director_ids": [
       1744
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 75612,
@@ -261,7 +268,8 @@
      "release_year": 2013,
      "director_ids": [
       86270
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1356039,
@@ -280,7 +288,8 @@
      "release_year": 2025,
      "director_ids": [
       964826
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 620683,
@@ -297,7 +306,8 @@
      "release_year": 2019,
      "director_ids": [
       1706418
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 14537,
@@ -316,7 +326,8 @@
      "release_year": 1962,
      "director_ids": [
       76978
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 348350,
@@ -335,7 +346,8 @@
      "release_year": 2018,
      "director_ids": [
       6159
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1228710,
@@ -354,7 +366,8 @@
      "release_year": 2026,
      "director_ids": [
       15277
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 157336,
@@ -373,7 +386,8 @@
      "release_year": 2014,
      "director_ids": [
       525
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 603,
@@ -392,7 +406,8 @@
      "director_ids": [
       9340,
       9339
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 58857,
@@ -411,7 +426,8 @@
      "release_year": 2010,
      "director_ids": [
       17282
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 262500,
@@ -430,7 +446,8 @@
      "release_year": 2015,
      "director_ids": [
       57270
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3777,
@@ -448,7 +465,8 @@
      "release_year": 1957,
      "director_ids": [
       5026
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1280738,
@@ -467,7 +485,8 @@
      "release_year": 2026,
      "director_ids": [
       1113443
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1383731,
@@ -485,7 +504,8 @@
      "release_year": 2026,
      "director_ids": [
       589402
-     ]
+     ],
+     "user_affinity": null
     }
    ],
    "raw_per_seed": null
@@ -595,7 +615,8 @@
      "poster_path": "/34y5JjZYj2paoxA0RXEppU5LRpb.jpg",
      "collection_id": null,
      "release_year": 2009,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3498,
@@ -612,7 +633,8 @@
      "poster_path": "/spVI8Zns4Ep30zzxcoO7f7nwfck.jpg",
      "collection_id": null,
      "release_year": 2007,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 28136,
@@ -629,7 +651,8 @@
      "poster_path": "/lQ4p6OF9KjagTfs8otZt0VTe3Al.jpg",
      "collection_id": null,
      "release_year": 1996,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 72637,
@@ -648,7 +671,8 @@
      "release_year": 2017,
      "director_ids": [
       81161
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 85077,
@@ -665,7 +689,8 @@
      "poster_path": "/dqVUFuNrMFWt7uGNWlpo91VKYOI.jpg",
      "collection_id": null,
      "release_year": 2019,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 68595,
@@ -683,7 +708,8 @@
      "release_year": 2016,
      "director_ids": [
       67589
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 322430,
@@ -699,7 +725,8 @@
      "poster_path": "/vamznpYBCI9n7VhrI3mxuzff7XP.jpg",
      "collection_id": null,
      "release_year": 2026,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3854,
@@ -717,7 +744,8 @@
      "poster_path": "/dCNxOhXT7c4lqYuRpdM3m8s9XDp.jpg",
      "collection_id": null,
      "release_year": 2008,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 100,
@@ -734,7 +762,8 @@
      "poster_path": "/zXhtWhYtlJVyyp5MdT7ggMJn5si.jpg",
      "collection_id": null,
      "release_year": 2004,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 83880,
@@ -750,7 +779,8 @@
      "poster_path": "/wRSnArnQBmeUYb5GWDU595bGsBr.jpg",
      "collection_id": null,
      "release_year": 2019,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 259666,
@@ -766,7 +796,8 @@
      "poster_path": "/5U3WiAz67fJn5gnvFk4zOJAx9Sc.jpg",
      "collection_id": null,
      "release_year": 2024,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 73488,
@@ -786,7 +817,8 @@
      "director_ids": [
       526820,
       2020038
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 2316,
@@ -801,7 +833,8 @@
      "poster_path": "/7DJKHzAi83BmQrWLrYYOqcoKfhR.jpg",
      "collection_id": null,
      "release_year": 2005,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 230923,
@@ -822,7 +855,8 @@
      "director_ids": [
       3134966,
       4215922
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 80040,
@@ -840,7 +874,8 @@
      "poster_path": "/8dBMIQ2r8FdLABrZeGklAUAUYCH.jpg",
      "collection_id": null,
      "release_year": 2013,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 37606,
@@ -861,7 +896,8 @@
      "director_ids": [
       2279899,
       1254165
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 45790,
@@ -878,7 +914,8 @@
      "poster_path": "/ogAWwbh3frWtiTyyXrZaVFtqCgp.jpg",
      "collection_id": null,
      "release_year": 2012,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 42705,
@@ -896,7 +933,8 @@
      "poster_path": "/fEYVJu08En9A7n0e5TTpeoSjtIm.jpg",
      "collection_id": null,
      "release_year": 2000,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 284445,
@@ -913,7 +951,8 @@
      "poster_path": "/xPXDVhVKt0XM34ihoUVMHtLYTw8.jpg",
      "collection_id": null,
      "release_year": 2025,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 70785,
@@ -929,7 +968,8 @@
      "poster_path": "/6P6tXhjT5tK3qOXzxF9OMLlG7iz.jpg",
      "collection_id": null,
      "release_year": 2017,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     }
    ],
    "raw_per_seed": null
@@ -1046,7 +1086,8 @@
      "release_year": 1980,
      "director_ids": [
       10930
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 620683,
@@ -1063,7 +1104,8 @@
      "release_year": 2019,
      "director_ids": [
       1706418
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 230923,
@@ -1084,7 +1126,8 @@
      "director_ids": [
       4215922,
       3134966
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 770156,
@@ -1102,7 +1145,8 @@
      "release_year": 2020,
      "director_ids": [
       222497
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 90447,
@@ -1121,7 +1165,8 @@
      "release_year": 2019,
      "director_ids": [
       1645475
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 24188,
@@ -1140,7 +1185,8 @@
      "release_year": 1962,
      "director_ids": [
       57641
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 259666,
@@ -1156,7 +1202,8 @@
      "poster_path": "/5U3WiAz67fJn5gnvFk4zOJAx9Sc.jpg",
      "collection_id": null,
      "release_year": 2024,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 83880,
@@ -1172,7 +1219,8 @@
      "poster_path": "/wRSnArnQBmeUYb5GWDU595bGsBr.jpg",
      "collection_id": null,
      "release_year": 2019,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 2493,
@@ -1191,7 +1239,8 @@
      "release_year": 1987,
      "director_ids": [
       3026
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 322430,
@@ -1207,7 +1256,8 @@
      "poster_path": "/vamznpYBCI9n7VhrI3mxuzff7XP.jpg",
      "collection_id": null,
      "release_year": 2026,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 256721,
@@ -1225,7 +1275,8 @@
      "poster_path": "/jH78nLFrTU6aP7hY7KO6DZHFLoX.jpg",
      "collection_id": null,
      "release_year": 2025,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 9255,
@@ -1244,7 +1295,8 @@
      "release_year": 1993,
      "director_ids": [
       12936
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 583083,
@@ -1262,7 +1314,8 @@
      "release_year": 2020,
      "director_ids": [
       1066705
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 11216,
@@ -1280,7 +1333,8 @@
      "release_year": 1988,
      "director_ids": [
       65314
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1430,
@@ -1295,7 +1349,8 @@
      "poster_path": "/nOGArjE0WMkzY2GW1taJm8l9gxD.jpg",
      "collection_id": null,
      "release_year": 1980,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 698687,
@@ -1315,7 +1370,8 @@
      "release_year": 2024,
      "director_ids": [
       84496
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 77721,
@@ -1332,7 +1388,8 @@
      "poster_path": "/3UmNynM1YXkYylyontGXPHncjOC.jpg",
      "collection_id": null,
      "release_year": 2018,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3176,
@@ -1351,7 +1408,8 @@
      "release_year": 2000,
      "director_ids": [
       31074
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 80040,
@@ -1369,7 +1427,8 @@
      "poster_path": "/8dBMIQ2r8FdLABrZeGklAUAUYCH.jpg",
      "collection_id": null,
      "release_year": 2013,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 45790,
@@ -1386,7 +1445,8 @@
      "poster_path": "/ogAWwbh3frWtiTyyXrZaVFtqCgp.jpg",
      "collection_id": null,
      "release_year": 2012,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     }
    ],
    "raw_per_seed": null
@@ -1506,7 +1566,8 @@
      "release_year": 1974,
      "director_ids": [
       1776
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 25237,
@@ -1526,7 +1587,8 @@
      "release_year": 1985,
      "director_ids": [
       93406
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 11975,
@@ -1545,7 +1607,8 @@
      "release_year": 1997,
      "director_ids": [
       1776
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 576,
@@ -1562,7 +1625,8 @@
      "release_year": 1969,
      "director_ids": [
       7767
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 152,
@@ -1581,7 +1645,8 @@
      "release_year": 1979,
      "director_ids": [
       1744
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 931642,
@@ -1599,7 +1664,8 @@
      "release_year": 2024,
      "director_ids": [
       130530
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 9909,
@@ -1616,7 +1682,8 @@
      "release_year": 1995,
      "director_ids": [
       60295
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 14537,
@@ -1635,7 +1702,8 @@
      "release_year": 1962,
      "director_ids": [
       76978
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 9665,
@@ -1654,7 +1722,8 @@
      "release_year": 1989,
      "director_ids": [
       9181
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 903,
@@ -1672,7 +1741,8 @@
      "release_year": 1967,
      "director_ids": [
       13859
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3176,
@@ -1691,7 +1761,8 @@
      "release_year": 2000,
      "director_ids": [
       31074
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 75612,
@@ -1711,7 +1782,8 @@
      "release_year": 2013,
      "director_ids": [
       86270
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 24188,
@@ -1730,7 +1802,8 @@
      "release_year": 1962,
      "director_ids": [
       57641
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 58857,
@@ -1749,7 +1822,8 @@
      "release_year": 2010,
      "director_ids": [
       17282
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 5175,
@@ -1768,7 +1842,8 @@
      "release_year": 2001,
      "director_ids": [
       11091
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 111,
@@ -1787,7 +1862,8 @@
      "release_year": 1983,
      "director_ids": [
       1150
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 315837,
@@ -1806,7 +1882,8 @@
      "release_year": 2017,
      "director_ids": [
       228134
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3777,
@@ -1824,7 +1901,8 @@
      "release_year": 1957,
      "director_ids": [
       5026
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 975,
@@ -1842,7 +1920,8 @@
      "release_year": 1957,
      "director_ids": [
       240
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 640146,
@@ -1861,7 +1940,8 @@
      "release_year": 2023,
      "director_ids": [
       59026
-     ]
+     ],
+     "user_affinity": null
     }
    ],
    "raw_per_seed": null
@@ -1974,7 +2054,8 @@
      "release_year": 1980,
      "director_ids": [
       10930
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3176,
@@ -1993,7 +2074,8 @@
      "release_year": 2000,
      "director_ids": [
       31074
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 903,
@@ -2011,7 +2093,8 @@
      "release_year": 1967,
      "director_ids": [
       13859
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 871,
@@ -2031,7 +2114,8 @@
      "release_year": 1968,
      "director_ids": [
       13265
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 280,
@@ -2050,7 +2134,8 @@
      "release_year": 1991,
      "director_ids": [
       2710
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 152,
@@ -2069,7 +2154,8 @@
      "release_year": 1979,
      "director_ids": [
       1744
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1356039,
@@ -2088,7 +2174,8 @@
      "release_year": 2025,
      "director_ids": [
       964826
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 620683,
@@ -2105,7 +2192,8 @@
      "release_year": 2019,
      "director_ids": [
       1706418
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3777,
@@ -2123,7 +2211,8 @@
      "release_year": 1957,
      "director_ids": [
       5026
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 348350,
@@ -2142,7 +2231,8 @@
      "release_year": 2018,
      "director_ids": [
       6159
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1228710,
@@ -2161,7 +2251,8 @@
      "release_year": 2026,
      "director_ids": [
       15277
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 75612,
@@ -2181,7 +2272,8 @@
      "release_year": 2013,
      "director_ids": [
       86270
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 14537,
@@ -2200,7 +2292,8 @@
      "release_year": 1962,
      "director_ids": [
       76978
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 157350,
@@ -2219,7 +2312,8 @@
      "release_year": 2014,
      "director_ids": [
       17329
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 399579,
@@ -2238,7 +2332,8 @@
      "release_year": 2019,
      "director_ids": [
       2294
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 603,
@@ -2257,7 +2352,8 @@
      "director_ids": [
       9340,
       9339
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 315837,
@@ -2276,7 +2372,8 @@
      "release_year": 2017,
      "director_ids": [
       228134
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 428078,
@@ -2294,7 +2391,8 @@
      "release_year": 2018,
      "director_ids": [
       1419579
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 670292,
@@ -2313,7 +2411,8 @@
      "release_year": 2023,
      "director_ids": [
       129894
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 20526,
@@ -2332,7 +2431,8 @@
      "release_year": 2010,
      "director_ids": [
       86270
-     ]
+     ],
+     "user_affinity": null
     }
    ],
    "raw_per_seed": null
@@ -2453,7 +2553,8 @@
      "release_year": 2015,
      "director_ids": [
       15344
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 75612,
@@ -2473,7 +2574,8 @@
      "release_year": 2013,
      "director_ids": [
       86270
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1356039,
@@ -2492,7 +2594,8 @@
      "release_year": 2025,
      "director_ids": [
       964826
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 348350,
@@ -2511,7 +2614,8 @@
      "release_year": 2018,
      "director_ids": [
       6159
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1228710,
@@ -2530,7 +2634,8 @@
      "release_year": 2026,
      "director_ids": [
       15277
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 157336,
@@ -2549,7 +2654,8 @@
      "release_year": 2014,
      "director_ids": [
       525
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 58857,
@@ -2568,7 +2674,8 @@
      "release_year": 2010,
      "director_ids": [
       17282
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 346698,
@@ -2587,7 +2694,8 @@
      "release_year": 2023,
      "director_ids": [
       45400
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1127384,
@@ -2606,7 +2714,8 @@
      "release_year": 2026,
      "director_ids": [
       16938
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 141052,
@@ -2626,7 +2735,8 @@
      "director_ids": [
       15217,
       12891
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 687163,
@@ -2645,7 +2755,8 @@
      "director_ids": [
       107446,
       155267
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 308504,
@@ -2663,7 +2774,8 @@
      "release_year": 2015,
      "director_ids": [
       70212
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 640146,
@@ -2682,7 +2794,8 @@
      "release_year": 2023,
      "director_ids": [
       59026
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 299537,
@@ -2702,7 +2815,8 @@
      "director_ids": [
       53068,
       53069
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 118340,
@@ -2721,7 +2835,8 @@
      "release_year": 2014,
      "director_ids": [
       15218
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 59859,
@@ -2740,7 +2855,8 @@
      "release_year": 2013,
      "director_ids": [
       55075
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 986056,
@@ -2759,7 +2875,8 @@
      "release_year": 2025,
      "director_ids": [
       836732
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 777443,
@@ -2779,7 +2896,8 @@
      "director_ids": [
       19272,
       19271
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 98,
@@ -2798,7 +2916,8 @@
      "release_year": 2000,
      "director_ids": [
       578
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 127585,
@@ -2817,7 +2936,8 @@
      "release_year": 2014,
      "director_ids": [
       9032
-     ]
+     ],
+     "user_affinity": null
     }
    ],
    "raw_per_seed": null
@@ -2927,7 +3047,8 @@
      "poster_path": "/34y5JjZYj2paoxA0RXEppU5LRpb.jpg",
      "collection_id": null,
      "release_year": 2009,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3498,
@@ -2944,7 +3065,8 @@
      "poster_path": "/spVI8Zns4Ep30zzxcoO7f7nwfck.jpg",
      "collection_id": null,
      "release_year": 2007,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 28136,
@@ -2961,7 +3083,8 @@
      "poster_path": "/lQ4p6OF9KjagTfs8otZt0VTe3Al.jpg",
      "collection_id": null,
      "release_year": 1996,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 72637,
@@ -2980,7 +3103,8 @@
      "release_year": 2017,
      "director_ids": [
       81161
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 85077,
@@ -2997,7 +3121,8 @@
      "poster_path": "/dqVUFuNrMFWt7uGNWlpo91VKYOI.jpg",
      "collection_id": null,
      "release_year": 2019,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 68595,
@@ -3015,7 +3140,8 @@
      "release_year": 2016,
      "director_ids": [
       67589
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 36189,
@@ -3035,7 +3161,8 @@
       227918,
       227919,
       126624
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3854,
@@ -3053,7 +3180,8 @@
      "poster_path": "/dCNxOhXT7c4lqYuRpdM3m8s9XDp.jpg",
      "collection_id": null,
      "release_year": 2008,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 100,
@@ -3070,7 +3198,8 @@
      "poster_path": "/zXhtWhYtlJVyyp5MdT7ggMJn5si.jpg",
      "collection_id": null,
      "release_year": 2004,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 37606,
@@ -3091,7 +3220,8 @@
      "director_ids": [
       2279899,
       1254165
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 261145,
@@ -3109,7 +3239,8 @@
      "poster_path": "/lpfrgfomX8uNFxv4VaEzvJGs9TK.jpg",
      "collection_id": null,
      "release_year": 2023,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 126506,
@@ -3126,7 +3257,8 @@
      "poster_path": "/q3CSxl3G06MBc73TpHWwBYYTPxL.jpg",
      "collection_id": null,
      "release_year": 2020,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 42705,
@@ -3144,7 +3276,8 @@
      "poster_path": "/fEYVJu08En9A7n0e5TTpeoSjtIm.jpg",
      "collection_id": null,
      "release_year": 2000,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 62914,
@@ -3162,7 +3295,8 @@
      "release_year": 2015,
      "director_ids": [
       1475420
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 70785,
@@ -3178,7 +3312,8 @@
      "poster_path": "/6P6tXhjT5tK3qOXzxF9OMLlG7iz.jpg",
      "collection_id": null,
      "release_year": 2017,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 2316,
@@ -3193,7 +3328,8 @@
      "poster_path": "/7DJKHzAi83BmQrWLrYYOqcoKfhR.jpg",
      "collection_id": null,
      "release_year": 2005,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 82728,
@@ -3211,7 +3347,8 @@
      "poster_path": "/9p4pNoGcuyCfHcGWKNrTopqMWtq.jpg",
      "collection_id": null,
      "release_year": 2018,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 94796,
@@ -3229,7 +3366,8 @@
      "release_year": 2019,
      "director_ids": [
       2971576
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 86031,
@@ -3247,7 +3385,8 @@
      "poster_path": "/xbZQ3fDl0y5mt0ARwfeyrgQ4JTw.jpg",
      "collection_id": null,
      "release_year": 2019,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 79141,
@@ -3267,7 +3406,8 @@
      "release_year": 2018,
      "director_ids": [
       2206664
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 240411,
@@ -3285,7 +3425,8 @@
      "poster_path": "/6qfZAOEUFIrbUH3JvePclx1nXzz.jpg",
      "collection_id": null,
      "release_year": 2024,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 92685,
@@ -3304,7 +3445,8 @@
      "poster_path": "/cZLxKTslrf9gzRomVy8BhaYjg7n.jpg",
      "collection_id": null,
      "release_year": 2020,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 31132,
@@ -3322,7 +3464,8 @@
      "poster_path": "/mS5SLxMYcKfUxA0utBSR5MOAWWr.jpg",
      "collection_id": null,
      "release_year": 2010,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 42573,
@@ -3338,7 +3481,8 @@
      "poster_path": "/nmmOKeydeeO4TKucpvyMA2o6gdD.jpg",
      "collection_id": null,
      "release_year": 1993,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 60625,
@@ -3356,7 +3500,8 @@
      "poster_path": "/owhkU6KRqdXoUQpjV8uyZGPtX58.jpg",
      "collection_id": null,
      "release_year": 2013,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 61617,
@@ -3377,7 +3522,8 @@
      "release_year": 2014,
      "director_ids": [
       1245729
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 76121,
@@ -3397,7 +3543,8 @@
      "release_year": 2018,
      "director_ids": [
       109192
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 40075,
@@ -3417,7 +3564,8 @@
      "poster_path": "/qwi3p6PzKfQZ4YXBzv3CP5pO2dE.jpg",
      "collection_id": null,
      "release_year": 2012,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 62741,
@@ -3436,7 +3584,8 @@
      "release_year": 2012,
      "director_ids": [
       145351
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 276161,
@@ -3455,7 +3604,8 @@
      "release_year": 2026,
      "director_ids": [
       1856374
-     ]
+     ],
+     "user_affinity": null
     }
    ],
    "raw_per_seed": null
@@ -3967,7 +4117,8 @@
      "release_year": 1995,
      "director_ids": [
       1032
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1517123,
@@ -3980,7 +4131,8 @@
      "poster_path": "/u169hcLX3OsM9eRs4wtIzi0ymGZ.jpg",
      "collection_id": null,
      "release_year": 2026,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 2098,
@@ -3993,7 +4145,8 @@
      "poster_path": "/lBomQFW1vlm1yUYMNSbFZ45R4Ox.jpg",
      "collection_id": null,
      "release_year": 1992,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 5175,
@@ -4006,7 +4159,8 @@
      "poster_path": "/aBQf2vMiCINeVC9v6BGVYKXurTh.jpg",
      "collection_id": 90863,
      "release_year": 2001,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 1293162,
@@ -4019,7 +4173,8 @@
      "poster_path": "/78B66xBCgmnh88d10B85uFjC88V.jpg",
      "collection_id": null,
      "release_year": 2025,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 12104,
@@ -4037,7 +4192,8 @@
      "release_year": 1982,
      "director_ids": [
       9168
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 11171,
@@ -4054,7 +4210,8 @@
      "release_year": 2005,
      "director_ids": [
       19224
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 24188,
@@ -4073,7 +4230,8 @@
      "release_year": 1962,
      "director_ids": [
       57641
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 187,
@@ -4092,7 +4250,8 @@
      "director_ids": [
       2294,
       2293
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 289219,
@@ -4105,7 +4264,8 @@
      "poster_path": "/fTfLd3s9yBNOzbFHD2aXvwEs93H.jpg",
      "collection_id": null,
      "release_year": 2026,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 25237,
@@ -4125,7 +4285,8 @@
      "release_year": 1985,
      "director_ids": [
       93406
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 9516,
@@ -4145,7 +4306,8 @@
      "director_ids": [
       11448,
       11447
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 11975,
@@ -4164,7 +4326,8 @@
      "release_year": 1997,
      "director_ids": [
       1776
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 321528,
@@ -4177,7 +4340,8 @@
      "poster_path": "/aGp9XDXmVM5lCKHWtgBC15S7XLr.jpg",
      "collection_id": 334996,
      "release_year": 2015,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 75612,
@@ -4197,7 +4361,8 @@
      "release_year": 2013,
      "director_ids": [
       86270
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 620683,
@@ -4214,7 +4379,8 @@
      "release_year": 2019,
      "director_ids": [
       1706418
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 3176,
@@ -4233,7 +4399,8 @@
      "release_year": 2000,
      "director_ids": [
       31074
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 58857,
@@ -4252,7 +4419,8 @@
      "release_year": 2010,
      "director_ids": [
       17282
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 8879,
@@ -4270,7 +4438,8 @@
      "release_year": 1985,
      "director_ids": [
       190
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 654299,
@@ -4289,7 +4458,8 @@
      "release_year": 2019,
      "director_ids": [
       1118818
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 49051,
@@ -4308,7 +4478,8 @@
      "release_year": 2012,
      "director_ids": [
       108
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 114410,
@@ -4321,7 +4492,8 @@
      "poster_path": "/npdB6eFzizki0WaZ1OvKcJrWe97.jpg",
      "collection_id": null,
      "release_year": 2022,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 11517,
@@ -4340,7 +4512,8 @@
      "release_year": 1995,
      "director_ids": [
       52629
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 13851,
@@ -4353,7 +4526,8 @@
      "poster_path": "/3i1o0sHBP0VUpuSVmkdCRKYoDBC.jpg",
      "collection_id": null,
      "release_year": 2008,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 158852,
@@ -4366,7 +4540,8 @@
      "poster_path": "/kziYpr5Nfw60P0My8aj1sgCEqed.jpg",
      "collection_id": null,
      "release_year": 2015,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 117376,
@@ -4387,7 +4562,8 @@
      "director_ids": [
       2971576,
       1702901
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 62914,
@@ -4405,7 +4581,8 @@
      "release_year": 2015,
      "director_ids": [
       1475420
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 94796,
@@ -4423,7 +4600,8 @@
      "release_year": 2019,
      "director_ids": [
       2971576
-     ]
+     ],
+     "user_affinity": null
     },
     {
      "tmdb_id": 85077,
@@ -4440,7 +4618,8 @@
      "poster_path": "/dqVUFuNrMFWt7uGNWlpo91VKYOI.jpg",
      "collection_id": null,
      "release_year": 2019,
-     "director_ids": []
+     "director_ids": [],
+     "user_affinity": null
     },
     {
      "tmdb_id": 276161,
@@ -4459,7 +4638,8 @@
      "release_year": 2026,
      "director_ids": [
       1856374
-     ]
+     ],
+     "user_affinity": null
     }
    ],
    "raw_per_seed": null
@@ -4945,6 +5125,28 @@
     "Action",
     "Adventure",
     "Drama"
+   ],
+   "frozen_seeds": [
+    [
+     103,
+     "movie",
+     1.2285517922443776
+    ],
+    [
+     11,
+     "movie",
+     1.2016479025625353
+    ],
+    [
+     121,
+     "movie",
+     1.1200982931955563
+    ],
+    [
+     43,
+     "tv",
+     0.28876944312804764
+    ]
    ]
   },
   "reason": "personalized",
@@ -4988,7 +5190,8 @@
     "release_year": 1995,
     "director_ids": [
      1032
-    ]
+    ],
+    "user_affinity": 0.316
    },
    {
     "tmdb_id": 1517123,
@@ -5001,7 +5204,8 @@
     "poster_path": "/u169hcLX3OsM9eRs4wtIzi0ymGZ.jpg",
     "collection_id": null,
     "release_year": 2026,
-    "director_ids": []
+    "director_ids": [],
+    "user_affinity": 0.489
    },
    {
     "tmdb_id": 2098,
@@ -5014,7 +5218,8 @@
     "poster_path": "/lBomQFW1vlm1yUYMNSbFZ45R4Ox.jpg",
     "collection_id": null,
     "release_year": 1992,
-    "director_ids": []
+    "director_ids": [],
+    "user_affinity": 0.401
    },
    {
     "tmdb_id": 5175,
@@ -5027,7 +5232,8 @@
     "poster_path": "/aBQf2vMiCINeVC9v6BGVYKXurTh.jpg",
     "collection_id": 90863,
     "release_year": 2001,
-    "director_ids": []
+    "director_ids": [],
+    "user_affinity": 0.425
    },
    {
     "tmdb_id": 1293162,
@@ -5040,7 +5246,8 @@
     "poster_path": "/78B66xBCgmnh88d10B85uFjC88V.jpg",
     "collection_id": null,
     "release_year": 2025,
-    "director_ids": []
+    "director_ids": [],
+    "user_affinity": 0.419
    },
    {
     "tmdb_id": 12104,
@@ -5058,7 +5265,8 @@
     "release_year": 1982,
     "director_ids": [
      9168
-    ]
+    ],
+    "user_affinity": 0.326
    },
    {
     "tmdb_id": 187,
@@ -5077,7 +5285,8 @@
     "director_ids": [
      2294,
      2293
-    ]
+    ],
+    "user_affinity": 0.316
    },
    {
     "tmdb_id": 11171,
@@ -5094,7 +5303,8 @@
     "release_year": 2005,
     "director_ids": [
      19224
-    ]
+    ],
+    "user_affinity": 0.277
    },
    {
     "tmdb_id": 515248,
@@ -5112,7 +5322,8 @@
     "release_year": 2019,
     "director_ids": [
      1721377
-    ]
+    ],
+    "user_affinity": 0.416
    },
    {
     "tmdb_id": 289219,
@@ -5125,7 +5336,8 @@
     "poster_path": "/fTfLd3s9yBNOzbFHD2aXvwEs93H.jpg",
     "collection_id": null,
     "release_year": 2026,
-    "director_ids": []
+    "director_ids": [],
+    "user_affinity": 0.483
    },
    {
     "tmdb_id": 24188,
@@ -5144,7 +5356,8 @@
     "release_year": 1962,
     "director_ids": [
      57641
-    ]
+    ],
+    "user_affinity": 0.22
    },
    {
     "tmdb_id": 9516,
@@ -5164,7 +5377,8 @@
     "director_ids": [
      11448,
      11447
-    ]
+    ],
+    "user_affinity": 0.384
    },
    {
     "tmdb_id": 25237,
@@ -5184,7 +5398,8 @@
     "release_year": 1985,
     "director_ids": [
      93406
-    ]
+    ],
+    "user_affinity": 0.366
    },
    {
     "tmdb_id": 9558,
@@ -5202,7 +5417,8 @@
     "release_year": 1990,
     "director_ids": [
      39104
-    ]
+    ],
+    "user_affinity": 0.426
    },
    {
     "tmdb_id": 321528,
@@ -5215,7 +5431,8 @@
     "poster_path": "/aGp9XDXmVM5lCKHWtgBC15S7XLr.jpg",
     "collection_id": 334996,
     "release_year": 2015,
-    "director_ids": []
+    "director_ids": [],
+    "user_affinity": 0.4
    },
    {
     "tmdb_id": 11975,
@@ -5234,7 +5451,8 @@
     "release_year": 1997,
     "director_ids": [
      1776
-    ]
+    ],
+    "user_affinity": 0.336
    },
    {
     "tmdb_id": 75612,
@@ -5254,7 +5472,8 @@
     "release_year": 2013,
     "director_ids": [
      86270
-    ]
+    ],
+    "user_affinity": 0.371
    },
    {
     "tmdb_id": 620683,
@@ -5271,7 +5490,8 @@
     "release_year": 2019,
     "director_ids": [
      1706418
-    ]
+    ],
+    "user_affinity": 0.353
    },
    {
     "tmdb_id": 3176,
@@ -5290,7 +5510,8 @@
     "release_year": 2000,
     "director_ids": [
      31074
-    ]
+    ],
+    "user_affinity": 0.353
    },
    {
     "tmdb_id": 680,
@@ -5309,7 +5530,8 @@
     "release_year": 1994,
     "director_ids": [
      138
-    ]
+    ],
+    "user_affinity": 0.432
    },
    {
     "tmdb_id": 58857,
@@ -5328,7 +5550,8 @@
     "release_year": 2010,
     "director_ids": [
      17282
-    ]
+    ],
+    "user_affinity": 0.352
    },
    {
     "tmdb_id": 49051,
@@ -5347,7 +5570,8 @@
     "release_year": 2012,
     "director_ids": [
      108
-    ]
+    ],
+    "user_affinity": 0.553
    },
    {
     "tmdb_id": 8879,
@@ -5365,7 +5589,8 @@
     "release_year": 1985,
     "director_ids": [
      190
-    ]
+    ],
+    "user_affinity": 0.345
    },
    {
     "tmdb_id": 654299,
@@ -5384,7 +5609,8 @@
     "release_year": 2019,
     "director_ids": [
      1118818
-    ]
+    ],
+    "user_affinity": 0.346
    },
    {
     "tmdb_id": 414906,
@@ -5403,7 +5629,8 @@
     "release_year": 2022,
     "director_ids": [
      32278
-    ]
+    ],
+    "user_affinity": 0.451
    },
    {
     "tmdb_id": 903,
@@ -5421,7 +5648,8 @@
     "release_year": 1967,
     "director_ids": [
      13859
-    ]
+    ],
+    "user_affinity": 0.393
    },
    {
     "tmdb_id": 114410,
@@ -5434,7 +5662,8 @@
     "poster_path": "/npdB6eFzizki0WaZ1OvKcJrWe97.jpg",
     "collection_id": null,
     "release_year": 2022,
-    "director_ids": []
+    "director_ids": [],
+    "user_affinity": 0.392
    },
    {
     "tmdb_id": 117376,
@@ -5455,7 +5684,8 @@
     "director_ids": [
      2971576,
      1702901
-    ]
+    ],
+    "user_affinity": 0.194
    },
    {
     "tmdb_id": 62914,
@@ -5473,7 +5703,8 @@
     "release_year": 2015,
     "director_ids": [
      1475420
-    ]
+    ],
+    "user_affinity": 0.387
    },
    {
     "tmdb_id": 94796,
@@ -5491,7 +5722,8 @@
     "release_year": 2019,
     "director_ids": [
      2971576
-    ]
+    ],
+    "user_affinity": 0.408
    }
   ]
  }

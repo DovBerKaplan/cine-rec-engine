@@ -173,11 +173,22 @@ async def main() -> None:
             # silently degraded cosine_sim is the double-degenerate
             # false-parity the review caught
             if case.get("check_embedding", True):
-                nonzero = sum(1 for r in results
-                             if r.get("genres") and r["score"] > 1.0)
-                assert nonzero > 0, (
-                    f"case {case['name']}: all scores ≤1.0 — "
-                    "embedding channels may be degraded (vacuous parity)"
+                # M-2: A REAL A/B — the KNN channel must have returned
+                # rows. Score>1.0 does NOT distinguish live/dead (a
+                # dead column still yields 12–26 from non-embedding
+                # features alone; the reviewer proved this). KNN rows
+                # = the semantic channel was actually queried.
+                from cine_rec_engine.queries import generate_knn_candidates
+                knn_rows = await generate_knn_candidates(
+                    pool, case["seeds"][0][0],
+                    case["seeds"][0][1] or "movie",
+                    limit=5, allow_cross_media=False,
+                    emb_column=EMBEDDING_COLUMN)
+                assert len(knn_rows) > 0, (
+                    f"case {case['name']}: KNN returned 0 rows on "
+                    f"{EMBEDDING_COLUMN} — the embedding column exists "
+                    "but is DEAD (all NULLs). The fixture would be "
+                    "vacuously green (double-degenerate false parity)"
                 )
             spec = spec_of(case, picks, EMBEDDING_COLUMN)
             spec["filters"] = dict(normalized) if normalized else {}
@@ -192,7 +203,7 @@ async def main() -> None:
                     {k: r.get(k) for k in
                      ("tmdb_id", "score", "title", "title_en", "media_type",
                       "rating", "genres", "poster_path", "collection_id",
-                      "release_year", "director_ids")}
+                      "release_year", "director_ids", "user_affinity")}
                     for r in results
                 ],
                 "raw_per_seed": None,  # not exposed by find_similar; see below
@@ -234,6 +245,10 @@ async def main() -> None:
                 "frozen_exclusions": sorted(
                     (list(x) for x in (frozen_excl or set()))),
                 "frozen_user_genres": frozen_genres,
+                "frozen_seeds": [
+                    [sid, mt, w] for sid, mt, w in
+                    (await top_weighted_seeds(pool, USER, limit=20))
+                ],
             },
             "reason": rec["reason"],
             "vector_used": rec["vector_used"],
@@ -242,7 +257,7 @@ async def main() -> None:
                 {k: r.get(k) for k in
                  ("tmdb_id", "score", "title", "title_en", "media_type",
                   "rating", "genres", "poster_path", "collection_id",
-                  "release_year", "director_ids")}
+                  "release_year", "director_ids", "user_affinity")}
                 for r in rec["results"]
             ],
         }
