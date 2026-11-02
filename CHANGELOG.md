@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [1.0.0] — Unreleased
+
+### Breaking
+- **Hebrew genre labels no longer normalized.** The `GENRE_LABELS_EN`
+  mapping (27 Hebrew→English genre translations) is removed from both
+  the Python engine and the Rust scoring extension. Genre labels are
+  now used as stored — the ingest pipeline syncs `genre/list` with
+  `language=en-US`, making canonical English labels the contract (see
+  `docs/data.md`). Catalogs with Hebrew genre labels should re-sync
+  genres via the standard pipeline.
+
 ## [0.16.0] — 2026-10-30
 
 ### Changed — the per-user request path runs its reads in parallel

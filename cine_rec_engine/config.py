@@ -140,38 +140,6 @@ KEYWORDS_STYLE: dict[str, set[str]] = {
 KNN_CANDIDATES_PER_SEED: int = 60
 
 # Local catalog stores Hebrew genre labels ('מותחן', 'מסתורין') while the
-# scoring tables (GENRE_PRIORITY, style matching) use canonical English.
-# Map every label found in tmdb_genres so priority weighting actually fires.
-GENRE_LABELS_EN: dict[str, str] = {
-    "אימה": "Horror",
-    "אנימציה": "Animation",
-    "אקשן": "Action",
-    "אקשן והרפתקאות": "Action",
-    "דוקומנטרי": "Documentary",
-    "דיבורים": "Talk Show",
-    "דרמה": "Drama",
-    "הסטוריה": "History",
-    "הרפתקאות": "Adventure",
-    "חדשות": "News",
-    "ילדים": "Family",
-    "מדע בדיוני": "Science Fiction",
-    "מדע בדיוני ופנטזיה": "Science Fiction",
-    "מוסיקה": "Music",
-    "מותחן": "Thriller",
-    "מלחמה": "War",
-    "מלחמה ופוליטיקה": "War",
-    "מסתורין": "Mystery",
-    "מערבון": "Western",
-    "משפחה": "Family",
-    "סבון": "Soap",
-    "סרט טלויזיה": "TV Movie",
-    "פנטזיה": "Fantasy",
-    "פשע": "Crime",
-    "קומדיה": "Comedy",
-    "רומנטי": "Romance",
-    "ריאליטי": "Reality",
-}
-
 # Candidates below this many TMDB votes are dropped during pre-filtering —
 # thin-voted oddities (old/niche titles with a lucky 6.5) should not crowd
 # proven classics out of the shortlist.

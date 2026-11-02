@@ -172,10 +172,12 @@ async def main():
     # warm (cache path)
     t0 = time.perf_counter()
     r2 = await rec.find_similar(155, limit=30)
+    assert len(r2) > 0, 'bench measured empty results'
     warm = (time.perf_counter() - t0) * 1000
     # multi-seed with REAL ids (fresh combo → cache miss)
     t0 = time.perf_counter()
     r3 = await rec.find_similar([1001, 1002, 1003, 1004, 1005], limit=60)
+    assert len(r3) > 0, 'bench measured empty multi-seed results'
     multi = (time.perf_counter() - t0) * 1000
     print(f"RESULTS: cold_median={med:.0f}ms cold_all={[f'{t:.0f}' for t in times]} "
           f"warm={warm:.1f}ms multi_seed_5={multi:.0f}ms n={len(r2)}/{len(r3)}")

@@ -58,13 +58,10 @@ def detect_style(keywords: List[str]) -> List[str]:
 def canonical_genres(genres: List[str]) -> set:
     """Translate local Hebrew genre labels to canonical English names.
 
-    The local catalog stores Hebrew labels ('מותחן') while GENRE_PRIORITY
-    and style matching use English — without this, genre weighting is dead
-    code on real data.
+    Genres are stored in canonical English (the ingest pipeline syncs
+    genre/list with language=en-US). This strips whitespace and dedups.
     """
-    from .config import GENRE_LABELS_EN
-
-    return {GENRE_LABELS_EN.get(str(g).strip(), str(g).strip()) for g in genres or []}
+    return {str(g).strip() for g in genres or [] if str(g).strip()}
 
 
 # ── Mood/tone scoring (2026-09 user feedback) ──────────────────────

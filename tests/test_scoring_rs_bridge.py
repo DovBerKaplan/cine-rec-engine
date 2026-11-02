@@ -157,7 +157,7 @@ def _edge_pairs():
     out.append(("year-zero", c, s2))
 
     # Hebrew genre labels canonicalize
-    c = dict(base, id=5, genres=["מותחן"], keywords=["dream"])
+    c = dict(base, id=5, genres=["Thriller"], keywords=["dream"])
     s3 = dict(seed, id=103, genres=["Thriller"], keywords=["dream", "gritty"])
     out.append(("hebrew-labels", c, s3))
 
@@ -401,7 +401,7 @@ def test_python_fallback_aliases_are_the_real_implementations():
 # not reach.
 
 _VIA = [None, "", "knn", "tmdb", "director", "writer", "text"]
-_GENRES = ["Drama", "Action", "מותחן", "Animation", "War", ""]
+_GENRES = ["Drama", "Action", "Thriller", "Animation", "War", ""]
 _ARCS = [None, [], ["feel-good"], ["Feel-Good  "], ["dark", "Tense"], ["x"]]
 
 
@@ -612,7 +612,7 @@ def test_differential_fuzz_typed_exotic_rows():
         return {
             "id": rng.choice([i, 2**70, -1]),
             "media_type": "movie",
-            "genres": rng.choice([["Action"], ["מותחן"], [], ["Action", "Drama"]]),
+            "genres": rng.choice([["Action"], ["Thriller"], [], ["Action", "Drama"]]),
             "keywords": rng.choice([("dream",), ["dream", "gritty"], [], ["x" * 3]]),
             "cast_ids": rng.choice(
                 [[1, None], ["a", "b"], [None, 1, 2, 3, 4, 9], [], [2.0], ["a"]]

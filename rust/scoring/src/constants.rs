@@ -96,38 +96,6 @@ pub const KEYWORDS_STYLE: &[(&str, &[&str])] = &[
     ("slapstick", &["absurd", "slapstick", "over-the-top"]),
 ];
 
-/// `config.GENRE_LABELS_EN` — local Hebrew genre labels to canonical
-/// English names (without this mapping genre weighting is dead code
-/// on real catalog data).
-pub const GENRE_LABELS_EN: &[(&str, &str)] = &[
-    ("אימה", "Horror"),
-    ("אנימציה", "Animation"),
-    ("אקשן", "Action"),
-    ("אקשן והרפתקאות", "Action"),
-    ("דוקומנטרי", "Documentary"),
-    ("דיבורים", "Talk Show"),
-    ("דרמה", "Drama"),
-    ("הסטוריה", "History"),
-    ("הרפתקאות", "Adventure"),
-    ("חדשות", "News"),
-    ("ילדים", "Family"),
-    ("מדע בדיוני", "Science Fiction"),
-    ("מדע בדיוני ופנטזיה", "Science Fiction"),
-    ("מוסיקה", "Music"),
-    ("מותחן", "Thriller"),
-    ("מלחמה", "War"),
-    ("מלחמה ופוליטיקה", "War"),
-    ("מסתורין", "Mystery"),
-    ("מערבון", "Western"),
-    ("משפחה", "Family"),
-    ("סבון", "Soap"),
-    ("סרט טליבזיה", "TV Movie"),
-    ("פנטזיה", "Fantasy"),
-    ("פשע", "Crime"),
-    ("קומדיה", "Comedy"),
-    ("רומנטי", "Romance"),
-    ("ריאליטי", "Reality"),
-];
 
 /// `scoring.META_KEYWORD_STOPWORDS` — production-fact keywords with
 /// zero taste signal; filtered before any keyword similarity.

@@ -263,6 +263,16 @@ a 3,636-title catalog bootstrapped from the benchmark universe:
 | keywords Jaccard | 0.33 | 0.03 | 0.27 |
 | **this engine** | 0.45 | 0.05 | 0.26 |
 
+> **Known measurement bias:** these numbers include the seed title
+> itself in each candidate ranking. The seed is by definition a title
+> the user rated highly, so methods that rank popular titles higher
+> (especially the popularity baseline's 0.96) get an artificial boost
+> from matching the seed against itself. Excluding seeds would lower
+> the baselines significantly (~30% for popularity). The engine's
+> number is less affected (it already excludes seeds in production
+> via the recall filters, but the eval harness doesn't). Re-running
+> with seed exclusion is on the post-merge list.
+
 Read it honestly: the ground truth here is *mass agreement* (movies
 the seed's lovers loved vs. disliked), and **popularity dominates that
 by construction** — note its coverage 0.00: the same block every seed,

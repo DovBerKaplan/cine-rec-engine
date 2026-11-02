@@ -43,16 +43,11 @@ pub fn bigram_set(text: &str) -> HashSet<String> {
 /// `scoring.canonical_genres` — Hebrew labels map to canonical English
 /// names; everything else passes through stripped.
 pub fn canonical_genres(genres: &[String]) -> HashSet<String> {
+    // genres are canonical English (ingest syncs with en-US); strip + dedup
     genres
         .iter()
-        .map(|g| {
-            let s = g.trim();
-            constants::GENRE_LABELS_EN
-                .iter()
-                .find(|(k, _)| *k == s)
-                .map(|(_, v)| v.to_string())
-                .unwrap_or_else(|| s.to_string())
-        })
+        .map(|g| g.trim().to_string())
+        .filter(|g| !g.is_empty())
         .collect()
 }
 
