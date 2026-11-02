@@ -9,7 +9,7 @@ use crate::degrade;
 use crate::executor::{row, Bind, Db, DbError};
 
 /// CPython ≥3.12 `sum()` is Neumaier-compensated — every ported float
-/// sum must fold the same way (the phase-2 lesson; the norm below is
+/// sum must fold the same way (a portability rule; the norm below is
 /// Python's `sum(x * x for x in acc)`).
 fn py_sum(items: impl Iterator<Item = f64>) -> f64 {
     let mut sum = 0.0;
@@ -33,7 +33,7 @@ fn py_sum(items: impl Iterator<Item = f64>) -> f64 {
 /// f64 components; the f32 [`aggregate`] is the stored-vector wrapper.
 /// Bit-parity checks must use THIS one (comparing after the f32 cast
 /// rounds away exactly the sub-f32 differences that distinguish a
-/// compensated norm from a naive fold — review M-β).
+/// compensated norm from a naive fold — design note).
 pub fn aggregate_f64(vectors: &[Vec<f32>], weights: &[f64]) -> Option<Vec<f64>> {
     if dims_mismatch(vectors) {
         // the caller turns this into an ERR before any write — a mixed
@@ -326,7 +326,7 @@ mod tests {
     fn py_sum_compensates() {
         // CPython ≥3.12 sum() is Neumaier-compensated — the norm in
         // aggregate ports that sum, so it must fold the same way or
-        // vectors drift 1 f64 ULP (the phase-2 lesson, applied here)
+        // vectors drift 1 f64 ULP (a portability rule, applied here)
         let xs = [1.0f64, 1e100, 1.0, -1e100];
         assert_eq!(py_sum(xs.into_iter()), 2.0);
         // a naive sequential fold loses both 1.0s inside the ±1e100
@@ -341,7 +341,7 @@ mod tests {
         // (CPython ≥3.12 sum) yields the bits Python's aggregate
         // produced. The live fixture's data rounds IDENTICALLY either
         // way (measured), so only this golden catches swapping py_sum
-        // for a plain fold inside aggregate (review M-β).
+        // for a plain fold inside aggregate (design note).
         let v: Vec<f32> = std::iter::once(1.0f32)
             .chain(std::iter::repeat_n(2.0f32.powi(-28), 40))
             .collect();

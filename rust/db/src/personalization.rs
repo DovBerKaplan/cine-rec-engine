@@ -183,7 +183,7 @@ pub async fn record_event(db: &Db, event: &WatchEvent) -> Result<(), DbError> {
 /// `uts.*` + `favorite` + `disliked` + `last_epoch` (the two feedback
 /// flags come as subselects, like both callers' fetch SQL). Keeping a
 /// copy of this assembly in test code left production uncovered by
-/// the exact gate (review L-γ).
+/// the exact gate (design note).
 pub fn title_w(
     row: &sqlx::postgres::PgRow,
     total_episodes: i64,
@@ -295,7 +295,7 @@ async fn recompute_on_conn(
 /// `_catalog_episode_count` — total episodes for a series from the
 /// catalog (0 when unknown). pub: the parity test pins this FETCH
 /// against the fixture value — passing the fixture number straight
-/// into `title_w` left the fetch itself uncovered (review L-ε).
+/// into `title_w` left the fetch itself uncovered (design note).
 pub async fn catalog_episode_count(
     conn: &mut sqlx::postgres::PgConnection,
     db: &Db,

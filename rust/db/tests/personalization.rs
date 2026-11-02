@@ -298,7 +298,7 @@ async fn personalization_replays_python_end_to_end() {
         // H-2″: push the row RUST replayed through the PRODUCTION
         // assembly — `personalization::title_w`, the same helper both
         // recompute paths use, so the SeriesSignals construction is
-        // exercised, not a test-side copy (review L-γ) — at the
+        // exercised, not a test-side copy (design note) — at the
         // fixture's frozen instant, and match Python's w_at_py_now at
         // 1e-9. Corpus coverage (M-α): a rewatch-ONLY title, a
         // favorite-ONLY title, and a disliked title each pin one

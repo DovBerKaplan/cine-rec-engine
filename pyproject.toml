@@ -32,7 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 redis = ["redis>=5.0"]
 pg = ["pgvector>=0.3"]        # KNN recall channel (optional)
-serve = [                     # standalone HTTP API (cine_rec_engine.serve)
+serve = ["pydantic>=2",                      # standalone HTTP API (cine_rec_engine.serve)
     "fastapi>=0.110",
     "uvicorn>=0.29",
 ]

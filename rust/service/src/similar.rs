@@ -1073,7 +1073,7 @@ pub fn py_round3(x: f64) -> f64 {
     format!("{:.3}", x).parse().unwrap_or(x)
 }
 
-/// CPython ≥3.12 `sum()` — Neumaier fold (the phase-2 rule: EVERY
+/// CPython ≥3.12 `sum()` — Neumaier fold (a portability rule: EVERY
 /// ported float sum folds compensated).
 fn py_sum(items: impl Iterator<Item = f64>) -> f64 {
     let mut sum = 0.0;

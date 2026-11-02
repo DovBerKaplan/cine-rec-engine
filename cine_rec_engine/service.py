@@ -211,13 +211,13 @@ class RecommendationService:
 
     async def _seed_info_for(self, seed: tuple) -> Optional[dict]:
         """Full info dict for one (id, media_type) seed (why rendering).
-        Moved to explain.py in the 5a split; thin delegate."""
+        Moved to explain.py in the split; thin delegate."""
         return await _explain.seed_info_for(self.pool, seed)
 
     async def explain_results(self, results: list, seed: tuple) -> dict:
         """{"why": labels, "why_scores": {feature: contribution}} for an
         already-computed result list against ONE (id, media_type[, w])
-        seed. Moved to explain.py in the 5a split; thin delegate."""
+        seed. Moved to explain.py in the split; thin delegate."""
         return await _explain.explain_results(self.pool, results, seed)
 
     async def find_similar(
