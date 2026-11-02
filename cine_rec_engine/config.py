@@ -139,7 +139,6 @@ KEYWORDS_STYLE: dict[str, set[str]] = {
 # genre-overlap + popularity ordering of the classic recall path.
 KNN_CANDIDATES_PER_SEED: int = 60
 
-# Local catalog stores Hebrew genre labels ('מותחן', 'מסתורין') while the
 # Candidates below this many TMDB votes are dropped during pre-filtering —
 # thin-voted oddities (old/niche titles with a lucky 6.5) should not crowd
 # proven classics out of the shortlist.

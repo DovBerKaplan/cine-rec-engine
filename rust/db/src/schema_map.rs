@@ -13,7 +13,7 @@
 //! whoever needs it ([`std::sync::Arc`] in the executor), so tests
 //! construct maps explicitly and nothing global mutates.
 //!
-//! DEVIATION (decided, s3 follow-up א → session 1): the ERROR TEXTS
+//! DEVIATION (decided, s3 follow-up (a) -> session 1): the ERROR TEXTS
 //! intentionally differ from `tables.py` (Rust `{:?}` formatting, no
 //! valid-key list, a different `name()` message). The texts serve
 //! different consumers — Python's reach `cine-rec init/check` CLI

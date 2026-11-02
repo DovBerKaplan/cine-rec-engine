@@ -181,7 +181,7 @@ def _edge_pairs():
     # narrative/pacing/emotional_arc agreement + unicode overview
     c = dict(
         base, id=9, genres=["Drama"], narrative="linear", pacing="contemplative",
-        emotional_arc=["Feel-Good  "], overview="סיפור על גשם",
+        emotional_arc=["Feel-Good  "], overview="une histoire de pluie",
     )
     s6 = dict(
         seed, id=106, narrative="linear", pacing="contemplative",
@@ -428,7 +428,7 @@ def _fuzz_entities():
                 "companies": rng.sample(["Co", "Studio"], k=rng.randint(0, 2)),
                 "networks": rng.sample(["NT", "NT2"], k=rng.randint(0, 2)),
                 "original_language": rng.choice([None, "en", "ja", ""]),
-                "overview": rng.choice([None, "", "A detective story", "סיפור על גשם"]),
+                "overview": rng.choice([None, "", "A detective story", "une histoire de pluie"]),
                 "overview_en": rng.choice([None, "", "English text"]),
                 "release_year": rng.choice([None, 0, 1960, 1999, 2020]),
                 "vote_average": rng.choice([None, 0.0, 5.5, 7.2, 9.0]),

@@ -152,7 +152,7 @@ async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) 
       - reached_last: the catalog's last episode (highest season, then
         highest episode in it) is seen — even with gaps
       - max_season/max_episode: furthest progress (season DESC priority),
-        for the "עד עונה X פרק X" label
+        for the per-season/episode progress label
     """
     out = {"watched": False}
     if user_id is None or pool is None:

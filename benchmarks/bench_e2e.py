@@ -15,7 +15,14 @@ from datetime import date
 from pathlib import Path
 
 
-DSN = os.environ.get("BENCH_DSN") or os.environ.get("DATABASE_URL", "postgresql://localhost/postgres")
+def _parse_args():
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--dsn", required=True,
+                    help="ONE-SHOT database to seed (the bench creates and drops its schema)")
+    return ap.parse_args()
+
+DSN = None  # set in main() from --dsn
 
 SCHEMA = (Path(__file__).parent.parent / "docs" / "schema.sql").read_text()
 
@@ -98,6 +105,8 @@ async def analyze(pool):
 
 
 async def main():
+    global DSN
+    DSN = _parse_args().dsn
     import asyncpg
     import cine_rec_engine.service as S
     import cine_rec_engine.queries as Q
@@ -182,6 +191,12 @@ async def main():
     print(f"RESULTS: cold_median={med:.0f}ms cold_all={[f'{t:.0f}' for t in times]} "
           f"warm={warm:.1f}ms multi_seed_5={multi:.0f}ms n={len(r2)}/{len(r3)}")
     print("PHASES:", {k: f"{v:.0f}ms" for k, v in sorted(PHASES.items(), key=lambda x: -x[1])})
+    # the docstring's "leaves nothing behind" promise, implemented
+    pool2 = await asyncpg.create_pool(DSN, min_size=1, max_size=1)
+    async with pool2.acquire() as c:
+        await c.execute("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;")
+    await pool2.close()
+
     await pool.close()
 
 asyncio.run(main())
