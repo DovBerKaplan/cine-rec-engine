@@ -94,7 +94,7 @@ def EVENTS(t):
      "watched_at": _ts("2026-10-17T20:00:00+00:00"),
      "watched_sec": 200, "duration_sec": 2400, "completed": False,
      "season": 1, "episode": 3},
-    # M-α: rewatch-ONLY (no favorite) — pins ENGAGEMENT_REWATCH alone,
+    # rewatch-ONLY (no favorite) — pins ENGAGEMENT_REWATCH alone,
     # which the max(REWATCH, FAVORITE) on the first movie would mask
     {"tmdb_id": t["movie3"], "media_type": "movie",
      "watched_at": _ts("2026-10-21T20:00:00+00:00"),
@@ -165,7 +165,7 @@ async def main() -> None:
             n_eps = await conn.fetchval(
                 "SELECT number_of_episodes FROM tmdb_tv WHERE id = $1", titles["tv"])
 
-        # H-2: recompute w at ONE recorded instant (py_now) through
+        # Recompute w at ONE recorded instant (py_now) through
         # the Python formula — the DB-stored w used record_event's own
         # now (a different moment), so it can never compare exactly.
         # w_at_py_now + last_epoch + py_now give the Rust side
@@ -217,7 +217,7 @@ async def main() -> None:
                 "last_epoch": last.timestamp() if last else None,
             }
 
-        # L-b: the BIT-EXACT comparison vector — Python's own
+        # The BIT-EXACT comparison vector — Python's own
         # user_vector.aggregate over the LIVE embeddings weighted by the
         # FROZEN w_at_py_now (the exact weights the Rust test freezes).
         # The stored `vector_bits` above came from build_user_vector's
@@ -271,7 +271,7 @@ async def main() -> None:
                 {k: r[k] for k in r.keys()} for r in genres
             ],
             "vector_dim": len(vec) if vec else 0,
-            # M-2: full vector (f32 bits, hex) — direction parity, not
+            # Full vector (f32 bits, hex) — direction parity, not
             # just "some 384-dim unit vector"
             "vector_bits": ([f.hex() for f in vec] if vec else None),
             # a unit vector — the direction pins parity (component-wise
@@ -279,7 +279,7 @@ async def main() -> None:
             "vector_norm": (
                 round(sum(x * x for x in vec) ** 0.5, 6) if vec else None
             ),
-            # L-b: the frozen-weight vector (f64 hex) + the exact row
+            # The frozen-weight vector (f64 hex) + the exact row
             # order it was summed in — Rust must reproduce it BIT for
             # BIT from the same live embeddings + frozen weights
             "frozen_order": [p[0] for p in pairs],

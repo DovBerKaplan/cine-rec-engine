@@ -1,6 +1,6 @@
-//! Live smoke for the phase-3 tail (info.rs): the four functions the
+//! Live smoke for the info.rs tail: the four functions the
 //! find_similar compute path calls. Catches SQL-shape and decode
-//! errors early; full field parity belongs to the phase-5 harness.
+//! errors early; full field parity belongs to the live-parity suite.
 
 use cine_rec_db::info::{
     apply_recall_filters, fetch_cinematic_tags, get_movie_info_batch,
@@ -106,8 +106,8 @@ async fn semantic_batch_smoke() {
     )
     .await
     .unwrap();
-    // 11 and 43 both carry embeddings in the demo data (the phase-4
-    // vector fixture built from them); shape-check only here
+    // 11 and 43 both carry embeddings in the demo data; shape-check
+    // only here
     for cmap in sims.values() {
         assert!(!cmap.is_empty());
         for v in cmap.values() {

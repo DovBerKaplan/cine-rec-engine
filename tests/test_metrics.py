@@ -14,8 +14,8 @@ def setup_function(_fn):
 
 def test_latency_histogram_buckets():
     for ms in (3, 7, 40, 900):
-        metrics.observe_request("/similar", ms)
-    s = metrics.snapshot()["requests"]["/similar"]
+        metrics.observe_request("/v1/similar", ms)
+    s = metrics.snapshot()["requests"]["/v1/similar"]
     assert s["count"] == 4
     # 3→5ms bucket, 7→10, 40→50, 900→1000
     assert s["bucket_counts"][0] == 1
@@ -43,11 +43,11 @@ def test_channel_coverage_counts_failed_as_total_not_contributed():
 
 
 def test_prometheus_rendering_has_the_three_families():
-    metrics.observe_request("/for-user/42", 120.0)
+    metrics.observe_request("/v1/for-user/42", 120.0)
     metrics.observe_cache("hit")
     metrics.observe_channel("KNN", 5)
     text = metrics.render_prometheus()
-    assert "cine_rec_requests_total{path=\"/for-user/42\"} 1" in text
+    assert "cine_rec_requests_total{path=\"/v1/for-user/42\"} 1" in text
     assert "cine_rec_cache_hit_rate 1.0" in text
     assert 'cine_rec_channel_coverage{channel="KNN"} 1.0' in text
     assert 'le="+Inf"' in text

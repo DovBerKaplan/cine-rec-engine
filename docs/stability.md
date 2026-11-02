@@ -33,9 +33,9 @@ demo dataset, internals of the ingest — may change in any release.
 2. Deprecated behavior keeps working for **at least two minor
    releases**, and in any case until 1.0.
 3. Live example: the bare data routes (`/similar`, `/page`, `/by-text`,
-   `/feedback`, `/for-user/{id}`) are deprecated aliases of their
-   `/v1/*` counterparts since 0.14.0 and will be removed in 1.0. The
-   same handler objects serve both, so aliases never drift.
+   `/feedback`, `/for-user/{id}`) were deprecated aliases of their
+   `/v1/*` counterparts from 0.14.0 and were removed in 1.0.0 as
+   promised; `/v1/*` are the only data paths.
 
 ## Breaking changes
 

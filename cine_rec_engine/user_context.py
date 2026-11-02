@@ -1,6 +1,6 @@
 """Per-user context passes — filtering, tilt, exploration, exclusions.
 
-Split from service.py (phase 5a, call-flow split): everything that
+Everything that
 post-processes a result list FOR ONE USER after the shared,
 user-agnostic compute. Order is a contract: filters → tilt → balance
 → noise (balance/noise live with the find-similar flow).

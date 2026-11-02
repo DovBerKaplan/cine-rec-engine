@@ -1,6 +1,6 @@
-//! Recall channels — the Rust port of `queries.py` (phase 3 scope:
-//! the genre channel, batch enrichment, and KNN; the remaining
-//! channels land with the rest of the phase).
+//! Recall channels — the Rust port of `queries.py`: the genre channel,
+//! batch enrichment, KNN, and the remaining recall generators the
+//! engine's fan-out calls.
 //!
 //! Faithfulness rules:
 //! * SQL text is copied VERBATIM from the Python source (including the

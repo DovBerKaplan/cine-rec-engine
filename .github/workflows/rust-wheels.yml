@@ -1,6 +1,6 @@
 name: rust-wheels
 
-# Phase 8: build Rust-enhanced wheels for the platform matrix.
+# Build Rust-enhanced wheels for the platform matrix.
 # The PURE-PYTHON wheel (release.yml) continues to work alongside —
 # users who install the pure wheel get the pure-Python engine; users
 # who install the Rust wheel get the extension active by default.

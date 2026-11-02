@@ -8,14 +8,14 @@
                                     orchestrator healthcheck can actually fail
     GET /metrics                    latency histogram, cache hit rate,
                                     recall-channel coverage (Prometheus text)
-    GET /similar?seed=155           item-to-item (optionally user-filtered)
-    GET /similar?seed=155:movie,1396:tv&user_id=42&model=e5e
-    GET /page?user_id=42&rows=...   composed rows (top_picks, because:<id>,
-                                    hidden_gems, trending:<gid>, discover)
-    GET /by-text?q=space%20western  natural-language cold start
-    POST /feedback                  one click/watch/skip/dislike outcome for
-                                    a served title (impression-token gated)
-    GET /for-user/42?include_why=1  the personalized row
+    GET /v1/similar?seed=155           item-to-item (optionally user-filtered)
+    GET /v1/similar?seed=155:movie,1396:tv&user_id=42&model=e5e
+    GET /v1/page?user_id=42&rows=...   composed rows (top_picks, because:<id>,
+                                       hidden_gems, trending:<gid>, discover)
+    GET /v1/by-text?q=space%20western  natural-language cold start
+    POST /v1/feedback                  one click/watch/skip/dislike outcome for
+                                       a served title (impression-token gated)
+    GET /v1/for-user/42?include_why=1  the personalized row
 
 Zero config beyond DATABASE_URL: the engine degrades every optional
 channel, and user vectors rebuild on demand. The app factory accepts an
@@ -51,15 +51,9 @@ from .text_query import by_text
 MAX_LIMIT = env_int("CINE_REC_MAX_LIMIT", 100, lo=1, hi=10_000)
 DEFAULT_LIMIT = 30
 
-# Bare paths that duplicate a /v1/ route — served as deprecated aliases
-# until 1.0 (docs/stability.md).
-_DEPRECATED_PATHS = frozenset({
-    "/similar", "/page", "/by-text", "/feedback", "/for-user/{user_id}",
-})
-
 
 class FeedbackBody(BaseModel):
-    """POST /feedback — one outcome for one served title (RFC §4)."""
+    """POST /v1/feedback — one outcome for one served title (RFC §4)."""
     token: str
     outcome: Literal["click", "watch", "skip", "dislike"]
     tmdb_id: int
@@ -254,10 +248,6 @@ def create_app(
         route = request.scope.get("route")
         route_path = getattr(route, "path", "")
         metrics.observe_request(route_path or "unmatched", elapsed_ms)
-        if route_path in _DEPRECATED_PATHS:
-            # Legacy alias of a /v1 route — kept until 1.0 (docs/stability.md)
-            response.headers["Deprecation"] = "true"
-            response.headers["X-Deprecated-Removal"] = "1.0"
         if response.status_code >= 500:
             from loguru import logger
 
@@ -468,10 +458,8 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-    # -- route registration: /v1/* is canonical, the bare paths are ----
-    # deprecated aliases that keep every existing integrator working
-    # until 1.0 (docs/stability.md). The SAME handler objects serve
-    # both, so behavior and signatures cannot drift between them.
+    # -- route registration: /v1/* is the canonical surface. The bare
+    # pre-1.0 aliases were removed in 1.0.0 (docs/stability.md).
     for path, endpoint, methods in (
         ("/similar", similar, ["GET"]),
         ("/page", page, ["GET"]),
@@ -479,8 +467,6 @@ def create_app(
         ("/feedback", feedback, ["POST"]),
         ("/for-user/{user_id}", for_user, ["GET"]),
     ):
-        app.add_api_route(path, endpoint, methods=methods, deprecated=True,
-                          dependencies=auth_deps)
         app.add_api_route(f"/v1{path}", endpoint, methods=methods,
                           dependencies=auth_deps)
 

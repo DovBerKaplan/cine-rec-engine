@@ -105,7 +105,7 @@ async def main() -> None:
             pool, vec, 10, EMB))
         cases["discovery"] = slim(await Q.generate_discovery_candidates(
             pool, vec, [1, 2], 10, EMB))
-        # L-7 coverage: tv genre seed, deep KNN (floors bite at 120),
+        # Coverage: tv genre seed, deep KNN (floors bite at 120),
         # gems/trending page rows, popular with a year range
         cases["genre_same_tv"] = slim(await Q.generate_candidates(
             pool, tv["id"], tg, "tv", 30, False))

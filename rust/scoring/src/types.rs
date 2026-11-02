@@ -66,8 +66,8 @@ pub struct Entity {
 /// shape of the Python `_entity_profile` dict. Everything that depends
 /// on ONE side only is computed once here instead of once per pair.
 ///
-/// Phase 1 carries the struct as interface only; the phase-2 backend
-/// fills it with the exact Python derivation.
+/// The red-green stubs carry the struct as interface only; the real
+/// backend fills it with the exact Python derivation.
 #[derive(Debug, Clone, Default)]
 pub struct Profile {
     // id sets

@@ -109,7 +109,7 @@ async def test_personalization_end_to_end(integration_env):
 
 
 async def test_user_tilt(integration_env):
-    """The item-to-item tilt (M2): user context boosts, never buries,
+    """The item-to-item tilt: user context boosts, never buries,
     and every result carries its affinity."""
     from cine_rec_engine import user_stats as us
 

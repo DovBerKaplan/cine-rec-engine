@@ -1,7 +1,7 @@
-//! The phase-3 tail that phase 5 needs: seed-info batch, cinematic
-//! tags, recall-boundary filters, and the batched semantic-overview
-//! similarity — the four pieces `find_similar`'s compute path calls
-//! that lived in Python's `queries.py`/`scoring.py` until now.
+//! Seed-info batch, cinematic tags, recall-boundary filters, and the
+//! batched semantic-overview similarity — the four pieces
+//! `find_similar`'s compute path calls out of Python's
+//! `queries.py`/`scoring.py`.
 //!
 //! SQL is copied verbatim from the Python sources (principle 7); the
 //! one deviation is documented inline (seed vectors decode and are

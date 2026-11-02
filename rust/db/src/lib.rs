@@ -1,5 +1,4 @@
-//! cine-rec-db — the Rust port of the engine's DB layer (rust-port
-//! phase 3).
+//! cine-rec-db — the Rust port of the engine's DB layer.
 //!
 //! Three pieces:
 //!

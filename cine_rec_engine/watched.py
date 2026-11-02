@@ -126,7 +126,7 @@ async def get_user_recommendation_exclusions(pool, user_id: Optional[int]) -> Wa
     """Titles hidden from a user's recommendations: watched OR rated.
 
     A rated title never returns in that user's recommendation lists, no
-    matter which button was pressed — rating signals we already know the
+    matter which rating was given — rating signals we already know the
     verdict, recommending it again is noise.
     """
     watched = await get_user_watched(pool, user_id)
@@ -144,7 +144,7 @@ _PROGRESS_MOVIE_SQL = """
 
 
 async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) -> dict:
-    """The user's watch state for ONE title (card rendering).
+    """The user's watch state for ONE title (title detail rendering).
 
     movie → {"watched": bool}
     tv → {"watched", "watched_all", "reached_last", "max_season", "max_episode"}:

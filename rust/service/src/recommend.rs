@@ -1,4 +1,4 @@
-//! recommend_for_user — the §F pipeline (phase 5c): plan → gather →
+//! recommend_for_user — the §F pipeline: plan → gather →
 //! the compute path with per-user passes → exploration/balance. The
 //! Rust port of `recommend.py` + the user-pass tail of find_similar.
 

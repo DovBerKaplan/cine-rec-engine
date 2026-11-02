@@ -160,7 +160,7 @@ pub async fn get_user_title_progress(
         };
         // Python wraps the WHOLE row decode in `except Exception →
         // return out` — any decode failure degrades to the default
-        // progress and never breaks a card render (L-2). A missing
+        // progress and never breaks a title-detail render. A missing
         // column reads as None (dict.get semantics) which lands in the
         // same place; a wrong TYPE degrades instead of erroring.
         let parsed: Result<Option<TitleProgress>, sqlx::Error> = (|| {
@@ -181,7 +181,7 @@ pub async fn get_user_title_progress(
                 // ordering makes `Some(x) >= None` TRUE, so the naive
                 // port fabricated completion whenever the episodes
                 // table exists but is empty (or lacks this title) —
-                // same explicit call the Python mirror made (M-1).
+                // same explicit call the Python mirror made.
                 reached_last: matches!((cat_s, cat_e), (Some(_), Some(_)))
                     && (max_s, max_e) >= (cat_s, cat_e),
                 max_season: max_s,

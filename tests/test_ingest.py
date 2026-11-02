@@ -226,7 +226,7 @@ class TestBridgeMirroring:
 
 
 class TestNetworksBridgeIsTvOnly:
-    """Session-2 L-2: pin the H-1 source fix without a DB.
+    """Pin the networks-bridge source fix without a DB.
 
     Movie ingest used to mirror the networks bridge with an EMPTY
     list — a plain DELETE BY id that wiped a colliding series'

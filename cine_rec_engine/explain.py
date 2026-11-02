@@ -1,6 +1,6 @@
 """WHY rendering — human/machine-readable reasons for one score.
 
-Split from service.py (phase 5a, call-flow split): everything that
+Everything that
 turns a feature vector into explanations. Pure published-weights
 arithmetic only — exposes nothing beyond weights.json.
 

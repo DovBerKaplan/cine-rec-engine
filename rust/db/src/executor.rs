@@ -111,7 +111,7 @@ impl Db {
         // asyncpg parity: it runs RESET ALL when a connection returns to
         // the pool; sqlx does not, so a session GUC set on one borrower
         // (e.g. hnsw.ef_search) would LEAK to every later one and make
-        // results connection-history-dependent (the review's M-7).
+        // results connection-history-dependent.
         PgPoolOptions::new()
             .max_connections(10)
             .after_release(|conn, _meta| {
@@ -227,8 +227,8 @@ impl Bind {
 /// * NULL or column ABSENT → `Ok(None)` — Python's `r.get(k)` returns
 ///   None for a missing key (channels select different column sets)
 /// * column PRESENT but the wrong TYPE (e.g. an INT4 read as text) is
-///   an ERROR — swallowing it hid real bugs (the phase-3 H-1: every
-///   INT4 read as i64 silently became None)
+///   an ERROR — swallowing it hid real bugs (an INT4 read as i64 once
+///   silently became None everywhere)
 ///
 /// INT columns decode as `i32` first (sqlx is strict about width) and
 /// widen to `i64`.

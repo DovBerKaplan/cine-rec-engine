@@ -40,7 +40,7 @@ fn dsn() -> Option<String> {
 /// Parse a Python float.hex() string ("[-]0x1.xxxp±n") into f64 —
 /// STRICTLY: malformed input panics instead of silently decoding to a
 /// wrong number (a misparsed component could squeak past the cosine
-/// check; L-a). Exact by construction: the mantissa's hex digits are
+/// check). Exact by construction: the mantissa's hex digits are
 /// read as one integer (< 2^53) scaled by a power of two.
 fn parse_py_hex(s: &str) -> f64 {
     let (neg, body) = match s.strip_prefix('-') {
@@ -235,7 +235,7 @@ async fn personalization_replays_python_end_to_end() {
             p["rewatch_count"].as_i64().unwrap_or_default() >= 1
                 && !favorites.contains(&p["tmdb_id"].as_i64().unwrap_or_default())
         }),
-        "corpus must include a rewatch-ONLY title (M-α)"
+        "corpus must include a rewatch-ONLY title"
     );
     assert!(
         py_rows.iter().any(|p| {
@@ -295,12 +295,12 @@ async fn personalization_replays_python_end_to_end() {
             (None, None) => {}
             other => panic!("title {tmdb_id}.max_ratio mismatch: {other:?}"),
         }
-        // H-2″: push the row RUST replayed through the PRODUCTION
+        // Push the row RUST replayed through the PRODUCTION
         // assembly — `personalization::title_w`, the same helper both
         // recompute paths use, so the SeriesSignals construction is
         // exercised, not a test-side copy (design note) — at the
         // fixture's frozen instant, and match Python's w_at_py_now at
-        // 1e-9. Corpus coverage (M-α): a rewatch-ONLY title, a
+        // 1e-9. Corpus coverage: a rewatch-ONLY title, a
         // favorite-ONLY title, and a disliked title each pin one
         // engagement constant alone, so neither 1.5 can hide behind
         // the max() of the other; disliked pins the w=0 override.
@@ -398,12 +398,12 @@ async fn personalization_replays_python_end_to_end() {
         // weighted_sum is NOT gated: refresh_user_stats rebuilds it as
         // SUM(w_item) at ITS wall-clock now(), so it decays ~2.3%/day
         // after every regen — a tolerance here just re-arms the 5.2h
-        // time bomb this check was (H-2′). The w it is made of is
-        // pinned exactly, per title and clock-free, by the H-2″ check
+        // time bomb this check used to be. The w it is made of is
+        // pinned exactly, per title and clock-free, by the check
         // above against w_at_py_now.
     }
 
-    // ── vector: stored-build sanity, then BIT-EXACT parity (M-2/L-b) ──
+    // ── vector: stored-build sanity, then BIT-EXACT parity ────────
     let vec = build_user_vector(&db, user, None, emb).await.unwrap();
     let want_dim = fx["vector_dim"].as_u64().unwrap() as usize;
     assert_eq!(vec.as_ref().map(|v| v.len()), Some(want_dim), "vector dim");
@@ -425,7 +425,7 @@ async fn personalization_replays_python_end_to_end() {
     let dot: f32 = v.iter().zip(&py_vec).map(|(a, b)| a * b).sum();
     assert!(dot > 1.0 - 1e-5, "vector direction diverged: cosine={dot}");
 
-    // BIT-EXACT gate (L-b): re-aggregate the live embeddings with the
+    // BIT-EXACT gate: re-aggregate the live embeddings with the
     // FROZEN w_at_py_now and match, bit for bit, the fixture's
     // `vector_bits_frozen` — Python's OWN user_vector.aggregate over
     // the same embeddings and weights, summed in the recorded order
@@ -542,7 +542,7 @@ async fn personalization_replays_python_end_to_end() {
         record_feedback(&db, user, movie_id, "movie", "hug").await,
         Err(DbError::Invalid(_))
     ));
-    // H-1 regression: get_title_rating on an UNRATED title returns
+    // Regression: get_title_rating on an UNRATED title returns
     // None — the common case that used to panic on rows[0]
     assert_eq!(
         get_title_rating(&db, user, 987_654_321, "movie")
@@ -551,7 +551,7 @@ async fn personalization_replays_python_end_to_end() {
         None,
         "unrated title must be None, never a panic"
     );
-    // M-3 regression: factor=0 is rejected (it would bury to the
+    // Regression: factor=0 is rejected (it would bury to the
     // floor — the opposite of "a bounded nudge"), and so is NaN
     assert!(matches!(
         apply_skip_decay(&db, user, movie_id, "movie", 0.0, 0.05).await,
@@ -602,7 +602,7 @@ async fn personalization_replays_python_end_to_end() {
     );
 }
 
-/// M-1′: an episodes table that EXISTS but has no row for this title
+/// An episodes table that EXISTS but has no row for this title
 /// (empty, or just missing it) must not fabricate `reached_last` —
 /// Rust's Option ordering makes `Some(x) >= None` true, so the naive
 /// port claimed completion. Runs on a dedicated temp schema:

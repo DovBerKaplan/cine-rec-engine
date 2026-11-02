@@ -29,12 +29,12 @@
 //! FOUND by unique search over the golden file (not by any pairing
 //! formula).
 //!
-//! Phase status (rust-port plan):
-//! * phase 1 (this crate) — spec harness + red-green stubs proving the
-//!   harness fails when it should and passes when it should.
-//! * phase 2 — a real [`ScoringBackend`] translating `scoring.py` /
-//!   the service hot loop with the exact operation ORDER of the Python
-//!   code (ULP distances depend on it); the same harness then proves
+//! Two layers:
+//! * the spec harness + red-green stubs proving the harness fails
+//!   when it should and passes when it should.
+//! * the real [`ScoringBackend`] translating `scoring.py` / the
+//!   service hot loop with the exact operation ORDER of the Python
+//!   code (ULP distances depend on it); the same harness proves
 //!   parity. The Python package keeps a transparent fallback to the
 //!   pure-Python path — degrade, never fail.
 //!

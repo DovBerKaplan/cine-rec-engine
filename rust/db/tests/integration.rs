@@ -1,4 +1,4 @@
-//! LIVE integration tests — the phase-3 gate material.
+//! LIVE integration tests.
 //!
 //! Run against the seeded demo database when `CINE_REC_INTEGRATION_DSN`
 //! is set (the same harness the Python integration suite uses):

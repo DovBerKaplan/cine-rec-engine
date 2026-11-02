@@ -184,8 +184,8 @@ def build_enriched() -> tuple[list, list]:
             c["director"] = f"Director Name {k // 4}"
         # EMPTY via is falsy in Python — NOT gate-exempt. Pin that: a
         # clash candidate with via="" must gate to 0.0 like a no-via one
-        # (caught live by test_gate_exemptions/hypothesis during the
-        # phase-2 port; anchored here for the later phases).
+        # (caught live by test_gate_exemptions/hypothesis; anchored
+        # here as a permanent pin).
         if k == 15:
             c["via"] = ""
             c["genres"] = [DISJOINT_GENRE]

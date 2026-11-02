@@ -1,7 +1,7 @@
 //! PyO3 bridge: exposes the service compute path as the optional
 //! extension module `cine_rec_engine._service_rs`.
 //!
-//! Boundary law (phase 5): ONE crossing per request-stage with COARSE
+//! Boundary law: ONE crossing per request-stage with COARSE
 //! batches — the whole compute spec enters as a single JSON payload,
 //! the whole result leaves as a single JSON payload; no per-item
 //! calls. A hosted tokio runtime drives the async work; the GIL is
@@ -10,8 +10,8 @@
 //!
 //! The caller (Python) wraps this sync entry in `asyncio.to_thread` —
 //! the adapter `_service_accel.py` owns that. DSN-keyed Db handles are
-//! cached across calls (the Python asyncpg pool has a Rust twin, the
-//! strangler-pattern cost of the transition).
+//! cached across calls (the Python asyncpg pool has a Rust twin; one
+//! crossing per stage keeps the boundary cheap).
 
 
 
@@ -58,8 +58,8 @@ fn db_for(dsn: &str) -> Result<Arc<cine_rec_db::Db>, String> {
 
 /// The one boundary crossing: `compute(dsn, spec_json) -> result_json`.
 /// Spec/result shapes are `similar::ComputeSpec` / `ComputeResult`
-/// (serde; float_roundtrip on the serde_json build — the phase-1
-/// lesson applies to JSON floats crossing the boundary too).
+/// (serde; float_roundtrip on the serde_json build — JSON floats
+/// crossing the boundary need the same fidelity as the golden files).
 #[pyfunction]
 fn compute(py: Python, dsn: String, spec_json: String) -> PyResult<String> {
     let spec: ComputeSpec = serde_json::from_str(&spec_json)

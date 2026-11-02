@@ -18,6 +18,12 @@ catalog, cache disabled (forced), Python 3.12, single-flight.
 | 5-seed multi | 89 ms | 74 ms | −17% |
 | HTTP overhead (p50/p99 @c16) | — | −3%/12% | skin cost, not core |
 
+> Historical: v0.16.0's published numbers (cold 37 ms · warm 0.3 ms ·
+> 5-seed 81 ms, pure Python) came from an earlier run of the same
+> benchmark on the same 2-core spec. Absolute latencies move ±25%
+> between machines and load levels; the same-run pure-vs-extension
+> deltas in the table above are the meaningful comparison.
+
 The full methodology and raw runs are reproducible via
 `benchmarks/bench_e2e.py` (synthetic catalog) and
 `benchmarks/bench_scoring.py` (pair-scoring hot loop; ~×1.5 on the
@@ -36,15 +42,17 @@ the Python "skin" (serve.py, CLI, init) stays.
 |---|---|---|
 | Linux x86_64 (manylinux) | **Rust ext** (cp310-abi3) | one wheel covers Python 3.10+ |
 | Linux aarch64 | **Rust ext** (cp310-abi3) | |
-| macOS arm64 + x86_64 | **Rust ext** (cp310-abi3) | |
-| macOS x86_64 (older) | **pure Python** | Rust wheel may not load on older macOS |
+| macOS arm64 | **Rust ext** (cp310-abi3) | built on `macos-latest` |
+| macOS x86_64 | **pure Python** | no Rust wheel is built for this arch — pip falls back |
 | Windows | **Rust ext** (cp310-abi3) | |
 | any (sdist) | **pure Python** + rust/ source | self-build with: `maturin build --release` |
 
-The **pure-Python wheel is always available on PyPI** and is the
-default `pip install cine-rec-engine` artifact. The Rust-enhanced
-wheels are published alongside; `pip` resolves the best match for
-your platform automatically.
+The **pure-Python wheel is the canonical PyPI artifact** — that is
+what `pip install cine-rec-engine` gives you on every platform. The
+Rust-enhanced wheels are built by the `rust-wheels` GitHub workflow on
+tags and published as **release artifacts** on the GitHub release
+page; download the wheel for your platform and `pip install` it
+directly to get the extension from a wheel.
 
 Forcing pure Python: `CINE_REC_SCORING_RS=0` in the environment.
 A missing or broken extension degrades silently — the engine always

@@ -1,4 +1,4 @@
-//! WHY rendering — the Rust port of `explain.py` (phase 5c):
+//! WHY rendering — the Rust port of `explain.py`:
 //! explain_features / explain_contributions / explain_results.
 //! Pure published-weights arithmetic only.
 
@@ -13,7 +13,7 @@ use crate::similar::{cand_entity, enrichment_entity, seed_entity, WeightLists};
 
 /// FEATURE_NAMES order — the contract for vector ↔ name mapping (the
 /// scoring crate's vec_from_profiles emits in this order; locked by
-/// the phase-1 goldens).
+/// the golden files).
 pub const FEATURE_NAMES: [&str; 28] = [
     "cosine_sim",
     "keyword_sim",

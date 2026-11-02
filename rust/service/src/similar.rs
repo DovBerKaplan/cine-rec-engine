@@ -1,4 +1,4 @@
-//! find_similar's compute path (phase 5b): seed normalization, the
+//! find_similar's compute path: seed normalization, the
 //! recall-channel fan-out over `cine-rec-db`, candidate-pool assembly,
 //! the scoring loop over `cine-rec-scoring`, MMR and media balancing.
 //!
@@ -351,7 +351,7 @@ mod tests {
     #[test]
     fn optimize_matches_python_reference() {
         // exact rows verified against cine_rec_engine.scoring on the
-        // Python side (case A/B/C) — see the phase-5 journal
+        // Python side (case A/B/C).
         let mk = |id: i64, rating: f64, votes: i64, pop: f64, via: Option<&str>,
                   mt: &str, genres: &[&str]| CandidateRow {
             id,
@@ -473,7 +473,7 @@ mod tests {
     }
 
 
-    // ---- noise/MMR locks (phase 5c) ----
+    // ---- noise/MMR locks ----
 
     #[test]
     fn noise_identity_and_head_pinning_contract() {
@@ -537,7 +537,7 @@ mod tests {
 
     #[test]
     fn py_round3_matches_python_decimal_rounding() {
-        // the reviewer's LIVE-observed divergence + all half-ulp
+        // LIVE-observed divergences + all half-ulp
         // boundaries, verified against Python's round(x,3) on the
         // exact values (scaled-bankres failed 16.4905→16.49, 2.6745→
         // 2.674, 0.0005→0.0; decimal rounding matches all of them)
@@ -616,8 +616,8 @@ mod tests {
         // Python-anchored golden: the scoring loop's weighted average
         // = py_sum(score*w) / total_w. These inputs make a naive fold
         // differ from Neumaier (verified against CPython 3.12 sum()).
-        // The reviewer's M-3: the previous raw_score check could NOT
-        // catch a fold swap (~1e-16 diff swallowed by tolerance).
+        // A tolerance-only check could NOT catch a fold swap (the
+        // ~1e-16 diff gets swallowed), hence the exact pin.
         let weighted_scores = vec![1e16, 1.0, 1.0, 1.0, -1e16];
         // Python: sum([1e16, 1.0, 1.0, 1.0, -1e16]) == 3.0
         // naive fold: 0.0
@@ -637,9 +637,8 @@ mod tests {
 
     #[test]
     fn py_round3_boundary_08305() {
-        // the reviewer's specific recommendation (session 5, L-a):
+        // a boundary case the generated fixtures missed:
         // 0.8305 → Python round=0.831, scaled-bankres=0.83
-        // this closes the boundary-blindness gap the fixture had
         assert!((py_round3(0.8305) - 0.831).abs() < 1e-15,
             "py_round3(0.8305) = {}, want 0.831", py_round3(0.8305));
         // the scaled approach gives 0.83 (830.5 → banker's → 830 → 0.83)
@@ -739,8 +738,8 @@ pub fn assemble_pool(
                 }
             }
             for c in slot {
-                // TODO (tech-debt, owner decision 2026-11-02): dedup by
-                // bare id — should be (id, media_type); kept for parity
+                // TODO (tech-debt): dedup by bare id — should be
+                // (id, media_type); kept for Python parity
                 if !seen_ids.contains(&c.id) && !seed_id_set.contains(&c.id) {
                     seen_ids.insert(c.id);
                     candidates.push(c.clone());
@@ -1064,7 +1063,7 @@ pub struct WeightLists {
 /// Python `round(x, 3)` — correctly-rounded DECIMAL rounding.
 /// CPython's round(x, n) uses _Py_dg_dtoa (correct decimal rounding),
 /// NOT scaled-integer-then-divide: the scaled approach lost 0.9% of
-/// cases in the reviewer's 2M emulation (e.g. 16.4905 → 16.49 instead
+/// cases in a 2M-value emulation (e.g. 16.4905 → 16.49 instead
 /// of 16.491). Rust's format!("{:.3}") uses the same correctly-rounded
 /// decimal algorithm as CPython's f"{x:.3f}", and
 /// round(x,3) == float(f"{x:.3f}") holds for ALL finite f64 (verified

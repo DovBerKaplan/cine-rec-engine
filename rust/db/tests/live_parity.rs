@@ -1,7 +1,7 @@
 //! FIELD-LEVEL parity against the Python queries, replayed from a
 //! fixture the real `queries.py` generated against the seeded demo DB
-//! (`tests/fixtures/gen_live_parity.py`). This is the test class the
-//! phase-3 review demanded: ids, ORDER, and every field must agree.
+//! (`tests/fixtures/gen_live_parity.py`). The bar: ids, ORDER, and
+//! every field must agree.
 
 use std::path::Path;
 
@@ -169,7 +169,7 @@ async fn live_parity_replays_python_fields() {
         .unwrap();
     assert_list(&cases["genre_cross"], &cross, "genre_cross");
 
-    // knn (same/cross/tv — the tv floor regression H-4 shows here)
+    // knn (same/cross/tv — the tv-floor regression shows here)
     let knn_m = generate_knn_candidates(&db, movie_id, "movie", 20, false, emb, None)
         .await
         .unwrap();
@@ -193,7 +193,7 @@ async fn live_parity_replays_python_fields() {
         .unwrap();
     assert_list(&cases["tmdb_batch"], &tb[0], "tmdb_batch");
 
-    // auteur (via=director regression H-2 shows here)
+    // auteur (the via=director regression shows here)
     let dr = generate_director_candidates(&db, dir_seed, "movie", 15)
         .await
         .unwrap();
@@ -313,7 +313,7 @@ async fn live_parity_replays_python_fields() {
         assert!(got.cast_ids.starts_with(&want_ids), "enrich[{id}].cast_ids");
         // unordered fields compare as SETS — the batch SQL carries no
         // ORDER BY on keywords/companies/networks, so the order is
-        // instance-dependent (the review's L-6)
+        // instance-dependent
         let s: Vec<&str> = Vec::new();
         let _ = s;
         let str_set = |v: &Value| -> std::collections::BTreeSet<String> {

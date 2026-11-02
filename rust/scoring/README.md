@@ -1,9 +1,9 @@
-# cine-rec-scoring — scoring core port (rust-port, phases 1–2)
+# cine-rec-scoring — the scoring core port
 
-Phase 1 pinned the parity contract as an executable harness; phase 2
-translated the scoring core itself (`real.rs`, proven bit-exact by the
-same harness) and exposed it to Python through the optional pyo3
-bridge (`pybridge.rs`, feature `pyo3`, module `cine_rec_engine._scoring_rs`).
+The parity contract is pinned as an executable harness; the scoring
+core itself is translated in `real.rs` (proven bit-exact by the same
+harness) and exposed to Python through the optional pyo3 bridge
+(`pybridge.rs`, feature `pyo3`, module `cine_rec_engine._scoring_rs`).
 
 ## The contract
 
@@ -19,7 +19,7 @@ exactly 1 ULP. Signed zero is a documented decision: `±0.0` compare
 equal for scores; the tolerance is asymmetric across zero (stricter on
 the negative side); inside a vector `-0.0` vs `0.0` is a mismatch.
 
-ULP distances depend on **operation order**. The phase-2 port must
+ULP distances depend on **operation order**. The port must
 replicate the Python computation order one-to-one; no fast-math-style
 reordering anywhere (Rust does not reorder float ops by default — the
 port's advantage, not to be given up).
@@ -58,13 +58,13 @@ cargo test                                  # both sets, red-green proof
 cargo test -- --ignored demo_red_end_to_end # expected to FAIL — the red demo
 ```
 
-## Red-green proof (phase gate 1)
+## Red-green proof
 
 - **Green**: `OracleBackend` serves the golden answers through the
   real driver path (fixture → pairing → backend → comparators) on
   BOTH sets → zero mismatches — while validating every driver argument
   (weights, sides, genres, overview_sim), so driver bugs fail here
-  rather than in phase 2 disguised as port bugs.
+  rather than surfacing later disguised as port bugs.
 - **Red**: `ZeroBackend` is flagged on exactly the cases that differ
   (counts derived from the goldens themselves), empty/27/29-entry
   vectors are caught (comparator-level AND through the full path),
@@ -87,7 +87,7 @@ environment the goldens were captured in (no `REC_ENSEMBLE_CONFIG` /
 `CINE_REC_SCORER` overrides) — fixtures and goldens are one contract.
 
 
-## Phase 2 — the real port + pyo3 bridge
+## The real port + pyo3 bridge
 
 * `src/real.rs` — the translated scoring core; `tests/real_backend_parity.rs`
   drives it through the SAME harness: **bit-exact vectors, ≤1-ULP fast
@@ -97,8 +97,7 @@ environment the goldens were captured in (no `REC_ENSEMBLE_CONFIG` /
   once; the per-pair call releases the GIL, so the warm-path thread
   pool parallelizes for real. Build: `cargo build --features pyo3
   --release`, then copy `target/release/libcine_rec_scoring.so` to
-  `cine_rec_engine/_scoring_rs.so` (wheels bundle it at release time —
-  phase 8).
+  `cine_rec_engine/_scoring_rs.so` (wheels bundle it at release time).
 * Python side: `cine_rec_engine/_scoring_accel.py` rebinds the service
   dispatchers when the extension imports; `CINE_REC_SCORING_RS=0`
   forces the pure path. A missing/broken extension never breaks the
@@ -120,7 +119,7 @@ environment the goldens were captured in (no `REC_ENSEMBLE_CONFIG` /
    regular production input for non-enriched candidates — reads empty
    for the enriched-source fields but falls back to the entity for
    narrative/pacing/emotional-arc. Several of these were caught by the
-   live Python suite and the phase-2 differential fuzz, not by the
+   live Python suite and the differential fuzz, not by the
    goldens — run the full suite against the extension.
 4. **The recall SQL's `cast_list` is actor NAMES**, `cast_ids` is ids;
    Python `set()` keeps them distinct — hence `CastKey::Id | Name`.
@@ -137,7 +136,7 @@ The remaining per-pair cost is dominated by the Python↔Rust boundary
 per-candidate scoring into one call is the natural next lever — an
 A/B decision deliberately left for the release gate.
 
-### Deployment guards (phase-2 review round 2)
+### Deployment guards
 
 * The extension installs ONLY on CPython >= 3.12 — `sum()` over floats
   became Neumaier-compensated there, and the port replicates THAT
@@ -146,7 +145,7 @@ A/B decision deliberately left for the release gate.
 * A locatable extension file is structurally validated BEFORE the
   import: on ELF, every PT_LOAD segment and the section-header table
   must fit the file (exact for any build size — catches a one-byte
-  truncation; validated against a byte-level sweep by the review).
+  truncation; validated against a byte-level sweep).
   Non-ELF object formats fall back to a size floor. A cut-off `.so`
   can SIGBUS the process at import, below any Python `except`; the
   guaranteed escape hatch stays `CINE_REC_SCORING_RS=0`.

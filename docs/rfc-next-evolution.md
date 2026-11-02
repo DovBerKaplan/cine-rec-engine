@@ -31,7 +31,7 @@ Standing principles every phase inherits:
 A streaming UI consumes a page of rows, not a flat list. N rows must
 not mean N recall round-trips.
 
-- **Contract**: `GET /page?user_id=…&rows=top_picks,because:155,hidden_gems,trending:80`
+- **Contract**: `GET /v1/page?user_id=…&rows=top_picks,because:155,hidden_gems,trending:80`
   (each row spec = kind + params). Response: ordered rows, each with its
   titles, why, and an impression token (§4).
 - **Row kinds v1**: `top_picks` (the recommend_for_user core), `because:{seed}`
@@ -69,7 +69,7 @@ The budget targets **novel AND relevant** only.
   ids), `max_runtime`. Applied as recall-level SQL predicates (not
   post-hoc slicing — limit semantics stay honest) and folded into the
   cache-key fingerprint.
-- **Phase B — natural-language cold start**: `GET /by-text?q=like
+- **Phase B — natural-language cold start**: `GET /v1/by-text?q=like
   Inception but darker`. The encoder stays bring-your-own (models/
   sidecar contract: one `encode(text) -> vector` entry point); the
   anchor vector feeds the existing KNN recall and the scorer through
@@ -86,7 +86,7 @@ already use.
 - **Impression tokens**: each served row/page carries an HMAC-signed,
   stateless token (user, row kind, seeds, served ids+scores, ts, ttl).
   No server-side session store; verification is pure.
-- **Ingestion**: `POST /feedback {token, outcome, tmdb_id?}` with
+- **Ingestion**: `POST /v1/feedback {token, outcome, tmdb_id?}` with
   outcomes `click | watch | skip | dislike` mapped to:
   click → `record_feedback(kind="click")`; watch/completion →
   `record_event` (w_i adjusts in-transaction); skip/dislike →

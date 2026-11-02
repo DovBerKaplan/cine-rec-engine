@@ -133,7 +133,7 @@ pub async fn build_user_vector(
         }
     };
 
-    // L-7: paired extraction — one pass over the rows so a decode
+    // Paired extraction — one pass over the rows so a decode
     // failure drops BOTH fields of that row (two separate filter_maps
     // could silently misalign weights to the wrong vectors)
     let mut vectors: Vec<Vec<f32>> = Vec::with_capacity(rows.len());

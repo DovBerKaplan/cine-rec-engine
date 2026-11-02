@@ -44,7 +44,7 @@ jobs:
   db-live-parity:
     # The rust/db integration + FIELD-LEVEL Python-parity tests need a
     # seeded demo Postgres — without a DSN they early-return "ok" and
-    # prove nothing (the phase-3 review's M-6).
+    # prove nothing.
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -94,7 +94,7 @@ jobs:
           CINE_REC_REQUIRE_DB: "1"
 
   service-live-parity:
-    # phase 5b: the _service_rs extension + live compute-path parity
+    # The _service_rs extension + live compute-path parity
     # (crate-direct AND through the PyO3 boundary) on a seeded DB
     runs-on: ubuntu-latest
     services:

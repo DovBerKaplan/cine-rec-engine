@@ -1,6 +1,6 @@
 """find_similar — the seed-based recommendation flow.
 
-Split from service.py (phase 5a, final cut): channel fan-out, candidate
+Channel fan-out, candidate
 pool assembly, the scoring loop, MMR, media balancing, caching and the
 per-user post-passes. `find_similar` takes the service instance (`svc`);
 rebindable scoring names resolve through the service module at call
@@ -504,11 +504,11 @@ async def find_similar(
                 if sims:
                     knn_sim_by_seed[seed["id"]] = sims
             for c in res:
-                # TODO (tech-debt, owner decision 2026-11-02): the pool
-                # dedups by bare id — a movie/tv pair sharing a TMDB id
-                # collapses to whichever the channel returned first. The
-                # key should be (id, media_type), but changing it mid-port
-                # breaks parity; documented here on both sides.
+                # TODO (tech-debt): the pool dedups by bare id — a
+                # movie/tv pair sharing a TMDB id collapses to whichever
+                # the channel returned first. The key should be
+                # (id, media_type), but changing it breaks parity with
+                # the Rust implementation; documented on both sides.
                 if c["id"] not in seen_ids and c["id"] not in seed_id_set:
                     seen_ids.add(c["id"])
                     candidates.append(c)
@@ -620,10 +620,10 @@ async def find_similar(
         if not weighted_scores:
             continue
 
-        # Display guard: a candidate with no renderable title produces an
-        # empty Telegram button ("[ 🎬 ]" with no label — live bug on
-        # Arrival's page 1). The title backfill covers known rows; this
-        # skips anything the sync writes title-less in the future.
+        # Display rule: a candidate with no renderable title would surface
+        # as an empty, unclickable row in any UI. The title backfill covers
+        # known rows; this skips anything the sync writes title-less in
+        # the future.
         if not ((cand.get("title_en") or "").strip() or (cand.get("title") or "").strip()):
             continue
 

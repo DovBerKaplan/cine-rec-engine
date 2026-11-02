@@ -1,4 +1,4 @@
-//! The phase-2 port: a real [`ScoringBackend`] translating the Python
+//! The real port: a [`ScoringBackend`] translating the Python
 //! scoring core (`service.py::_entity_profile` / `_vec_from_profiles`
 //! / `_score_pair_fast` + the pure helpers of `scoring.py`) with the
 //! EXACT operation order of the Python code.
@@ -761,7 +761,7 @@ pub fn score_pair_fast(
     score
 }
 
-// ── the real backend (plugs into the phase-1 harness) ──────────────
+// ── the real backend (plugs into the parity harness) ───────────────
 
 /// Real port for the parity harness. `heuristic_w27` is Python's
 /// module-global `HEURISTIC_WEIGHTS_LIST` (values[:27]) used by the

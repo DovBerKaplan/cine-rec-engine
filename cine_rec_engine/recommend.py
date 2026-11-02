@@ -1,6 +1,6 @@
 """§F — recommend_for_user: the personalized entry point.
 
-Split from service.py (phase 5a, call-flow split): the cold/warm
+The cold/warm
 planning (recommendation_plan) and the user pipeline that delegates
 to find_similar. Receives the service instance (`svc`) so pool and
 find_similar stay single-sourced.

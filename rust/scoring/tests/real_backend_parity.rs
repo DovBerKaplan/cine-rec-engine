@@ -1,4 +1,4 @@
-//! Phase-2 gate: the REAL port against the phase-1 harness.
+//! The REAL port against the parity harness.
 //!
 //! [`RealBackend`] is the translated scoring core; the same frozen
 //! goldens that pinned the contract now prove the port:

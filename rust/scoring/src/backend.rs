@@ -1,9 +1,9 @@
-//! The scoring interface the phase-2 port must satisfy, plus the
+//! The scoring interface the port must satisfy, plus the
 //! red-green stubs that prove the harness itself works.
 //!
 //! The trait mirrors the Python entry points one-for-one so the real
 //! translation is a drop-in replacement; only the backend `impl`
-//! changes between phase 1 (stubs) and phase 2 (the port).
+//! changes between the red-green stubs and the real port.
 
 use std::cell::Cell;
 use std::collections::HashSet;
@@ -111,13 +111,13 @@ impl ScoringBackend for ZeroBackend {
 /// `cand_genres_set` matching (or `None` for empty genres),
 /// `overview_sim == 0.0`, and `w_list` equal to the harness's frozen
 /// weight list. A driver bug (wrong weights, swapped sides, dropped
-/// arguments) therefore fails HERE in phase 1 instead of surfacing in
-/// phase 2 disguised as a port bug.
+/// arguments) therefore fails HERE, in the harness itself, instead of
+/// surfacing later disguised as a port bug.
 ///
 /// What the oracle-green run proves is then honest about its scope:
 /// driver wiring + JSON round-trip + comparator acceptance — the
 /// pairing convention is anchored separately by the fixture probes,
-/// and parity itself only by the phase-2 real backend.
+/// and parity itself only by the real backend.
 pub struct OracleBackend<'h> {
     harness: &'h Harness,
     cand_ids: HashSet<i64>,

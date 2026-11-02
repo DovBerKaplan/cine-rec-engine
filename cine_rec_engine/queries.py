@@ -329,9 +329,9 @@ async def generate_candidates(
             # TODO (tech-debt): the per-medium budget built below is
             # DEAD CODE — `budgeted` is never assigned back to `rows`,
             # so the full sorted 2x-limit slice is what callers get.
-            # Kept as-is deliberately during the rust-port (1:1 parity
-            # first); revisit after the port stabilizes. The Rust port
-            # replicates the observed behavior and documents it too.
+            # Kept as-is deliberately (1:1 parity with the Rust
+            # implementation — the Rust side replicates the observed
+            # behavior and documents it too); revisit separately.
             budgeted = []
             for r in rows:
                 mt = r["media_type"]

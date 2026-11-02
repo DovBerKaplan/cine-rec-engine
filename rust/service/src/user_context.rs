@@ -1,5 +1,5 @@
 //! Per-user context passes — the Rust port of `user_context.py`
-//! (phase 5c): watched filtering + saga advancement, the boost-only
+//! covering watched filtering + saga advancement, the boost-only
 //! taste tilt, deterministic exploration, and merged exclusions.
 //! Order is the contract: filters → tilt → balance/exploration.
 

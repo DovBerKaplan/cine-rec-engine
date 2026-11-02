@@ -1,4 +1,4 @@
-//! Phase-1 gate: the harness itself — red-green proof.
+//! The harness itself — red-green proof.
 //!
 //! Two golden sets are driven (BASE 480 pairs from the repo golden
 //! file; ENRICHED 64 pairs covering the via channels, narrative/
@@ -10,7 +10,7 @@
 //! the full harness path (fixture → pairing → backend → comparators)
 //! to zero mismatches on BOTH sets — while validating every driver
 //! argument (weights, sides, genres, overview_sim), so a driver bug
-//! fails here, not in phase 2 disguised as a port bug.
+//! fails here, not later disguised as a port bug.
 //!
 //! RED side: wrong backends and perturbed values must be CAUGHT, and
 //! caught exactly — expected mismatch counts are derived from the
@@ -88,7 +88,7 @@ fn enriched_set_actually_exercises_the_base_dead_features() {
     // On the base goldens these six features are constant 0.0 (the
     // bench rows lack via/tmdb_rank/narrative/pacing/emotional_arc/
     // style keywords). The enriched set must wake them — otherwise it
-    // adds nothing and the phase-2 gate keeps its holes.
+    // adds nothing and the parity gate keeps its holes.
     let base = load_base();
     let enriched = load_enriched();
     for slot in [5usize, 7, 10, 22, 24, 25] {
@@ -377,8 +377,8 @@ fn oracle_refuses_misaligned_entities() {
 fn oracle_refuses_wrong_driver_arguments() {
     // The oracle doubles as a driver-contract checker: foreign weights,
     // a non-zero overview_sim, or a seed profile built with entity_data
-    // must panic, not pass quietly (these would otherwise surface in
-    // phase 2 disguised as port bugs).
+    // must panic, not pass quietly (these would otherwise surface
+    // later disguised as port bugs).
     let h = load_base();
     let case = &h.cases[0];
     let set: HashSet<String> = case.cand.genres.iter().cloned().collect();

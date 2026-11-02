@@ -127,14 +127,14 @@ def _token(user_id=7, ids=((111, "movie"), (222, "tv"))):
 
 class TestFeedbackEndpoint:
     def test_click_recorded(self, fb_client):
-        r = fb_client.post("/feedback", json={
+        r = fb_client.post("/v1/feedback", json={
             "token": _token(), "outcome": "click", "tmdb_id": 111})
         assert r.status_code == 200
         assert r.json()["status"] == "recorded"
         assert fb_client.calls == [("feedback", (7, 111, "movie", "click"))]
 
     def test_watch_becomes_a_completed_event(self, fb_client):
-        r = fb_client.post("/feedback", json={
+        r = fb_client.post("/v1/feedback", json={
             "token": _token(), "outcome": "watch", "tmdb_id": 222})
         assert r.status_code == 200
         kind, ev = fb_client.calls[0]
@@ -143,34 +143,34 @@ class TestFeedbackEndpoint:
         assert ev["media_type"] == "tv" and ev["completed"] is True
 
     def test_skip_decays_boundedly(self, fb_client):
-        r = fb_client.post("/feedback", json={
+        r = fb_client.post("/v1/feedback", json={
             "token": _token(), "outcome": "skip", "tmdb_id": 111})
         assert r.status_code == 200
         kinds = [c[0] for c in fb_client.calls]
         assert kinds == ["feedback", "decay"]  # recorded AND nudged
 
     def test_invalid_token_400(self, fb_client):
-        r = fb_client.post("/feedback", json={
+        r = fb_client.post("/v1/feedback", json={
             "token": "garbage.token", "outcome": "click", "tmdb_id": 111})
         assert r.status_code == 400
 
     def test_title_outside_impression_400(self, fb_client):
-        r = fb_client.post("/feedback", json={
+        r = fb_client.post("/v1/feedback", json={
             "token": _token(), "outcome": "click", "tmdb_id": 999})
         assert r.status_code == 400
         assert "not part of this impression" in r.json()["detail"]
 
     def test_bad_outcome_422(self, fb_client):
-        r = fb_client.post("/feedback", json={
+        r = fb_client.post("/v1/feedback", json={
             "token": _token(), "outcome": "love", "tmdb_id": 111})
         assert r.status_code == 422
 
     def test_replayed_token_is_an_idempotent_duplicate(self, fb_client):
         body = {"token": _token(), "outcome": "skip", "tmdb_id": 111}
-        first = fb_client.post("/feedback", json=body)
+        first = fb_client.post("/v1/feedback", json=body)
         assert first.status_code == 200
         assert first.json()["status"] == "recorded"
-        second = fb_client.post("/feedback", json=body)
+        second = fb_client.post("/v1/feedback", json=body)
         assert second.status_code == 200
         assert second.json()["status"] == "duplicate"
         # side effects ran exactly once — a replay must not re-decay
@@ -302,10 +302,10 @@ class TestByText:
         monkeypatch.setattr(serve_mod, "by_text", fake_by_text)
         app = create_app(service=FakeFeedbackService())
         with TestClient(app) as c:
-            r = c.get("/by-text", params={"q": "like Inception but darker"})
+            r = c.get("/v1/by-text", params={"q": "like Inception but darker"})
             assert r.status_code == 200
             assert r.json()["query"] == "like Inception but darker"
-            assert c.get("/by-text").status_code == 422  # q required
+            assert c.get("/v1/by-text").status_code == 422  # q required
 
 
 # ---------------------------------------------------------------------------

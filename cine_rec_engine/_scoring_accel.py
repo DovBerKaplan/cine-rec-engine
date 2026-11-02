@@ -60,8 +60,8 @@ _MIN_SO_BYTES = 400_000
 
 def _elf_looks_intact(path: str) -> bool:
     """All PT_LOAD segments and the section-header table fit in the
-    file (validated against a byte-level truncation sweep by the
-    phase-2 review). True for files that are not obviously ELF (or too
+    file (validated against a byte-level truncation sweep). True for
+    files that are not obviously ELF (or too
     short to tell) — the caller's size floor decides those; this is a
     structural TRUNCATION check only, not a content-integrity check."""
     import struct
@@ -203,7 +203,7 @@ def install(ns: dict[str, Any]) -> str:
             # (lone surrogates) — this call only, pure Python
             return py_entity_profile(entity, entity_data, genres_override)
 
-    # L-9: the rebuild is memoized per profile OBJECT (identity) — in
+    # The rebuild is memoized per profile OBJECT (identity) — in
     # the hot loop the same seed/candidate profile object scores many
     # pairs, and rebuilding per pair made an exotic-seed request slower
     # than plain Python. PyProfile is immutable from Python, so an
@@ -216,7 +216,7 @@ def install(ns: dict[str, Any]) -> str:
             return cached_pure
         if not _is_rust_profile(p):
             return p  # already pure — nothing to remember
-        # L-10 note: origin holds REFERENCES to the original dicts, not
+        # origin holds REFERENCES to the original dicts, not
         # copies. The service never mutates entity rows between profile
         # construction and scoring (documented contract); mutating them
         # would silently change the rebuild.

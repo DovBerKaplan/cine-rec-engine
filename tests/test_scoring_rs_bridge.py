@@ -229,7 +229,7 @@ def test_bridge_empty_entity_data_matches_python():
     user-vector ANN extras attach after enrichment). Python semantics:
     enriched-source fields read the empty dict (features zero),
     narrative/pacing/emotional-arc fall back to the ENTITY. The bridge
-    must reproduce that exactly — this was the phase-2 blocker."""
+    must reproduce that exactly."""
     cand = {
         "id": 2, "media_type": "movie", "genres": ["Drama", "Thriller"],
         "keywords": ["dream"], "cast_ids": [7],
@@ -394,8 +394,8 @@ def test_python_fallback_aliases_are_the_real_implementations():
     assert all(_bits(a) == _bits(b) for a, b in zip(vec, golden[0]["vec"]))
 
 
-# ── M-7: differential fuzz over the production-shaped input space ──
-# Recipe from the phase-2 review: cand ≠ cand_data, overview_sim ≠ 0,
+# ── differential fuzz over the production-shaped input space ──────
+# Recipe: cand ≠ cand_data, overview_sim ≠ 0,
 # empty data dicts, empty strings, falsy zeros — everything the frozen
 # goldens (which always pass cand_data == cand, overview_sim = 0) do
 # not reach.
@@ -487,7 +487,7 @@ def test_differential_fuzz_rust_vs_python(_fuzz_entities):
     assert checked > 500  # a differential test that checked nothing is a bug
 
 
-# ── M-8: tests for the mixed-pair root fix (phase-2 review round 3) ──
+# ── tests for the mixed-pair root fix ──────────────────────────────
 # Python's set() compares VALUES (None == None), sizes enter the
 # Jaccard/Dice denominators, and [:5] slices BEFORE any filtering —
 # so item-skipping conversions produced wrong-but-plausible scores.
@@ -598,7 +598,7 @@ def test_mixed_profile_pair_rebuilds_pure():
 
 @pytest.mark.skipif(not RUST_AVAILABLE, reason="compiled _scoring_rs not installed")
 def test_differential_fuzz_typed_exotic_rows():
-    """The reviewer's typed/exotic profile: non-integral floats, Decimals,
+    """A typed/exotic profile: non-integral floats, Decimals,
     None/str items inside id lists, sets/tuples as lists, via=True,
     adult variants, 2**70 ids, surrogates — the service call must never
     raise where _py_* doesn't, and outputs must match to the contract."""

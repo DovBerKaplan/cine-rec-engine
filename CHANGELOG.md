@@ -7,6 +7,12 @@ versions follow [SemVer](https://semver.org/).
 ## [1.0.0] — Unreleased
 
 ### Breaking
+- **The bare pre-1.0 HTTP aliases are removed.** `/similar`, `/page`,
+  `/by-text`, `/feedback`, and `/for-user/{id}` — deprecated aliases of
+  the `/v1/*` routes since 0.14.0 — now return 404, exactly as
+  `docs/stability.md` promised. `/v1/*` are the only data paths, and
+  the OpenAPI spec no longer lists the aliases. Migrate by prefixing
+  the five data routes with `/v1`.
 - **Hebrew genre labels no longer normalized.** The `GENRE_LABELS_EN`
   mapping (27 Hebrew→English genre translations) is removed from both
   the Python engine and the Rust scoring extension. Genre labels are
@@ -14,6 +20,24 @@ versions follow [SemVer](https://semver.org/).
   `language=en-US`, making canonical English labels the contract (see
   `docs/data.md`). Catalogs with Hebrew genre labels should re-sync
   genres via the standard pipeline.
+
+### Added — the optional compiled engine core
+- An optional Rust extension (`_scoring_rs` + `_service_rs`) now ships
+  alongside the pure-Python engine: the scoring hot loop, the recall
+  fan-out, and the per-user passes run in Rust, with output parity
+  locked by golden-vector and live-parity harnesses (`rust/`). The
+  pure-Python implementation remains the reference implementation and
+  the universal fallback — a missing, broken, or version-mismatched
+  extension degrades silently, and `CINE_REC_SCORING_RS=0` forces the
+  pure path. Measured effect and the full wheel policy:
+  `docs/performance.md` (~1.5× on the pair-scoring path; 5-seed
+  end-to-end −17% in the shipped benchmark).
+- Platform wheels carrying the extension (Linux x86_64/aarch64, macOS
+  arm64, Windows; abi3, one wheel per platform for Python 3.10+) are
+  built by CI on tags and published as release artifacts. The sdist
+  now includes the full `rust/` source, so anyone with a Rust
+  toolchain can self-build the extension; the pure-Python wheel stays
+  the canonical PyPI artifact.
 
 ## [0.16.0] — 2026-10-30
 

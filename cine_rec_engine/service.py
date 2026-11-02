@@ -146,7 +146,7 @@ class RecommendationService:
             )
 
     async def _seed_saga_blocked(self, seed_ids: set) -> Optional[set]:
-        """The seeds plus their whole sagas (5a split): delegates to
+        """The seeds plus their whole sagas: delegates to
         user_context.seed_saga_blocked."""
         return await _user_context.seed_saga_blocked(self.pool, seed_ids)
 
@@ -157,8 +157,8 @@ class RecommendationService:
         seed_ids: Optional[set] = None,
         blocked: Optional[set] = None,
     ) -> List[dict]:
-        """Watched filtering + saga advancement + seed guard (5a
-        split): delegates to user_context.apply_user_filters."""
+        """Watched filtering + saga advancement + seed guard:
+        delegates to user_context.apply_user_filters."""
         return await _user_context.apply_user_filters(
             self.pool, results, exclude, seed_ids, blocked)
 
@@ -166,13 +166,13 @@ class RecommendationService:
         self, results: List[dict], user_id: int, model_key: Optional[str],
         context: Optional[dict] = None,
     ) -> List[dict]:
-        """Gentle taste tilt, boost-only (5a split): delegates to
+        """Gentle taste tilt, boost-only: delegates to
         user_context.apply_user_tilt."""
         return await _user_context.apply_user_tilt(
             self.pool, results, user_id, model_key, context)
 
     async def _user_top_genres(self, user_id: int) -> set:
-        """Top genre cluster names (5a split): delegates to
+        """Top genre cluster names: delegates to
         user_context.user_top_genres."""
         return await _user_context.user_top_genres(self.pool, user_id)
 
@@ -180,7 +180,7 @@ class RecommendationService:
         self, results: List[dict], user_id: int, movie_ratio: float,
         limit: int, share: float, tilt_ctx: dict,
     ) -> List[dict]:
-        """Deterministic discovery slice (5a split): delegates to
+        """Deterministic discovery slice: delegates to
         user_context.apply_exploration."""
         return await _user_context.apply_exploration(
             self.pool, results, user_id, movie_ratio, limit, share, tilt_ctx)
@@ -188,7 +188,7 @@ class RecommendationService:
     async def _merged_exclusions(
         self, exclude: Optional[set], user_id: Optional[int]
     ) -> Optional[set]:
-        """Explicit exclude ∪ user's watched/rated (5a split): delegates
+        """Explicit exclude ∪ user's watched/rated: delegates
         to user_context.merged_exclusions."""
         return await _user_context.merged_exclusions(self.pool, exclude, user_id)
 
@@ -202,7 +202,7 @@ class RecommendationService:
         explore: Optional[float] = None,
         user_context: Optional[dict] = None,
     ) -> dict:
-        """§F end-to-end: user_id in, personalized list out (5a split):
+        """§F end-to-end: user_id in, personalized list out:
         delegates to recommend.recommend_for_user."""
         return await _recommend.recommend_for_user(
             self, user_id, limit=limit, randomness=randomness,
@@ -240,7 +240,7 @@ class RecommendationService:
         explore=None,
         user_context=None,
     ):
-        """Find similar movies/series, ranked by score (5a split): the
+        """Find similar movies/series, ranked by score: the
         full signature and docstring live in find_similar.py; thin
         delegate."""
         return await _find_similar.find_similar(
@@ -259,10 +259,11 @@ class RecommendationService:
 # `_score_candidate_vs_seed` is a weighted dot product over `feature_vector`:
 # every signal the engine uses is one coordinate with a RAW value (no baked
 # weights), and HEURISTIC_WEIGHTS holds the hand-tuned coefficients so the
-# heuristic path scores bit-identically to the pre-refactor engine. A learned
-# linear model (scripts/eval/train_ltr.py) trains on difference vectors of
-# the SAME function and lands in learned_weights.json — REC_SCORER=learned
-# swaps the coefficients with zero train/serve skew.
+# heuristic path scores bit-identically to the pre-refactor engine. A
+# learned linear model trains on difference vectors of the SAME
+# function (`eval/tune_weights.py` fits one from your judgments) and
+# lands in learned_weights.json — REC_SCORER=learned swaps the
+# coefficients with zero train/serve skew.
 # ---------------------------------------------------------------------------
 
 
@@ -920,7 +921,7 @@ def _score_candidate_vs_seed(
     return sum(w * v for w, v in zip(w_map.values(), vec))
 
 
-# ── Optional Rust acceleration (rust-port phase 2) ─────────────────
+# ── Optional Rust acceleration ─────────────────────────────────────
 # Public dispatchers: identical to the pure implementations until the
 # rebind below. Everything hot calls THESE names.
 _entity_profile = _py_entity_profile

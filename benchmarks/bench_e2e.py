@@ -20,7 +20,13 @@ def _parse_args():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dsn", required=True,
                     help="ONE-SHOT database to seed (the bench creates and drops its schema)")
-    return ap.parse_args()
+    ap.add_argument("--wipe", action="store_true",
+                    help="explicitly confirm the destructive schema wipe")
+    args = ap.parse_args()
+    if not args.wipe:
+        ap.error("--wipe is required: this bench DROPs the entire public schema. "
+                 "Point it at a throwaway DB and pass --wipe to confirm.")
+    return args
 
 DSN = None  # set in main() from --dsn
 

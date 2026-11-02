@@ -56,15 +56,15 @@ def detect_style(keywords: List[str]) -> List[str]:
 
 
 def canonical_genres(genres: List[str]) -> set:
-    """Translate local Hebrew genre labels to canonical English names.
+    """Canonicalize genre labels: strip whitespace, drop empties, dedup.
 
     Genres are stored in canonical English (the ingest pipeline syncs
-    genre/list with language=en-US). This strips whitespace and dedups.
+    genre/list with language=en-US); labels are used as stored.
     """
     return {str(g).strip() for g in genres or [] if str(g).strip()}
 
 
-# ── Mood/tone scoring (2026-09 user feedback) ──────────────────────
+# ── Mood/tone scoring (user feedback) ───────────────────────────────
 
 LIGHT_GENRES = {"Comedy", "Family", "Music", "Romance", "Soap", "Kids", "Animation"}
 DARK_GENRES = {"Horror", "Thriller", "Mystery", "Crime"}

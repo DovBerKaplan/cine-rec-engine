@@ -155,7 +155,7 @@ VOTE_FLOOR_TV: int = 500
 # Embedding space — "original" (384-dim MiniLM, column `embedding`) or
 # "v4b" (768-dim fine-tuned bge, column `embedding_v4`). All engine reads
 # (both KNN channels + the cosine feature) follow this switch; embeddings
-# are written by scripts/eval/embed_catalog_v4.py with the canonical text.
+# are written by your encoder (models/README.md) with the canonical text.
 # ----------------------------------------------------------------------------
 import os
 

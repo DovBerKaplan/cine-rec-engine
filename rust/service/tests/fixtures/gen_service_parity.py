@@ -1,9 +1,9 @@
 """Generate service_parity.json — Python-computed find_similar
 COMPUTE-PATH outputs on frozen seeds, for the Rust parity tests.
 
-Scope (phase 5b): the compute path only — cache bypassed (no Redis),
-exclude=None (the per-user passes are 5c), randomness=0 (the Mersenne
-stream stays Python-side). The recommend layer records
+Scope: the compute path only — cache bypassed (no Redis),
+exclude=None (the per-user passes are covered separately), randomness=0
+(the Mersenne stream stays Python-side). The recommend layer records
 recommendation_plan's seeds + the same compute path driven with the
 user's STORED vector as the uvec extras source (frozen vector →
 deterministic ANN rows on both sides).
@@ -41,7 +41,7 @@ _SAVED_EMB = _cfg.EMBEDDING_COLUMN
 from cine_rec_engine.queries import normalize_filters  # noqa: E402
 
 DSN = os.environ.get("CINE_REC_INTEGRATION_DSN", "")
-USER = 910_001  # the phase-4 personalization fixture user
+USER = 910_001  # the personalization fixture user
 
 
 async def pick_seeds(conn) -> dict:
@@ -134,7 +134,7 @@ async def main() -> None:
             {"name": "seed_weights",
              "seeds": [(picks["movie"], "movie"), (picks["movie2"], "movie")],
              "seed_weights": {str(picks["movie"]): 2.0, str(picks["movie2"]): 1.0}},
-            # COVERAGE GAP (documented, session 5 L-b): both cross-media
+            # COVERAGE GAP (documented): both cross-media
             # cases produce single-type output (20/0 and 0/30) — the
             # cross-media recall channel runs but the balancing keeps the
             # seed's type dominant. A truly mixed-output case would need
@@ -179,7 +179,7 @@ async def main() -> None:
             # silently degraded cosine_sim is the double-degenerate
             # false-parity the review caught
             if case.get("check_embedding", True):
-                # M-2: A REAL A/B — the KNN channel must have returned
+                # A REAL A/B — the KNN channel must have returned
                 # rows. Score>1.0 does NOT distinguish live/dead (a
                 # dead column still yields 12–26 from non-embedding
                 # features alone; the reviewer proved this). KNN rows
@@ -223,7 +223,7 @@ async def main() -> None:
             "cases": out_cases,
         }
 
-        # ---- phase 5c: FULL recommend parity (frozen instant) ----
+        # ---- FULL recommend parity (frozen instant) ----
         # Seeds carry recency drift; the recorded uvec is frozen so the
         # Rust replay is deterministic; the pytest also runs a fresh
         # live-vs-live compare (no fixture drift possible there).

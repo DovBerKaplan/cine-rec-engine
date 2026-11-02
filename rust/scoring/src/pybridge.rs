@@ -103,8 +103,8 @@ fn opt_f64(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Option<f64>> {
 /// option — Python's set() compares VALUES (None == None, equal
 /// strings match), the set SIZE enters the Jaccard/Dice denominators,
 /// and cast/crew lists are sliced [:5] BEFORE any filtering could run,
-/// so silent skipping produced wrong-but-plausible scores (found by
-/// the phase-2 review, repro cases pinned in the bridge tests).
+/// so silent skipping produced wrong-but-plausible scores (repro
+/// cases pinned in the bridge tests).
 fn str_list(obj: &Bound<'_, PyAny>, key: &str) -> PyResult<Vec<String>> {
     items_of(obj, key, "strings", |item| {
         item.extract::<String>()
