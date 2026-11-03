@@ -35,7 +35,8 @@ fn set_normalized(key: &str, v: Value) -> Value {
     if key == "genres" {
         match v {
             Value::Array(mut a) => {
-                a.sort();
+                // serde_json::Value is not Ord — order by its Display form
+                a.sort_by(|x, y| x.to_string().cmp(&y.to_string()));
                 Value::Array(a)
             }
             other => other,
