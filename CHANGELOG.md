@@ -20,6 +20,13 @@ versions follow [SemVer](https://semver.org/).
   `language=en-US`, making canonical English labels the contract (see
   `docs/data.md`). Catalogs with Hebrew genre labels should re-sync
   genres via the standard pipeline.
+- **The embedding-space registry ships only public entries.** Spaces
+  tied to one deployment's private encoders no longer resolve —
+  `model=` / `vector_space=` values that named them now return 400.
+  The registry keeps `ensemble`, `original` (the base `embedding`
+  column), and `minilm` (the public reference encoder); registering
+  your own space is a one-line entry in `model_spaces.REC_MODELS`
+  (name → column; see `models/README.md`).
 
 ### Added — the optional compiled engine core
 - An optional Rust extension (`_scoring_rs` + `_service_rs`) now ships
@@ -289,11 +296,12 @@ versions follow [SemVer](https://semver.org/).
 ## [0.11.1] — 2026-10-09
 
 ### Fixed — model-registry back-compat
-- **Legacy model keys resolve again**: `v4b` is an alias of `v4`, and
-  `original` is a first-class entry (the base `embedding` column, the
-  same key `CINE_REC_EMBEDDING=original` names). A deployment that
-  stored model choices under pre-package names no longer silently
-  degrades those users to the default after upgrading.
+- **Legacy model keys resolve again**: registered spaces resolve by
+  name (case-insensitive), and `original` is a first-class entry (the
+  base `embedding` column, the same key `CINE_REC_EMBEDDING=original`
+  names). A deployment that stored model choices under pre-package
+  names no longer silently degrades those users to the default after
+  upgrading.
 - **`v4` solo cosine weight corrected 10.0 → 26.0** — the strong-space
   default every other embedding column already carries; 10.0 was the
   lightweight-space price and weakened solo `v4` requests.
@@ -489,7 +497,7 @@ versions follow [SemVer](https://semver.org/).
   first request, no nightly cron required. One freshness probe per
   request, at most one rebuild per `USER_VECTOR_MAX_AGE_HOURS` window
   (default 24h, env `CINE_REC_USER_VECTOR_MAX_AGE_HOURS`) per user.
-  A registered-model space (`model_spaces.REC_MODELS`, e.g. `e5e`)
+  A registered-model space (`model_spaces.REC_MODELS`, e.g. `minilm`)
   rebuilds from its own embedding column. Every failure mode degrades
   to "no vector" — never an error on the request path.
 
@@ -602,15 +610,15 @@ versions follow [SemVer](https://semver.org/).
 
 ## [0.5.2] — 2026-09-28
 
-### Demo v2 — bot-grade recommendations in the browser
-The demo gap vs the production bot was data, not engine: the old 400-title
+### Demo v2 — production-grade recommendations in the browser
+The demo gap vs the production deployment was data, not engine: the old 400-title
 pool had no embeddings (bigram-cosine fallback) and its TMDB rec edges
 pointed outside the pool (the strongest feature, dead). v2 ships:
 - a RECOMMENDATION-CLOSED catalog (830 titles, 16,600 in-pool rec edges —
   every title's "people also watched" is inside the pool)
 - bundled MiniLM (384d, public encoder) embeddings for all 830 titles →
   real semantic cosine + the KNN recall channel live, no API/model needed
-- demo output now matches bot character: TDK → Batman Begins / Memento /
+- demo output now matches production character: TDK → Batman Begins / Memento /
   Insomnia with "same saga · same director · shared cast"
 - eval runs in the same same-medium recall mode as production (the
   cross-media genre branch popularity-cuts classics — an eval artifact
@@ -828,7 +836,8 @@ production system that serves it daily.
   decay), companies, networks, collections, cached TMDB behavioral
   recommendations, pgvector KNN (optional).
 - 22-feature learned scorer; fitted weights published in
-  `cine_rec_engine/weights.json` (pairwise logistic regression, 6,650 pairs).
+  `cine_rec_engine/weights.json` (pairwise logistic regression, thousands
+  of curated pairs).
 - Per-user filtering: watched/rated exclusions and saga advancement over
   the schema's `user_watches` / `title_ratings` tables (swap in your own
   event tables by editing one SQL constant).

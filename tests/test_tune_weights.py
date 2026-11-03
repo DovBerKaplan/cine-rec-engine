@@ -312,14 +312,14 @@ class TestCustomWeightsLoader:
         art.write_text(json.dumps({
             "weights": {"cosine_sim": 9.5},
             "feature_names": ["cosine_sim"],
-            "cosine_blend": {"embedding_e5e": 0.8, "embedding_v4": 0.2,
+            "cosine_blend": {"embedding_minilm": 0.8, "embedding_legacy": 0.2,
                              "embedding_bad": 0.0},
         }))
         monkeypatch.setenv("CINE_REC_SCORER", "learned")
         monkeypatch.setenv("CINE_REC_WEIGHTS", str(art))
         importlib.reload(svc)
         # positive weights flow to the live module attribute; zero dropped
-        assert cfg.COSINE_BLEND == {"embedding_e5e": 0.8, "embedding_v4": 0.2}
+        assert cfg.COSINE_BLEND == {"embedding_minilm": 0.8, "embedding_legacy": 0.2}
 
     def test_artifact_without_blend_leaves_config_alone(self, monkeypatch, tmp_path):
         import cine_rec_engine.config as cfg

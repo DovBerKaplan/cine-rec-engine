@@ -152,10 +152,12 @@ VOTE_FLOOR_TV: int = 500
 
 
 # ----------------------------------------------------------------------------
-# Embedding space — "original" (384-dim MiniLM, column `embedding`) or
-# "v4b" (768-dim fine-tuned bge, column `embedding_v4`). All engine reads
-# (both KNN channels + the cosine feature) follow this switch; embeddings
-# are written by your encoder (models/README.md) with the canonical text.
+# Embedding space — "original" (the base 384-dim MiniLM column
+# `embedding`) or any name registered in model_spaces.REC_MODELS (the
+# public reference space is "minilm", column `embedding_minilm`). All
+# engine reads (both KNN channels + the cosine feature) follow this
+# switch; embeddings are written by your encoder (models/README.md)
+# with the canonical text.
 # ----------------------------------------------------------------------------
 import os
 
@@ -194,16 +196,15 @@ def env_int(name: str, default: int,
 
 
 REC_EMBEDDING_SPACE = os.getenv("CINE_REC_EMBEDDING", os.getenv("REC_EMBEDDING", "original"))
-# Bake-off spaces map to their embedding_<name> columns; "v4b" keeps its
-# historical name and "original" the legacy 384-dim column.
+# Spaces map to their embedding_<name> columns; "original" keeps the
+# legacy 384-dim column name `embedding`.
 EMBEDDING_COLUMN = {
-    "v4b": "embedding_v4",
     "original": "embedding",
 }.get(REC_EMBEDDING_SPACE, f"embedding_{REC_EMBEDDING_SPACE}")
 
 
 # Optional cosine blend across several embedding columns:
-#   REC_COSINE_BLEND="embedding_mpnetae:32.0,embedding_e5e:8.0,embedding_mpnetan:4.0"
+#   REC_COSINE_BLEND="embedding_minilm:8.0,embedding_legacy:2.0"
 # The final-score cosine becomes sum(w_i/sum(w) * cos_i) * cosine_sim_weight.
 # Retrieval (KNN) stays on EMBEDDING_COLUMN — the blend rescores candidates.
 def _parse_cosine_blend(raw: str) -> dict:

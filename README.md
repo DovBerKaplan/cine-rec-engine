@@ -145,7 +145,7 @@ no-history cold start (bring your own encoder via
 `/feedback` closes the loop: verified impression token + outcome
 (click/watch/skip/dislike) adjusts the user's weights transactionally —
 no trainer, no cron. User vectors rebuild on demand behind every
-endpoint. `model=e5e` runs a whole request in one embedding space.
+endpoint. `model=minilm` runs a whole request in one embedding space.
 
 ## Configuration
 
@@ -171,7 +171,7 @@ instantiate. Vars marked ⚙ are read once at process start.
 | `CINE_REC_REDIS_URL` | off | Redis result/history cache (falls back to in-process) |
 | `CINE_REC_IMPRESSION_SECRET` | random | fixed secret for feedback tokens — **set it when running more than one worker/replica**: each process otherwise signs with its own random secret, so tokens minted by one worker fail in another (a startup warning fires while unset) |
 | `CINE_REC_CORS_ORIGINS` | off | comma-separated allow-list |
-| `CINE_REC_API_KEYS` | off | comma-separated API keys — when set, every data route (both `/v1/*` and the bare aliases) requires `X-API-Key` or `Authorization: Bearer`; `/health` stays open. For anything richer, inject your own FastAPI dependency via `create_app(auth_dependency=...)` |
+| `CINE_REC_API_KEYS` | off | comma-separated API keys — when set, every `/v1/*` data route requires `X-API-Key` or `Authorization: Bearer`; `/health` stays open. For anything richer, inject your own FastAPI dependency via `create_app(auth_dependency=...)` |
 | `TMDB_API_KEY` | — | behavioral-graph sync (`ingest/`, `tmdb_recs.py`) |
 | ⚙ `CINE_REC_USER_TILT_ALPHA` / `CINE_REC_EXPLORE_SHARE` / `CINE_REC_SKIP_DECAY` / `CINE_REC_SKIP_DECAY_FLOOR` / `CINE_REC_USER_VECTOR_MAX_AGE_HOURS` | 0.15 / 0.12 / 0.9 / 0.05 / 24 | personalization tuning (`SKIP_DECAY_FLOOR` = the lower bound repeated skips can never push `w_item` past) |
 
@@ -316,7 +316,7 @@ published, and neither is hidden.
 ## The published weights
 
 `cine_rec_engine/weights.json` — 22 features fitted with pairwise
-logistic regression (6,650 training pairs). Opt in with
+logistic regression (thousands of curated pairs). Opt in with
 `CINE_REC_SCORER=learned`; features the artifact doesn't cover keep
 their heuristic coefficients (partial application). A few, to set the
 scale:
@@ -438,7 +438,7 @@ place — the saga filter pass needs it to stay off a catalog scan.
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) — personalization shipped in 0.3; v0.7 ships on-demand user vectors + the HTTP API/Docker service; next: controlled personalized item-to-item.
+See [ROADMAP.md](ROADMAP.md) — history-based personalization shipped in 0.3–0.4; on-demand user vectors + the HTTP API/Docker service shipped in 0.10; next: controlled personalized item-to-item.
 
 ## License
 

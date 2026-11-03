@@ -79,7 +79,7 @@ async def recommend_for_user(
     watched Rocky I blocks I AND recommends II via advancement.
 
     vector_space accepts a model key from model_spaces.REC_MODELS
-    (e.g. "e5e"): the vector, the ANN recall, and the scorer's
+    (e.g. "minilm"): the vector, the ANN recall, and the scorer's
     cosine all run in that space's embedding column for the whole
     request; unknown/absent → the default space.
     """

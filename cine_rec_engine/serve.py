@@ -9,7 +9,7 @@
     GET /metrics                    latency histogram, cache hit rate,
                                     recall-channel coverage (Prometheus text)
     GET /v1/similar?seed=155           item-to-item (optionally user-filtered)
-    GET /v1/similar?seed=155:movie,1396:tv&user_id=42&model=e5e
+    GET /v1/similar?seed=155:movie,1396:tv&user_id=42&model=minilm
     GET /v1/page?user_id=42&rows=...   composed rows (top_picks, because:<id>,
                                        hidden_gems, trending:<gid>, discover)
     GET /v1/by-text?q=space%20western  natural-language cold start

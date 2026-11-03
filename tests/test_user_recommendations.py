@@ -199,8 +199,8 @@ class TestRecommendForUserUserContext:
         assert out["vector_used"] is True
 
     async def test_solo_model_space_threads_one_column_end_to_end(self, monkeypatch):
-        """vector_space='e5e' must build/ensure, ANN-recall, and score in
-        the e5e column — a vector from one space searched against another
+        """vector_space='minilm' must build/ensure, ANN-recall, and score in
+        the minilm column — a vector from one space searched against another
         is a dimension mismatch."""
         from cine_rec_engine import service as svc
         from cine_rec_engine import user_vector as uv
@@ -240,11 +240,11 @@ class TestRecommendForUserUserContext:
 
         rec = svc.RecommendationService.__new__(svc.RecommendationService)
         rec.pool = FakePool()
-        await rec.recommend_for_user(42, vector_space="e5e")
+        await rec.recommend_for_user(42, vector_space="minilm")
 
-        assert ensured["space"] == "e5e"
-        assert ann["emb_column"] == "embedding_e5e"
-        assert captured["rec_model"] == "e5e"
+        assert ensured["space"] == "minilm"
+        assert ann["emb_column"] == "embedding_minilm"
+        assert captured["rec_model"] == "minilm"
 
 
 class _FakeConn:
@@ -374,8 +374,8 @@ class TestEnsureUserVector:
             return [0.5]
 
         monkeypatch.setattr(uv, "build_user_vector", fake_build)
-        await uv.ensure_user_vector(self._pool(row=None), 7, space="e5e")
-        assert calls == [("e5e", "embedding_e5e")]  # never the default column
+        await uv.ensure_user_vector(self._pool(row=None), 7, space="minilm")
+        assert calls == [("minilm", "embedding_minilm")]  # never the default column
 
     async def test_probe_failure_degrades_to_none(self, monkeypatch):
         from cine_rec_engine import user_vector as uv

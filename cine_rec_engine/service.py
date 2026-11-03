@@ -38,7 +38,6 @@ from .config import (
     COMPANY_SIMILARITY_WEIGHT,
     DIRECTOR_CHANNEL_BONUS,
     DIRECTOR_MATCH_BONUS,
-    EMBEDDING_COLUMN,
     GENRE_PRIORITY,
     NETWORK_MATCH_BONUS,
     POP_ACTION_PENALTY,
@@ -315,9 +314,7 @@ FEATURE_NAMES = [
 ]
 
 HEURISTIC_WEIGHTS = {
-    # Space-aware: compressed embedding spaces need a larger cosine voice
-    # in the blend to contribute equally.
-    "cosine_sim": 26.0 if EMBEDDING_COLUMN == "embedding_v4" else 10.0,
+    "cosine_sim": 10.0,
     "keyword_sim": 3.0,
     "cast_sim": 4.0,
     "genre_priority_sum": 0.5,
@@ -389,11 +386,11 @@ def _load_ensemble_config() -> None:
         HEURISTIC_WEIGHTS["shared_collection"] = float(w["collection_bonus"]) * 2
         HEURISTIC_WEIGHTS["company_sim"] = float(w["company_weight"])
         HEURISTIC_WEIGHTS["pop_action_leak"] = float(w["pop_action_penalty"])
-        rec_config_module.COSINE_BLEND = {
-            "embedding_mpnetae": float(w.get("w_mpnetae", 1.0)),
-            "embedding_e5e": float(w.get("w_e5e", 0.0)),
-            "embedding_mpnetan": float(w.get("w_mpnetan", 0.0)),
-        }
+        blend = cfg.get("cosine_blend")
+        if isinstance(blend, dict):
+            rec_config_module.COSINE_BLEND = {
+                str(k): float(v) for k, v in blend.items()
+            }
         logger.info(
             f"Ensemble config applied from {path}: blend={rec_config_module.COSINE_BLEND} "
             f"cosine={HEURISTIC_WEIGHTS['cosine_sim']}"

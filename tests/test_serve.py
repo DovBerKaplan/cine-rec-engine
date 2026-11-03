@@ -103,10 +103,10 @@ class TestSimilar:
         assert kwargs["exclude"] is not None  # None skips watched filtering
 
     def test_model_passthrough_and_validation(self, client):
-        r = client.get("/v1/similar", params={"seed": "155", "model": "e5e"})
+        r = client.get("/v1/similar", params={"seed": "155", "model": "minilm"})
         assert r.status_code == 200
         _, kwargs = client.service.similar_calls[-1]
-        assert kwargs["rec_model"] == "e5e"
+        assert kwargs["rec_model"] == "minilm"
 
         r = client.get("/v1/similar", params={"seed": "155", "model": "nope"})
         assert r.status_code == 400
@@ -135,11 +135,11 @@ class TestForUser:
         assert kwargs["include_why"] is False
 
     def test_model_maps_to_vector_space(self, client):
-        r = client.get("/v1/for-user/42", params={"model": "e5e",
+        r = client.get("/v1/for-user/42", params={"model": "minilm",
                                                "include_why": "true"})
         assert r.status_code == 200
         _, kwargs = client.service.user_calls[-1]
-        assert kwargs["vector_space"] == "e5e"
+        assert kwargs["vector_space"] == "minilm"
         assert kwargs["include_why"] is True
 
     def test_unknown_model_rejected(self, client):
