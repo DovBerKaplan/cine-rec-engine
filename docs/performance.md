@@ -40,19 +40,22 @@ the Python "skin" (serve.py, CLI, init) stays.
 
 | platform | wheel | notes |
 |---|---|---|
-| Linux x86_64 (manylinux) | **Rust ext** (cp310-abi3) | one wheel covers Python 3.10+ |
+| Linux x86_64 (manylinux_2_34) | **Rust ext** (cp310-abi3) | one wheel covers Python 3.10+; glibc ≥ 2.34 (Debian 12+/Ubuntu 22.04+) |
 | Linux aarch64 | **Rust ext** (cp310-abi3) | |
 | macOS arm64 | **Rust ext** (cp310-abi3) | built on `macos-latest` |
 | macOS x86_64 | **pure Python** | no Rust wheel is built for this arch — pip falls back |
-| Windows | **Rust ext** (cp310-abi3) | |
+| Windows | **pure Python** (for now) | compiled wheel built in CI but not published until it is smoke-tested |
 | any (sdist) | **pure Python** + rust/ source | self-build with: `maturin build --release` |
 
-The **pure-Python wheel is the canonical PyPI artifact** — that is
-what `pip install cine-rec-engine` gives you on every platform. The
-Rust-enhanced wheels are built by the `rust-wheels` GitHub workflow on
-tags and published as **release artifacts** on the GitHub release
-page; download the wheel for your platform and `pip install` it
-directly to get the extension from a wheel.
+`pip install cine-rec-engine` automatically picks the Rust-enhanced
+wheel where one exists (Linux x86_64/aarch64, macOS arm64) and falls
+back to the **pure-Python wheel** everywhere else — the pure wheel
+remains the canonical baseline and both expose the same API. The
+`rust-wheels` GitHub workflow builds the platform wheels on tags,
+smokes them, and publishes them to PyPI (the same GitHub release also
+carries them as downloadable assets). On an older base image than the
+glibc floor, pip reports "no matching distribution" for the compiled
+wheel — use a newer base or install the pure wheel explicitly.
 
 Forcing pure Python: `CINE_REC_SCORING_RS=0` in the environment.
 A missing or broken extension degrades silently — the engine always
