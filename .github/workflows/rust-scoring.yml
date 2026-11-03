@@ -120,7 +120,7 @@ jobs:
           toolchain: 1.91.1
       - name: Schema + demo data
         run: |
-          pip install -e ".[pg]"
+          pip install -e ".[dev,pg]"
           python - <<'PY'
           import asyncio, asyncpg, os
           DSN = os.environ["CINE_REC_INTEGRATION_DSN"]
