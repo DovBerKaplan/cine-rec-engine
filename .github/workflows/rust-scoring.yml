@@ -69,8 +69,7 @@ jobs:
           toolchain: 1.91.1
       - name: Schema + demo data
         run: |
-          pip install asyncpg loguru aiohttp
-          pip install -e . --no-deps
+          pip install -e .
           python - <<'PY'
           import asyncio, asyncpg, os, subprocess
           DSN = os.environ["CINE_REC_INTEGRATION_DSN"]
@@ -121,8 +120,7 @@ jobs:
           toolchain: 1.91.1
       - name: Schema + demo data
         run: |
-          pip install asyncpg loguru aiohttp
-          pip install -e . --no-deps
+          pip install -e .
           python - <<'PY'
           import asyncio, asyncpg, os
           DSN = os.environ["CINE_REC_INTEGRATION_DSN"]
