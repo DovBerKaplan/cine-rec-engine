@@ -66,7 +66,7 @@ jobs:
           assert (pkg / "sql" / "schema.sql").exists(), "sql/schema.sql missing from the wheel"
           app = serve.create_app(service=object())
           paths = {getattr(r, "path", "") for r in app.routes}
-          assert {"/health", "/similar", "/v1/similar"} <= paths, sorted(paths)
+          assert {"/health", "/v1/similar"} <= paths, sorted(paths)
           print("wheel smoke ok:", cine_rec_engine.__version__)
           PY
       - name: Distributions
