@@ -83,3 +83,36 @@ jobs:
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.python }}
           path: dist/*.whl
+
+  publish:
+    # Upload the compiled wheels to PyPI via Trusted Publishing (OIDC) —
+    # the same mechanism release.yml uses for the pure wheel. pip then
+    # picks the platform wheel automatically; unsupported platforms
+    # fall back to the pure wheel. The v1.0.0 sdist and pure wheel are
+    # already on PyPI (release.yml) — we add files to the same release,
+    # which PyPI allows; only NEW filenames are uploaded.
+    # Windows is EXCLUDED until its wheel gets a smoke (the smoke step
+    # skips Windows) — "we publish what we test".
+    needs: [sdist, wheels]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-ubuntu-latest-3.10
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-ubuntu-24.04-arm-3.10
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-macos-latest-3.10
+          path: dist
+      - name: Publish compiled wheels
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
