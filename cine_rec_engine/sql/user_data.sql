@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS user_genre_stats (
 CREATE TABLE IF NOT EXISTS user_vectors (
     user_id    bigint NOT NULL,
     persona_id smallint NOT NULL DEFAULT 0,
-    space      text    NOT NULL DEFAULT 'e5e',  -- encoder key (models/README.md)
+    space      text    NOT NULL DEFAULT 'original',  -- model_spaces key; default matches CINE_REC_EMBEDDING (the base embedding column)
     embedding  vector,                          -- unbounded dim: match your space
     weight     double precision NOT NULL DEFAULT 1.0,
     updated_at timestamptz NOT NULL DEFAULT now(),
