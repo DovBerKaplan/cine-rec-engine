@@ -54,7 +54,7 @@ jobs:
           fi
         shell: bash
 
-      - uses: dtolnay/rust-toolchain@1.91.1
+      - uses: dtolnay/rust-toolchain@1.120.0
         if: steps.skip.outputs.skip != 'true'
 
       - name: Build wheel (maturin)
