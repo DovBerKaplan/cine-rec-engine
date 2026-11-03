@@ -66,6 +66,12 @@ def test_compute_matches_python(case_name):
     assert abs(got["movie_ratio"] - case["movie_ratio"]) < 1e-12
     for i, (g, w) in enumerate(zip(got["results"], want)):
         for key in ROW_KEYS:
+            # genres: unordered aggregate (L-6 class, like director_ids)
+            if key == "genres":
+                assert sorted(g[key]) == sorted(w[key]), (
+                    f"{case_name}[{i}].{key}"
+                )
+                continue
             assert g[key] == w[key], f"{case_name}[{i}].{key}"
         assert abs(g["score"] - w["score"]) <= 1e-12, (
             f"{case_name}[{i}].score {g['score']} vs {w['score']}"
@@ -143,6 +149,9 @@ def test_recommend_full_live_vs_live():
     for i, (g, w) in enumerate(zip(got["results"], py["results"])):
         assert g["tmdb_id"] == w["tmdb_id"], f"row {i}"
         for key in ("title", "media_type", "genres"):
+            if key == "genres":
+                assert sorted(g[key]) == sorted(w[key]), f"row {i}.{key}"
+                continue
             assert g[key] == w[key], f"row {i}.{key}"
         # live-vs-live: scores drift ~1e-9 per 50ms between the two
         # runs (recency); 5e-7 is generous but still catches real bugs
