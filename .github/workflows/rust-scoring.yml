@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           # the extension installs only on >= 3.12 (sum() semantics)
           python-version: "3.12"
@@ -61,7 +61,7 @@ jobs:
       CINE_REC_INTEGRATION_DSN: postgresql://demo:demo@127.0.0.1:5432/demo
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
@@ -112,7 +112,7 @@ jobs:
       CINE_REC_INTEGRATION_DSN: postgresql://demo:demo@127.0.0.1:5432/demo
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
