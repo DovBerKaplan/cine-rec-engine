@@ -73,7 +73,7 @@ jobs:
           # sys.path so we import the INSTALLED wheel, not the repo copy
           python -I -c "
           from cine_rec_engine import _scoring_rs
-          print('extension:', _scoring_rs.VERSION)
+          print('extension:', _scoring_rs.__version__)
           from cine_rec_engine.service import RecommendationService
           print('service OK')
           "
