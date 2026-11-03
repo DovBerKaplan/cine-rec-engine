@@ -87,16 +87,22 @@ fn assert_row_matches(py: &Value, rs: &CandidateRow, ctx: &str) {
         get("release_year").and_then(Value::as_i64),
         "{ctx}: release_year — INT4 decode regression?"
     );
+    // genres arrive via an unordered aggregate — element order is
+    // plan-dependent between runs (the L-6 class, like director_ids),
+    // so the parity contract is the SET, not the order.
+    let mut genres_got = rs.genres.clone();
+    genres_got.sort();
+    let mut genres_want: Vec<String> = get("genres")
+        .and_then(Value::as_array)
+        .map(|a| a
+            .iter()
+            .filter_map(|g| g.as_str().map(String::from))
+            .collect())
+        .unwrap_or_default();
+    genres_want.sort();
     assert_eq!(
-        rs.genres,
-        get("genres")
-            .and_then(Value::as_array)
-            .map(|a| a
-                .iter()
-                .filter_map(|g| g.as_str().map(String::from))
-                .collect::<Vec<String>>())
-            .unwrap_or_default(),
-        "{ctx}: genres"
+        genres_got, genres_want,
+        "{ctx}: genres (set-compare — order is plan-dependent)"
     );
     assert_eq!(
         rs.via.as_deref(),
