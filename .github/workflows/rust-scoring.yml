@@ -18,7 +18,7 @@ jobs:
   bridge:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           # the extension installs only on >= 3.12 (sum() semantics)
@@ -60,7 +60,7 @@ jobs:
     env:
       CINE_REC_INTEGRATION_DSN: postgresql://demo:demo@127.0.0.1:5432/demo
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -111,7 +111,7 @@ jobs:
     env:
       CINE_REC_INTEGRATION_DSN: postgresql://demo:demo@127.0.0.1:5432/demo
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
