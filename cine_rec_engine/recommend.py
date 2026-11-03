@@ -56,6 +56,7 @@ async def recommend_for_user(
     include_why: bool = False,
     explore: Optional[float] = None,
     user_context: Optional[dict] = None,
+    sync_mode: Optional[str] = None,
 ) -> dict:
     """§F end-to-end: user_id in, personalized list out.
 
@@ -168,6 +169,7 @@ async def recommend_for_user(
         user_context=user_context,
         extra_factory=extra_factory,
         extra_limit=60,
+        sync_mode=sync_mode,
     )
 
     why: dict = {}

@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [1.1.0] — 2026-11-03
+
+### Added — non-blocking on-demand TMDB sync (first-press latency)
+- **`CINE_REC_SYNC_MODE=background`**: the first press of a cold seed no
+  longer waits for the TMDB fetch inside the answer. The engine serves
+  immediately from the channels that don't need the behavioral graph
+  (genre+popularity, KNN, auteur) and warms the seed fire-and-forget
+  (same Redis fetch-lock, negative cache, and per-seed timeout as the
+  inline path); the next press finds the channel active. The behavioral
+  channel degrades to empty for that one answer — exactly the documented
+  behavior for a seed with no TMDB key. The default stays `blocking`
+  (the historical inline await), and `serve` drains in-flight warm-ups
+  (bounded) on shutdown. Per-request `sync_mode=`/`sync_mode` overrides
+  on `find_similar` and `recommend_for_user`; invalid values fail
+  loudly at boot/request (the `env_choice` config contract).
+
 ## [1.0.0] — 2026-11-04
 
 ### Breaking

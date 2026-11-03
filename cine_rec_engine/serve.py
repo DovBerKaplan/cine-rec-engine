@@ -188,6 +188,15 @@ def create_app(
                     "tokens die on restart. Set a fixed secret in production."
                 )
         yield
+        # Background TMDB warm-ups (CINE_REC_SYNC_MODE=background) are
+        # bounded per fetch; give them a short best-effort window before
+        # the loop goes down so a shutdown doesn't drop a sync mid-flight.
+        try:
+            from .tmdb_recs import drain_background_syncs
+
+            await drain_background_syncs(timeout=10)
+        except Exception:
+            pass
         if app.state.owns_pool:
             await app.state.service.pool.close()
 

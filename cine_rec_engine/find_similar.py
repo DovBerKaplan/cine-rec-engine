@@ -26,6 +26,7 @@ from .config import (
     KNN_CANDIDATES_PER_SEED,
     MMR_ENABLED,
     MMR_LAMBDA,
+    SYNC_MODE,
 )
 from .model_spaces import REC_MODELS, normalize_model
 from .queries import (
@@ -46,7 +47,27 @@ from .scoring import (
     optimize_candidate_selection,
     semantic_overview_similarity_batch,
 )
-from .tmdb_recs import ensure_seeds_synced
+from .tmdb_recs import ensure_seeds_synced, start_background_sync
+
+
+async def _dispatch_seed_sync(pool, seeds: List[Tuple[int, str]], mode: str) -> None:
+    """Step 1.5: route the on-demand TMDB sync per sync mode.
+
+    "blocking" (default) awaits the rate-bounded inline sync so the
+    behavioral channel is part of THIS answer — a failure degrades to
+    a debug log, the historical contract. "background" spawns the
+    fire-and-forget warm-up: this answer runs without the behavioral
+    channel (it degrades to empty, exactly like a seed with no TMDB
+    key) and the next press finds the seed warm.
+    """
+    if mode == "background":
+        start_background_sync(pool, seeds)
+        return
+    try:
+        await ensure_seeds_synced(pool, seeds)
+    except Exception as e:
+        logger.debug(f"Recommendation: on-demand TMDB sync failed: {e}")
+
 
 async def find_similar(
     svc,
@@ -67,6 +88,7 @@ async def find_similar(
     filters: Optional[dict] = None,
     explore: Optional[float] = None,
     user_context: Optional[dict] = None,
+    sync_mode: Optional[str] = None,
 ) -> List[dict]:
     """Find similar movies/series, ranked by score.
 
@@ -139,6 +161,13 @@ async def find_similar(
             request — the shared cache stays user-agnostic). The
             seed's relevance stays primary; this reorders near-ties,
             never the candidate pool. Explicit `exclude` kept.
+        sync_mode: On-demand TMDB sync for cold seeds — "blocking"
+            (default, the CINE_REC_SYNC_MODE env value) awaits the
+            fetch inline so the behavioral channel is part of THIS
+            answer; "background" answers immediately from the other
+            channels and warms the seed fire-and-forget for the next
+            press. Only affects a seed's very first query (cache hits
+            and warm seeds never wait).
 
     Returns:
         List of dicts sorted by score (descending), each containing:
@@ -182,6 +211,12 @@ async def find_similar(
     explore_share = EXPLORE_SHARE if explore is None else float(explore)
     if not 0.0 <= explore_share <= 0.5:
         raise ValueError(f"explore must be in [0.0, 0.5], got {explore}")
+    # On-demand TMDB sync mode — same resolution pattern as explore:
+    # per-request override on top of the process default.
+    resolved_sync_mode = SYNC_MODE if sync_mode is None else sync_mode
+    if resolved_sync_mode not in ("blocking", "background"):
+        raise ValueError(
+            f"sync_mode must be 'blocking' or 'background', got {sync_mode!r}")
 
     # Normalize input and extract per-seed media_types
     seed_media_types: dict[int, str] = {}
@@ -380,11 +415,12 @@ async def find_similar(
 
     # 1.5 On-demand TMDB sync: seeds without locally cached behavioral
     #     recommendations get them fetched now (bounded, rate-limited).
-    #     After the first query of a seed this is a no-op DB check.
-    try:
-        await ensure_seeds_synced(svc.pool, [(s["id"], s["media_type"]) for s in seed_infos])
-    except Exception as e:
-        logger.debug(f"Recommendation: on-demand TMDB sync failed: {e}")
+    #     After the first query of a seed this is a no-op DB check;
+    #     background mode moves a cold seed's first press off the
+    #     request path (see _dispatch_seed_sync).
+    await _dispatch_seed_sync(
+        svc.pool, [(s["id"], s["media_type"]) for s in seed_infos],
+        resolved_sync_mode)
 
     # 2. Generate candidates per seed in parallel, then union.
     #    Four recall paths per seed: classic genre+popularity, pgvector

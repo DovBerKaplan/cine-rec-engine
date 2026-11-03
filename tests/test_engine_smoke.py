@@ -44,7 +44,7 @@ def test_find_similar_signature():
     sig = inspect.signature(RecommendationService.find_similar)
     expected = (
         "tmdb_id", "limit", "randomness", "allow_cross_media",
-        "seed_weights", "rec_model", "user_id",
+        "seed_weights", "rec_model", "user_id", "sync_mode",
     )
     for expected in expected:
         assert expected in sig.parameters

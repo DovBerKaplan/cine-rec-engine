@@ -173,6 +173,7 @@ instantiate. Vars marked ⚙ are read once at process start.
 | `CINE_REC_CORS_ORIGINS` | off | comma-separated allow-list |
 | `CINE_REC_API_KEYS` | off | comma-separated API keys — when set, every `/v1/*` data route requires `X-API-Key` or `Authorization: Bearer`; `/health` stays open. For anything richer, inject your own FastAPI dependency via `create_app(auth_dependency=...)` |
 | `TMDB_API_KEY` | — | behavioral-graph sync (`ingest/`, `tmdb_recs.py`) |
+| ⚙ `CINE_REC_SYNC_MODE` | `blocking` | on-demand TMDB sync for a cold seed: `blocking` awaits the fetch inline (the behavioral channel is part of that first answer); `background` answers immediately from the other channels and warms the seed fire-and-forget for the next press. For long-lived hosts (serve, an in-process bot) — a one-shot `asyncio.run` context may tear the loop down before the sync lands. Per-request `sync_mode=` overrides both calls |
 | ⚙ `CINE_REC_USER_TILT_ALPHA` / `CINE_REC_EXPLORE_SHARE` / `CINE_REC_SKIP_DECAY` / `CINE_REC_SKIP_DECAY_FLOOR` / `CINE_REC_USER_VECTOR_MAX_AGE_HOURS` | 0.15 / 0.12 / 0.9 / 0.05 / 24 | personalization tuning (`SKIP_DECAY_FLOOR` = the lower bound repeated skips can never push `w_item` past) |
 
 ### Bring your own tables

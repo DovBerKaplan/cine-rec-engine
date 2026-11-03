@@ -91,7 +91,7 @@ Any loader that fills the schema works:
 | genre + popularity | `tmdb_movies`/`tmdb_tv` + genre maps | ✅ core |
 | keywords / cast / crew | keyword + cast + crew bridges, `tmdb_people` | ✅ core |
 | companies / networks | company bridges, `tmdb_tv_networks_map` | recommended |
-| TMDB behavioral recs | `tmdb_recommendations` (auto-synced by the engine too, with `TMDB_API_KEY`) | recommended — strongest single feature |
+| TMDB behavioral recs | `tmdb_recommendations` (auto-synced by the engine too, with `TMDB_API_KEY`) | recommended — strongest single feature; the on-demand sync is inline (`blocking`, default) or fire-and-forget (`CINE_REC_SYNC_MODE=background`) |
 | vector KNN + cosine | `embedding_*` columns (see `models/README.md`) | optional — add your own to the view |
 
 Everything optional degrades silently: missing pieces turn features off,

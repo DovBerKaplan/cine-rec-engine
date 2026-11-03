@@ -195,6 +195,19 @@ def env_int(name: str, default: int,
     return val
 
 
+def env_choice(name: str, default: str, choices: tuple) -> str:
+    """Parse a closed-vocabulary env var once, at import. Empty/unset
+    means `default`; anything outside `choices` raises with the variable
+    NAMED — same loud-at-boot contract as env_int."""
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    if raw not in choices:
+        raise ValueError(
+            f"{name}={raw!r}: expected one of {', '.join(choices)}")
+    return raw
+
+
 REC_EMBEDDING_SPACE = os.getenv("CINE_REC_EMBEDDING", os.getenv("REC_EMBEDDING", "original"))
 # Spaces map to their embedding_<name> columns; "original" keeps the
 # legacy 384-dim column name `embedding`.
@@ -239,6 +252,17 @@ USER_VECTOR_MAX_AGE_HOURS = float(
 # dominant tastes. The default matches the historical behavior (no
 # artificial cap beyond find_similar's MAX_SEEDS).
 USER_SEEDS = env_int("CINE_REC_USER_SEEDS", 20, lo=1, hi=20)
+
+
+# On-demand TMDB sync (first press of a cold seed). "blocking" — the
+# historical default — awaits the TMDB fetch inside the request so the
+# behavioral channel is already part of that first answer. "background"
+# answers immediately from the channels that don't need the behavioral
+# graph and warms the seed fire-and-forget for the NEXT press. Background
+# mode targets long-lived hosts (serve, an in-process bot): a one-shot
+# asyncio.run context may tear the loop down before the sync lands.
+# Per-request `sync_mode=` overrides; bad values fail loudly at boot.
+SYNC_MODE = env_choice("CINE_REC_SYNC_MODE", "blocking", ("blocking", "background"))
 
 
 

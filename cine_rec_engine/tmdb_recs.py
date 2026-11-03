@@ -10,7 +10,11 @@ dependency.
 Two sync paths:
 - **On demand**: the first time the recommendation engine uses a seed, its
   top-20 TMDB recommendations are fetched (bounded timeout) and stored.
-  Subsequent queries hit the local table only.
+  Subsequent queries hit the local table only. The on-demand sync runs
+  inline in the request (blocking — the default) or fire-and-forget in
+  the background (`CINE_REC_SYNC_MODE=background`), which answers from
+  the other channels first and warms the seed for the next press —
+  see `start_background_sync`.
 - **Daily bulk**: a Celery task backfills popular titles that were never
   queried, a batch per day.
 
@@ -23,7 +27,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 import aiohttp
 from loguru import logger
@@ -304,3 +308,67 @@ async def ensure_seeds_synced(
     finally:
         if owns_session and session is not None:
             await session.close()
+
+
+# --- Background (fire-and-forget) on-demand sync -------------------------
+# Strong references to in-flight warm-up tasks: the asyncio docs' GC rule —
+# a task nothing holds onto can be collected mid-flight. The set is the
+# only registry; tasks discard themselves on completion.
+_BACKGROUND_SYNC_TASKS: Set["asyncio.Task"] = set()
+
+
+def start_background_sync(
+    pool, seeds: Iterable[Tuple[int, str]]
+) -> Optional[asyncio.Task]:
+    """Fire-and-forget variant of `ensure_seeds_synced`.
+
+    Used by the engine in `CINE_REC_SYNC_MODE=background`: the current
+    answer is served immediately from the channels that don't need the
+    behavioral graph, and this task warms the seed for the NEXT press.
+    The sync itself (own aiohttp session, Redis fetch-lock, negative
+    cache) is exactly the inline path.
+
+    Returns the spawned task, or None when there is nothing to do (no
+    TMDB key / no seeds) or no running event loop to host the task —
+    one-shot hosts simply stay cold until a long-lived process syncs.
+    Never raises: a background warm-up failure degrades to precisely
+    the cold-seed state the caller already handles.
+    """
+    seed_list = list(seeds)
+    if not TMDB_API_KEY or not seed_list:
+        return None
+
+    async def _bg() -> None:
+        try:
+            await ensure_seeds_synced(pool, seed_list)
+        except Exception as e:  # degrade, never fail — same contract inline
+            logger.debug(f"tmdb_recs: background sync failed: {e}")
+
+    try:
+        task = asyncio.create_task(_bg(), name="tmdb-recs-background-sync")
+    except RuntimeError:
+        logger.debug("tmdb_recs: background sync skipped — no running loop")
+        return None
+    _BACKGROUND_SYNC_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_SYNC_TASKS.discard)
+    return task
+
+
+async def drain_background_syncs(timeout: float = 30.0) -> int:
+    """Wait (bounded) for in-flight background syncs to finish.
+
+    Best-effort shutdown hook for long-lived hosts (serve lifespan) and
+    the deterministic knob for tests. Returns how many syncs were
+    pending at call time; on timeout the stragglers keep running — each
+    is already bounded by FETCH_TIMEOUT_SECONDS.
+    """
+    pending = [t for t in list(_BACKGROUND_SYNC_TASKS) if not t.done()]
+    if not pending:
+        return 0
+    _, still_pending = await asyncio.wait(pending, timeout=timeout)
+    if still_pending:
+        logger.debug(
+            f"tmdb_recs: drain returned with {len(still_pending)} "
+            f"background sync(s) still in flight"
+        )
+    return len(pending)

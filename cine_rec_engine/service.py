@@ -200,13 +200,14 @@ class RecommendationService:
         include_why: bool = False,
         explore: Optional[float] = None,
         user_context: Optional[dict] = None,
+        sync_mode: Optional[str] = None,
     ) -> dict:
         """§F end-to-end: user_id in, personalized list out:
         delegates to recommend.recommend_for_user."""
         return await _recommend.recommend_for_user(
             self, user_id, limit=limit, randomness=randomness,
             vector_space=vector_space, include_why=include_why,
-            explore=explore, user_context=user_context)
+            explore=explore, user_context=user_context, sync_mode=sync_mode)
 
     async def _seed_info_for(self, seed: tuple) -> Optional[dict]:
         """Full info dict for one (id, media_type) seed (why rendering).
@@ -238,6 +239,7 @@ class RecommendationService:
         filters=None,
         explore=None,
         user_context=None,
+        sync_mode=None,
     ):
         """Find similar movies/series, ranked by score: the
         full signature and docstring live in find_similar.py; thin
@@ -249,7 +251,8 @@ class RecommendationService:
             seed_vectors=seed_vectors, seed_info_override=seed_info_override,
             user_id=user_id, extra_candidates=extra_candidates,
             extra_factory=extra_factory, extra_limit=extra_limit,
-            filters=filters, explore=explore, user_context=user_context)
+            filters=filters, explore=explore, user_context=user_context,
+            sync_mode=sync_mode)
 
 
 # ---------------------------------------------------------------------------
