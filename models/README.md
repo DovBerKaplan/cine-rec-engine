@@ -24,15 +24,15 @@ title's plot. You produce them however you like, store them as
 from sentence_transformers import SentenceTransformer
 import asyncpg
 
-model = SentenceTransformer("intfloat/multilingual-e5-base")  # yours
+model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")  # yours
 pool = await asyncpg.create_pool(dsn)
-await pool.execute("ALTER TABLE tmdb_media ADD COLUMN embedding_e5e vector(768)")
+await pool.execute("ALTER TABLE tmdb_media ADD COLUMN embedding_minilm vector(384)")
 
 rows = await pool.fetch("SELECT id, media_type, overview_en FROM tmdb_media")
 for row in rows:
     vec = model.encode(row["overview_en"] or "")
     await pool.execute(
-        "UPDATE tmdb_media SET embedding_e5e = $1 WHERE id = $2 AND media_type = $3",
+        "UPDATE tmdb_media SET embedding_minilm = $1 WHERE id = $2 AND media_type = $3",
         vec.tolist(), row["id"], row["media_type"],
     )
 

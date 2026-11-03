@@ -1,0 +1,83 @@
+name: rust-wheels
+
+# Build Rust-enhanced wheels for the platform matrix.
+# The PURE-PYTHON wheel (release.yml) continues to work alongside —
+# users who install the pure wheel get the pure-Python engine; users
+# who install the Rust wheel get the extension active by default.
+on:
+  push:
+    tags: ["*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist (includes Rust source for self-builders)
+        run: |
+          pip install build
+          python -m build --sdist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # abi3: one wheel per platform covers all Python versions — the
+      # matrix above is for the BUILD step (maturin picks the right tag);
+      # with abi3-py310 we emit cp310-abi3-* wheels that work on 3.10+
+      - name: Skip duplicate abi3 builds
+        id: skip
+        run: |
+          # abi3: only build on 3.10 (the minimum); the wheel works on all
+          if [ "${{ matrix.python }}" != "3.10" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@1.91.1
+        if: steps.skip.outputs.skip != 'true'
+
+      - name: Build wheel (maturin)
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          pip install maturin
+          maturin build --release --out dist
+        env:
+          CARGO_BUILD_JOBS: "2"
+
+      - name: Wheel smoke test
+        if: steps.skip.outputs.skip != 'true' && runner.os != 'Windows'
+        run: |
+          pip install dist/*.whl --force-reinstall
+          python -c "
+          from cine_rec_engine import _scoring_rs
+          print('extension:', _scoring_rs.VERSION)
+          from cine_rec_engine.service import RecommendationService
+          print('service OK')
+          "
+
+      - uses: actions/upload-artifact@v4
+        if: steps.skip.outputs.skip != 'true'
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.python }}
+          path: dist/*.whl

@@ -25,55 +25,31 @@ REC_MODELS: dict = {
         "column": None,
         "cosine_weight": None,
     },
-    "e5e": {
-        "column": "embedding_e5e",
-        "cosine_weight": 26.0,
-    },
-    "mpnetae": {
-        "column": "embedding_mpnetae",
-        "cosine_weight": 26.0,
-    },
-    "mpnetan": {
-        "column": "embedding_mpnetan",
-        "cosine_weight": 26.0,
-    },
     "original": {
         # the base space — the plain `embedding` column that
         # CINE_REC_EMBEDDING=original selects; lightweight default.
         "column": "embedding",
         "cosine_weight": 10.0,
     },
-    "v4": {
-        "column": "embedding_v4",
-        "cosine_weight": 26.0,
+    "minilm": {
+        # the public reference encoder (all-MiniLM-L6-v2, 384-dim) —
+        # the space the bundled demo ships and the public benchmark
+        # uses. Registered here as the worked example of the
+        # name → embedding_<name> convention.
+        "column": "embedding_minilm",
+        "cosine_weight": 10.0,
     },
 }
 
-# Back-compat for stored model choices from deployments that predate the
-# package (or forked from it): legacy keys resolve to their canonical
-# entry so a saved /set_model-style choice never silently degrades to
-# the default after an upgrade. Aliases are name-level — the entry they
-# point to carries the column and weight.
-MODEL_ALIASES: dict = {
-    "v4b": "v4",
-}
-
-
-def _canonical(key: str) -> str:
-    return MODEL_ALIASES.get(key, key)
-
 
 def normalize_model(name: Optional[str]) -> Optional[str]:
-    """Case-insensitive match against REC_MODELS (aliases included), or None."""
+    """Case-insensitive match against REC_MODELS, or None."""
     if not name:
         return None
     low = name.strip().lower()
     for key in REC_MODELS:
         if key.lower() == low:
             return key
-    for alias, canonical in MODEL_ALIASES.items():
-        if alias.lower() == low:
-            return canonical
     return None
 
 
@@ -86,7 +62,7 @@ def column_for(space: Optional[str]) -> Optional[str]:
     or a vector built from one column gets searched against another.
     """
     if space:
-        spec = REC_MODELS.get(_canonical(space))
+        spec = REC_MODELS.get(space)
         if spec and spec["column"]:
             return spec["column"]
     return None
@@ -94,5 +70,5 @@ def column_for(space: Optional[str]) -> Optional[str]:
 
 def is_solo(model_key: str) -> bool:
     """True when the key selects a single embedding column."""
-    spec = REC_MODELS.get(_canonical(model_key))
+    spec = REC_MODELS.get(model_key)
     return bool(spec and spec["column"])

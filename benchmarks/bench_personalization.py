@@ -18,9 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-DSN = os.environ.get("BENCH_DSN") or os.environ.get(
-    "DATABASE_URL", "postgresql://localhost/postgres"
-)
+# DSN is set in main() from --dsn (argparse; no env fallback — safety)
 
 SCHEMA = (Path(__file__).parent.parent / "docs" / "schema.sql").read_text()
 USER_SQL = (Path(__file__).parent.parent / "docs" / "user_data.sql").read_text()
@@ -316,7 +314,24 @@ def _instrument_cache():
     C.get_cache = probed_get_cache
 
 
+def _parse_args():
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--dsn", required=True,
+                    help="ONE-SHOT database to wipe and seed (NOT your production DSN)")
+    ap.add_argument("--wipe", action="store_true",
+                    help="explicitly confirm the destructive schema wipe")
+    args = ap.parse_args()
+    if not args.wipe:
+        ap.error("--wipe is required: this bench DROPs the entire public schema. "
+                 "Point it at a throwaway DB and pass --wipe to confirm.")
+    return args
+
+
 async def main():
+    global DSN
+    args = _parse_args()
+    DSN = args.dsn
     import asyncpg
     from cine_rec_engine import RecommendationService
 

@@ -4,6 +4,48 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## [1.0.0] — 2026-11-04
+
+### Breaking
+- **The bare pre-1.0 HTTP aliases are removed.** `/similar`, `/page`,
+  `/by-text`, `/feedback`, and `/for-user/{id}` — deprecated aliases of
+  the `/v1/*` routes since 0.14.0 — now return 404, exactly as
+  `docs/stability.md` promised. `/v1/*` are the only data paths, and
+  the OpenAPI spec no longer lists the aliases. Migrate by prefixing
+  the five data routes with `/v1`.
+- **Hebrew genre labels no longer normalized.** The `GENRE_LABELS_EN`
+  mapping (27 Hebrew→English genre translations) is removed from both
+  the Python engine and the Rust scoring extension. Genre labels are
+  now used as stored — the ingest pipeline syncs `genre/list` with
+  `language=en-US`, making canonical English labels the contract (see
+  `docs/data.md`). Catalogs with Hebrew genre labels should re-sync
+  genres via the standard pipeline.
+- **The embedding-space registry ships only public entries.** Spaces
+  tied to one deployment's private encoders no longer resolve —
+  `model=` / `vector_space=` values that named them now return 400.
+  The registry keeps `ensemble`, `original` (the base `embedding`
+  column), and `minilm` (the public reference encoder); registering
+  your own space is a one-line entry in `model_spaces.REC_MODELS`
+  (name → column; see `models/README.md`).
+
+### Added — the optional compiled engine core
+- An optional Rust extension (`_scoring_rs` + `_service_rs`) now ships
+  alongside the pure-Python engine: the scoring hot loop, the recall
+  fan-out, and the per-user passes run in Rust, with output parity
+  locked by golden-vector and live-parity harnesses (`rust/`). The
+  pure-Python implementation remains the reference implementation and
+  the universal fallback — a missing, broken, or version-mismatched
+  extension degrades silently, and `CINE_REC_SCORING_RS=0` forces the
+  pure path. Measured effect and the full wheel policy:
+  `docs/performance.md` (~1.5× on the pair-scoring path; 5-seed
+  end-to-end −17% in the shipped benchmark).
+- Platform wheels carrying the extension (Linux x86_64/aarch64, macOS
+  arm64, Windows; abi3, one wheel per platform for Python 3.10+) are
+  built by CI on tags and published as release artifacts. The sdist
+  now includes the full `rust/` source, so anyone with a Rust
+  toolchain can self-build the extension; the pure-Python wheel stays
+  the canonical PyPI artifact.
+
 ## [0.16.0] — 2026-10-30
 
 ### Changed — the per-user request path runs its reads in parallel
@@ -254,11 +296,12 @@ versions follow [SemVer](https://semver.org/).
 ## [0.11.1] — 2026-10-09
 
 ### Fixed — model-registry back-compat
-- **Legacy model keys resolve again**: `v4b` is an alias of `v4`, and
-  `original` is a first-class entry (the base `embedding` column, the
-  same key `CINE_REC_EMBEDDING=original` names). A deployment that
-  stored model choices under pre-package names no longer silently
-  degrades those users to the default after upgrading.
+- **Legacy model keys resolve again**: registered spaces resolve by
+  name (case-insensitive), and `original` is a first-class entry (the
+  base `embedding` column, the same key `CINE_REC_EMBEDDING=original`
+  names). A deployment that stored model choices under pre-package
+  names no longer silently degrades those users to the default after
+  upgrading.
 - **`v4` solo cosine weight corrected 10.0 → 26.0** — the strong-space
   default every other embedding column already carries; 10.0 was the
   lightweight-space price and weakened solo `v4` requests.
@@ -454,7 +497,7 @@ versions follow [SemVer](https://semver.org/).
   first request, no nightly cron required. One freshness probe per
   request, at most one rebuild per `USER_VECTOR_MAX_AGE_HOURS` window
   (default 24h, env `CINE_REC_USER_VECTOR_MAX_AGE_HOURS`) per user.
-  A registered-model space (`model_spaces.REC_MODELS`, e.g. `e5e`)
+  A registered-model space (`model_spaces.REC_MODELS`, e.g. `minilm`)
   rebuilds from its own embedding column. Every failure mode degrades
   to "no vector" — never an error on the request path.
 
@@ -567,15 +610,15 @@ versions follow [SemVer](https://semver.org/).
 
 ## [0.5.2] — 2026-09-28
 
-### Demo v2 — bot-grade recommendations in the browser
-The demo gap vs the production bot was data, not engine: the old 400-title
+### Demo v2 — production-grade recommendations in the browser
+The demo gap vs the production deployment was data, not engine: the old 400-title
 pool had no embeddings (bigram-cosine fallback) and its TMDB rec edges
 pointed outside the pool (the strongest feature, dead). v2 ships:
 - a RECOMMENDATION-CLOSED catalog (830 titles, 16,600 in-pool rec edges —
   every title's "people also watched" is inside the pool)
 - bundled MiniLM (384d, public encoder) embeddings for all 830 titles →
   real semantic cosine + the KNN recall channel live, no API/model needed
-- demo output now matches bot character: TDK → Batman Begins / Memento /
+- demo output now matches production character: TDK → Batman Begins / Memento /
   Insomnia with "same saga · same director · shared cast"
 - eval runs in the same same-medium recall mode as production (the
   cross-media genre branch popularity-cuts classics — an eval artifact
@@ -793,7 +836,8 @@ production system that serves it daily.
   decay), companies, networks, collections, cached TMDB behavioral
   recommendations, pgvector KNN (optional).
 - 22-feature learned scorer; fitted weights published in
-  `cine_rec_engine/weights.json` (pairwise logistic regression, 6,650 pairs).
+  `cine_rec_engine/weights.json` (pairwise logistic regression, thousands
+  of curated pairs).
 - Per-user filtering: watched/rated exclusions and saga advancement over
   the schema's `user_watches` / `title_ratings` tables (swap in your own
   event tables by editing one SQL constant).

@@ -39,11 +39,11 @@ A content-based recommendation engine for movies & series: give it one title
 ```
    your data (TMDB mirror + user events)        what you get back
   ┌───────────────────────────────┐            ┌───────────────────────┐
-  │ PostgreSQL                          │            │ ranked similar titles     │
-  │  · tmdb_media + satellites          │            │  · score + why            │
-  │  · (optional) embeddings            │──engine──►│  · movies/series mix      │
-  │  · (optional) TMDB rec cache        │            │  · per-user filtering     │
-  │  · your watch/rating events         │            │  · saga advancement       │
+  │ PostgreSQL                    │            │ ranked similar titles │
+  │  · tmdb_media + satellites    │            │  · score + why        │
+  │  · (optional) embeddings      │──engine──► │  · movies/series mix  │
+  │  · (optional) TMDB rec cache  │            │  · per-user filtering │
+  │  · your watch/rating events   │            │  · saga advancement   │
   └───────────────────────────────┘            └───────────────────────┘
 ```
 
@@ -55,6 +55,10 @@ psql -d yourdb -f docs/schema.sql         # the tables it expects
 # no psql? same thing, idempotent, user layer included:
 cine-rec init --dsn postgresql://user:pw@localhost/yourdb
 ```
+
+Empty database, no catalog yet? Skip to [Feeding it data](#feeding-it-data)
+— or run the [demo](#try-it-in-60-seconds-no-api-key) with its bundled
+830-title catalog.
 
 ```python
 import asyncpg
@@ -119,10 +123,9 @@ curl 'localhost:8000/health'
 curl 'localhost:8000/metrics'   # latency histogram, cache hit rate, channel coverage (Prometheus text)
 ```
 
-`/v1/*` are the canonical paths; the bare paths (`/similar`, …) still
-work as deprecated aliases (served with `Deprecation` headers) and will
-be removed in 1.0 — the full contract is in
-[docs/stability.md](docs/stability.md). The service ships without users
+`/v1/*` are the only data paths — the bare pre-1.0 aliases (`/similar`,
+…) were deprecated since 0.14.0 and removed in 1.0.0 as
+[docs/stability.md](docs/stability.md) promised. The service ships without users
 or sessions: it is meant for an internal network or behind your own
 gateway, and `CINE_REC_API_KEYS` turns on static-key auth
 (`X-API-Key` or `Authorization: Bearer`) for every data route while
@@ -142,7 +145,7 @@ no-history cold start (bring your own encoder via
 `/feedback` closes the loop: verified impression token + outcome
 (click/watch/skip/dislike) adjusts the user's weights transactionally —
 no trainer, no cron. User vectors rebuild on demand behind every
-endpoint. `model=e5e` runs a whole request in one embedding space.
+endpoint. `model=minilm` runs a whole request in one embedding space.
 
 ## Configuration
 
@@ -163,11 +166,12 @@ instantiate. Vars marked ⚙ are read once at process start.
 | ⚙ `CINE_REC_COSINE_BLEND` | — | blend several embedding columns (`col:weight,col:weight`) |
 | ⚙ `CINE_REC_SCORER` | heuristic | `learned` = fitted weights (bundled, or `CINE_REC_WEIGHTS`) |
 | ⚙ `CINE_REC_WEIGHTS` | bundled | path to your own fitted artifact (`eval/tune_weights.py`) |
+| ⚙ `CINE_REC_SCORING_RS` | `1` | the optional compiled core: `1` (default) uses the Rust scoring/service extension when importable, `0` forces pure Python. A missing or broken extension always degrades silently ([docs/performance.md](docs/performance.md)) |
 | `CINE_REC_ENCODER` | — | `module:function` providing `/by-text` embeddings |
 | `CINE_REC_REDIS_URL` | off | Redis result/history cache (falls back to in-process) |
 | `CINE_REC_IMPRESSION_SECRET` | random | fixed secret for feedback tokens — **set it when running more than one worker/replica**: each process otherwise signs with its own random secret, so tokens minted by one worker fail in another (a startup warning fires while unset) |
 | `CINE_REC_CORS_ORIGINS` | off | comma-separated allow-list |
-| `CINE_REC_API_KEYS` | off | comma-separated API keys — when set, every data route (both `/v1/*` and the bare aliases) requires `X-API-Key` or `Authorization: Bearer`; `/health` stays open. For anything richer, inject your own FastAPI dependency via `create_app(auth_dependency=...)` |
+| `CINE_REC_API_KEYS` | off | comma-separated API keys — when set, every `/v1/*` data route requires `X-API-Key` or `Authorization: Bearer`; `/health` stays open. For anything richer, inject your own FastAPI dependency via `create_app(auth_dependency=...)` |
 | `TMDB_API_KEY` | — | behavioral-graph sync (`ingest/`, `tmdb_recs.py`) |
 | ⚙ `CINE_REC_USER_TILT_ALPHA` / `CINE_REC_EXPLORE_SHARE` / `CINE_REC_SKIP_DECAY` / `CINE_REC_SKIP_DECAY_FLOOR` / `CINE_REC_USER_VECTOR_MAX_AGE_HOURS` | 0.15 / 0.12 / 0.9 / 0.05 / 24 | personalization tuning (`SKIP_DECAY_FLOOR` = the lower bound repeated skips can never push `w_item` past) |
 
@@ -241,7 +245,7 @@ regression coverage across genres, decades and both media.
 
 Honest caveats: the pool is small (830 titles, recommendation-closed,
 with bundled MiniLM embeddings — `demo/data/`), recall runs in the same
-same-medium mode the bot uses, and the judgments are mechanically
+same-medium mode the production deployment uses, and the judgments are mechanically
 generated consensus, not human taste. Bring your own judgments file —
 the harness is in the repo. The same gates run on a laptop via
 `make test-integration` (throwaway pgvector + the live CI-class suite).
@@ -262,6 +266,16 @@ a 3,636-title catalog bootstrapped from the benchmark universe:
 | popularity (vote_count) | **0.96** | **0.16** | 0.00 |
 | keywords Jaccard | 0.33 | 0.03 | 0.27 |
 | **this engine** | 0.45 | 0.05 | 0.26 |
+
+> **Known measurement bias:** these numbers include the seed title
+> itself in each candidate ranking. The seed is by definition a title
+> the user rated highly, so methods that rank popular titles higher
+> (especially the popularity baseline's 0.96) get an artificial boost
+> from matching the seed against itself. Excluding seeds would lower
+> the baselines significantly (~30% for popularity). The engine's
+> number is less affected (it already excludes seeds in production
+> via the recall filters, but the eval harness doesn't). Re-running
+> with seed exclusion is a planned follow-up.
 
 Read it honestly: the ground truth here is *mass agreement* (movies
 the seed's lovers loved vs. disliked), and **popularity dominates that
@@ -302,7 +316,7 @@ published, and neither is hidden.
 ## The published weights
 
 `cine_rec_engine/weights.json` — 22 features fitted with pairwise
-logistic regression (6,650 training pairs). Opt in with
+logistic regression (thousands of curated pairs). Opt in with
 `CINE_REC_SCORER=learned`; features the artifact doesn't cover keep
 their heuristic coefficients (partial application). A few, to set the
 scale:
@@ -394,11 +408,15 @@ tests/              offline unit tests (no DB needed)
 ## Performance
 
 Measured on the synthetic 25k-title benchmark (`benchmarks/bench_e2e.py`,
-PostgreSQL 16, 2-core container): **cold single-seed ≈ 37 ms · warm
-(cache) 0.3 ms · 5-seed ≈ 81 ms**. The scorer runs ~37k (seed, candidate)
-pairs/second/core with outputs within 1 float ULP of the reference
-implementation (golden-vector tests). `benchmarks/bench_scoring.py`
-reproduces the hot-loop number without any database.
+PostgreSQL 16, 2-core container, cache off, fresh DB per run):
+**cold single-seed ≈ 48 ms pure Python / 47 ms with the optional Rust
+extension · warm (cache) 0.3 / 0.2 ms · 5-seed ≈ 89 / 74 ms**. The
+scorer runs ~37k (seed, candidate) pairs/second/core in pure Python
+with outputs within 1 float ULP of the reference implementation
+(golden-vector tests); `benchmarks/bench_scoring.py` reproduces the
+hot-loop number without any database. Full numbers, the HTTP-overhead
+measurement, and the compiled-extension wheel policy:
+[docs/performance.md](docs/performance.md).
 
 Personalized rows (`recommend_for_user`, 15–18 weighted seeds, same
 catalog plus embeddings + HNSW, `benchmarks/bench_personalization.py`):
@@ -420,7 +438,7 @@ place — the saga filter pass needs it to stay off a catalog scan.
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) — personalization shipped in 0.3; v0.7 ships on-demand user vectors + the HTTP API/Docker service; next: controlled personalized item-to-item.
+See [ROADMAP.md](ROADMAP.md) — history-based personalization shipped in 0.3–0.4; on-demand user vectors + the HTTP API/Docker service shipped in 0.10; next: controlled personalized item-to-item.
 
 ## License
 

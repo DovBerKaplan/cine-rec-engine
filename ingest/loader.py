@@ -386,19 +386,23 @@ class TmdbIngest:
                 [(media_id, int(c["id"])) for c in companies],
             )
 
-            if networks:
-                await db.executemany(conn,
-                    "INSERT INTO {t_tmdb_networks} (id, name) VALUES ($1, $2) "
-                    "ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name",
-                    [(int(n["id"]), n["name"]) for n in networks],
+            # tv-only bridge keyed by tv_id: a movie sharing the id with
+            # a series must never mirror (let alone empty) the series'
+            # networks (TMDB ids collide across media).
+            if not movie:
+                if networks:
+                    await db.executemany(conn,
+                        "INSERT INTO {t_tmdb_networks} (id, name) VALUES ($1, $2) "
+                        "ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name",
+                        [(int(n["id"]), n["name"]) for n in networks],
+                    )
+                await _sync_bridge(
+                    conn, tables.name("tmdb_tv_networks_map"), "tv_id", media_id, "network_id",
+                    [int(n["id"]) for n in networks],
+                    "INSERT INTO {t_tmdb_tv_networks_map} (tv_id, network_id) "
+                    "VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                    [(media_id, int(n["id"])) for n in networks],
                 )
-            await _sync_bridge(
-                conn, tables.name("tmdb_tv_networks_map"), "tv_id", media_id, "network_id",
-                [int(n["id"]) for n in networks],
-                "INSERT INTO {t_tmdb_tv_networks_map} (tv_id, network_id) "
-                "VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                [(media_id, int(n["id"])) for n in networks],
-            )
 
             await _sync_bridge(
                 conn, cast_table(movie), col, media_id, "person_id",

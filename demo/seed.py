@@ -1,4 +1,4 @@
-"""Load the bundled catalog dump (400 real TMDB titles) into the schema.
+"""Load the bundled catalog dump (830 real TMDB titles) into the schema.
 
 Uses the repo's own ingest upsert path — the demo data is exactly what
 `ingest` writes in production. Data: TMDB, en-US, attribution in README.

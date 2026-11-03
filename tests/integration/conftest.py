@@ -163,3 +163,14 @@ async def integration_env(integration_dsn):
         yield {"pool": pool, "service": service, "dsn": integration_dsn}
     finally:
         await pool.close()
+
+
+@pytest.fixture(autouse=True)
+def _reset_knn_latch():
+    """_KNN_DISABLED is a process-global SET that survives across
+    tests — a test that runs with a missing embedding column latches
+    'default' and silently kills the ANN for every later test. Clear
+    it before each test (the set is mutated in-place, not replaced)."""
+    from cine_rec_engine import queries
+    queries._KNN_DISABLED.clear()
+    yield

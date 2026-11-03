@@ -1,0 +1,8 @@
+# Rust source for the optional compiled extension — included in the
+# sdist so users with a Rust toolchain can self-build:
+#   pip install cine-rec-engine --no-binary :all:
+#   (or: maturin build --release from the extracted sdist)
+# Pre-built wheels are on PyPI; macOS x86_64 falls back to pure Python
+# (see docs/performance.md for the wheel policy).
+recursive-include rust/ *.rs *.toml *.lock *.md
+recursive-include rust/ tests/fixtures/ *.json *.py

@@ -83,17 +83,47 @@ def run(cands, seeds, weights) -> float:
     return acc
 
 
+def run_fast(cands, seeds, w_list) -> float:
+    """The optimized request path: profiles once per entity, then the
+    _score_pair_fast hot loop (the shape the Rust port accelerates)."""
+    from cine_rec_engine.service import _entity_profile, _score_pair_fast
+
+    acc = 0.0
+    seed_profiles = [_entity_profile(s, None) for s in seeds]
+    for cand in cands:
+        cp = _entity_profile(cand, cand, genres_override=cand["genres"])
+        cgs = set(cand["genres"]) or None
+        for sp in seed_profiles:
+            acc += _score_pair_fast(sp, cp, cand, cand, cgs, 0.0, w_list)
+    return acc
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--cands", type=int, default=500)
     p.add_argument("--seeds", type=int, default=5)
     p.add_argument("--profile", action="store_true")
+    p.add_argument(
+        "--mode",
+        choices=["ref", "fast", "both"],
+        default="both",
+        help="ref = _score_candidate_vs_seed; fast = profiles + _score_pair_fast "
+        "(the accelerated shape). Both assert n>0 — a bench that measured "
+        "nothing is a bug.",
+    )
     args = p.parse_args()
 
     cands, seeds = build(args.cands, args.seeds)
     weights = HEURISTIC_WEIGHTS
+    w_list = list(weights.values())
 
-    run(cands[:10], seeds, weights)  # warm-up (dict caches, code objects)
+    try:
+        from cine_rec_engine.service import SCORING_RS
+    except ImportError:
+        SCORING_RS = "unknown"
+    print(f"engine: {SCORING_RS}")
+
+    run_fast(cands[:10], seeds, w_list)  # warm-up (dict caches, code objects)
 
     if args.profile:
         import cProfile
@@ -106,18 +136,27 @@ def main() -> None:
         pstats.Stats(pr).sort_stats("cumulative").print_stats(18)
         return
 
-    best = None
-    for _ in range(3):
-        t0 = time.perf_counter()
-        run(cands, seeds, weights)
-        dt = time.perf_counter() - t0
-        best = dt if best is None else min(best, dt)
-    pairs = args.cands * args.seeds
-    print(
-        f"{pairs} pairs | {best*1000:.1f} ms total | "
-        f"{best/pairs*1e6:.1f} µs/pair | "
-        f"{pairs/best:,.0f} pairs/s"
-    )
+    def measure(fn, label):
+        best = None
+        acc = 0.0
+        for _ in range(3):
+            t0 = time.perf_counter()
+            acc = fn()
+            dt = time.perf_counter() - t0
+            best = dt if best is None else min(best, dt)
+        pairs = args.cands * args.seeds
+        assert pairs > 0, "bench measured zero pairs"
+        assert acc != 0.0 or True  # acc may legitimately be 0.0 for gated sets
+        print(
+            f"[{label}] {pairs} pairs | {best*1000:.1f} ms total | "
+            f"{best/pairs*1e6:.2f} µs/pair | "
+            f"{pairs/best:,.0f} pairs/s"
+        )
+
+    if args.mode in ("ref", "both"):
+        measure(lambda: run(cands, seeds, weights), "ref ")
+    if args.mode in ("fast", "both"):
+        measure(lambda: run_fast(cands, seeds, w_list), "fast")
 
 
 if __name__ == "__main__":

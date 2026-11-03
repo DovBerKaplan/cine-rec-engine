@@ -139,57 +139,25 @@ KEYWORDS_STYLE: dict[str, set[str]] = {
 # genre-overlap + popularity ordering of the classic recall path.
 KNN_CANDIDATES_PER_SEED: int = 60
 
-# Local catalog stores Hebrew genre labels ('מותחן', 'מסתורין') while the
-# scoring tables (GENRE_PRIORITY, style matching) use canonical English.
-# Map every label found in tmdb_genres so priority weighting actually fires.
-GENRE_LABELS_EN: dict[str, str] = {
-    "אימה": "Horror",
-    "אנימציה": "Animation",
-    "אקשן": "Action",
-    "אקשן והרפתקאות": "Action",
-    "דוקומנטרי": "Documentary",
-    "דיבורים": "Talk Show",
-    "דרמה": "Drama",
-    "הסטוריה": "History",
-    "הרפתקאות": "Adventure",
-    "חדשות": "News",
-    "ילדים": "Family",
-    "מדע בדיוני": "Science Fiction",
-    "מדע בדיוני ופנטזיה": "Science Fiction",
-    "מוסיקה": "Music",
-    "מותחן": "Thriller",
-    "מלחמה": "War",
-    "מלחמה ופוליטיקה": "War",
-    "מסתורין": "Mystery",
-    "מערבון": "Western",
-    "משפחה": "Family",
-    "סבון": "Soap",
-    "סרט טלויזיה": "TV Movie",
-    "פנטזיה": "Fantasy",
-    "פשע": "Crime",
-    "קומדיה": "Comedy",
-    "רומנטי": "Romance",
-    "ריאליטי": "Reality",
-}
-
 # Candidates below this many TMDB votes are dropped during pre-filtering —
 # thin-voted oddities (old/niche titles with a lucky 6.5) should not crowd
 # proven classics out of the shortlist.
 MIN_VOTE_COUNT: int = 500
 
-# Media-type-aware vote floors (channels AND the pre-filter). Measured on
-# a lower TV floor (100/200) widens series recall
-# but nets -0.2 (noise outweighs hits), so both stay 500 for now — the
-# plumbing remains so the split can be revisited with better tv embeddings.
+# Media-type-aware vote floors (channels AND the pre-filter). The split
+# exists so a tv-specific floor can diverge if the catalogs ever warrant
+# it; today both media share the same floor.
 VOTE_FLOOR_MOVIE: int = 500
 VOTE_FLOOR_TV: int = 500
 
 
 # ----------------------------------------------------------------------------
-# Embedding space — "original" (384-dim MiniLM, column `embedding`) or
-# "v4b" (768-dim fine-tuned bge, column `embedding_v4`). All engine reads
-# (both KNN channels + the cosine feature) follow this switch; embeddings
-# are written by scripts/eval/embed_catalog_v4.py with the canonical text.
+# Embedding space — "original" (the base 384-dim MiniLM column
+# `embedding`) or any name registered in model_spaces.REC_MODELS (the
+# public reference space is "minilm", column `embedding_minilm`). All
+# engine reads (both KNN channels + the cosine feature) follow this
+# switch; embeddings are written by your encoder (models/README.md)
+# with the canonical text.
 # ----------------------------------------------------------------------------
 import os
 
@@ -228,16 +196,15 @@ def env_int(name: str, default: int,
 
 
 REC_EMBEDDING_SPACE = os.getenv("CINE_REC_EMBEDDING", os.getenv("REC_EMBEDDING", "original"))
-# Bake-off spaces map to their embedding_<name> columns; "v4b" keeps its
-# historical name and "original" the legacy 384-dim column.
+# Spaces map to their embedding_<name> columns; "original" keeps the
+# legacy 384-dim column name `embedding`.
 EMBEDDING_COLUMN = {
-    "v4b": "embedding_v4",
     "original": "embedding",
 }.get(REC_EMBEDDING_SPACE, f"embedding_{REC_EMBEDDING_SPACE}")
 
 
 # Optional cosine blend across several embedding columns:
-#   REC_COSINE_BLEND="embedding_mpnetae:32.0,embedding_e5e:8.0,embedding_mpnetan:4.0"
+#   REC_COSINE_BLEND="embedding_minilm:8.0,embedding_legacy:2.0"
 # The final-score cosine becomes sum(w_i/sum(w) * cos_i) * cosine_sim_weight.
 # Retrieval (KNN) stays on EMBEDDING_COLUMN — the blend rescores candidates.
 def _parse_cosine_blend(raw: str) -> dict:

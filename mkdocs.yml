@@ -25,5 +25,7 @@ nav:
   - Data contract: data.md
   - Personalization: personalization.md
   - Public benchmark: benchmark.md
+  - Performance: performance.md
   - Stability policy: stability.md
+  - Next evolution: rfc-next-evolution.md
   - Live demo: /demo/

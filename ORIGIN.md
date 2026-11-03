@@ -26,8 +26,9 @@ around it so the engine works on *your* database:
   titles: it's the accumulation of months of labeled corrections, and
   it's the part competitors can't shortcut.
 - **The graded training/eval data** behind the weights. The
-  coefficients are published; the 6,650 pairs they were fitted on are
-  not — anyone can use the result, nobody gets to replay the fit.
+  coefficients are published; the thousands of curated pairs they
+  were fitted on are not — anyone can use the result, nobody gets
+  to replay the fit.
 - **The narrative-tag enrichment** (tone/arc/structure features are in
   the public feature space, but the tagger that fills them is closed).
 

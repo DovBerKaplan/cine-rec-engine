@@ -48,7 +48,7 @@ waits for real smearing data, per the spec.
    A missing or stale vector (> `USER_VECTOR_MAX_AGE_HOURS`, default 24)
    is rebuilt inline first (`ensure_user_vector`) — the channel works
    from the first request with no cron configured. With
-   `vector_space="e5e"` (any `model_spaces.REC_MODELS` key), the
+   `vector_space="minilm"` (any `model_spaces.REC_MODELS` key), the
    vector, the ANN recall, and the scorer's cosine all run in that
    space's embedding column for the whole request.
 3. Hard filters: watched (derived `user_watches` view), rated,

@@ -1,0 +1,1308 @@
+{
+ "generator": "gen_entities.py::build_enriched() over build(120,4) rows",
+ "n_cands": 16,
+ "n_seeds": 4,
+ "w_list": [
+  10.0,
+  3.0,
+  4.0,
+  0.5,
+  3.0,
+  3.0,
+  3.5,
+  3.5,
+  4.0,
+  2.0,
+  3.0,
+  0.75,
+  1.5,
+  0.5,
+  -1.0,
+  -1.0,
+  1.5,
+  1.0,
+  0.0,
+  0.0,
+  0.0,
+  -2.0,
+  1.5,
+  5.0,
+  4.0,
+  2.0,
+  4.0,
+  0.0
+ ],
+ "feature_names": [
+  "cosine_sim",
+  "keyword_sim",
+  "cast_sim",
+  "genre_priority_sum",
+  "director_match",
+  "director_channel",
+  "writer_match",
+  "tmdb_rec_decay",
+  "shared_collection",
+  "shared_network",
+  "style_match",
+  "company_sim",
+  "year_le5",
+  "year_le10",
+  "year_gt25",
+  "votes_gt15k",
+  "low_votes_high_rating",
+  "rating_bonus",
+  "pop_action_leak",
+  "composer_match",
+  "dp_match",
+  "medium_mismatch",
+  "narrative_match",
+  "tone_compatibility",
+  "emotional_arc_match",
+  "pacing_match",
+  "audience_compatibility",
+  "heuristic_score"
+ ],
+ "pairing": "golden case i == (cands[i // n_seeds], seeds[i % n_seeds])",
+ "probes": [
+  {
+   "cand_id": 0,
+   "seed_id": 10001,
+   "golden_index": 1,
+   "score": 4.722222222222222,
+   "vec_slots": {
+    "0": 0.18888888888888888,
+    "3": 2.0,
+    "27": 4.722222222222222
+   }
+  },
+  {
+   "cand_id": 3,
+   "seed_id": 10001,
+   "golden_index": 13,
+   "score": 14.415114098595003,
+   "vec_slots": {
+    "0": 0.18888888888888888,
+    "3": 2.0,
+    "27": 14.415114098595003
+   }
+  },
+  {
+   "cand_id": 6,
+   "seed_id": 10002,
+   "golden_index": 26,
+   "score": 22.16149449620233,
+   "vec_slots": {
+    "0": 0.2261904761904762,
+    "3": 0.0,
+    "27": 22.16149449620233
+   }
+  },
+  {
+   "cand_id": 9,
+   "seed_id": 10000,
+   "golden_index": 36,
+   "score": 20.789156626506024,
+   "vec_slots": {
+    "0": 0.2289156626506024,
+    "3": 0.0,
+    "27": 20.789156626506024
+   }
+  },
+  {
+   "cand_id": 12,
+   "seed_id": 10002,
+   "golden_index": 50,
+   "score": 29.43095238095238,
+   "vec_slots": {
+    "0": 0.23809523809523808,
+    "3": 0.0,
+    "27": 29.43095238095238
+   }
+  }
+ ],
+ "cands": [
+  {
+   "id": 0,
+   "media_type": "movie",
+   "title": "Title 0",
+   "title_en": "Title 0",
+   "genres": [
+    "Drama",
+    "Action",
+    "Sci-Fi"
+   ],
+   "keywords": [
+    "kw114",
+    "kw71",
+    "kw52",
+    "kw279",
+    "kw44",
+    "dream"
+   ],
+   "cast_ids": [
+    604,
+    432,
+    32,
+    30,
+    95
+   ],
+   "director_ids": [
+    27
+   ],
+   "writer_ids": [
+    29
+   ],
+   "composer_ids": [
+    64
+   ],
+   "dp_ids": [
+    77
+   ],
+   "companies": [
+    "co35"
+   ],
+   "networks": [],
+   "original_language": "fr",
+   "overview": "A space crew discovers a signal that rewrites their memories 0",
+   "overview_en": null,
+   "release_year": 2013,
+   "vote_average": 5.491982799183135,
+   "vote_count": 38668,
+   "collection_id": 200,
+   "adult": false,
+   "via": null,
+   "narrative": "linear",
+   "pacing": "contemplative",
+   "emotional_arc": [
+    "feel-good",
+    "uplifting"
+   ],
+   "director": "Director Name 0"
+  },
+  {
+   "id": 1,
+   "media_type": "movie",
+   "title": "Title 1",
+   "title_en": "Title 1",
+   "genres": [
+    "Comedy"
+   ],
+   "keywords": [
+    "kw174",
+    "kw142",
+    "kw79",
+    "kw110",
+    "kw172",
+    "kw52",
+    "kw47",
+    "kw194"
+   ],
+   "cast_ids": [
+    99,
+    367,
+    867,
+    352,
+    618
+   ],
+   "director_ids": [
+    33
+   ],
+   "writer_ids": [
+    5
+   ],
+   "composer_ids": [
+    93
+   ],
+   "dp_ids": [
+    58
+   ],
+   "companies": [
+    "co7",
+    "co59",
+    "co24"
+   ],
+   "networks": [],
+   "original_language": "fr",
+   "overview": "Two rivals fall in love during a cooking competition in paris 1",
+   "overview_en": null,
+   "release_year": 2006,
+   "vote_average": 7.098084653655429,
+   "vote_count": 4608,
+   "collection_id": null,
+   "adult": false,
+   "via": "knn",
+   "narrative": "anthology",
+   "pacing": "propulsive",
+   "emotional_arc": [
+    "dark",
+    "tense"
+   ]
+  },
+  {
+   "id": 2,
+   "media_type": "movie",
+   "title": "Title 2",
+   "title_en": "Title 2",
+   "genres": [
+    "Thriller",
+    "Sci-Fi",
+    "Drama"
+   ],
+   "keywords": [
+    "kw51",
+    "kw194",
+    "kw142",
+    "kw232",
+    "kw186",
+    "dream",
+    "simulation",
+    "cyberpunk"
+   ],
+   "cast_ids": [
+    166,
+    379,
+    363,
+    214,
+    686
+   ],
+   "director_ids": [
+    34
+   ],
+   "writer_ids": [
+    89
+   ],
+   "composer_ids": [
+    87
+   ],
+   "dp_ids": [
+    82
+   ],
+   "companies": [
+    "co38"
+   ],
+   "networks": [
+    "nt5",
+    "nt17"
+   ],
+   "original_language": "fr",
+   "overview": "Two rivals fall in love during a cooking competition in paris 2",
+   "overview_en": null,
+   "release_year": 1980,
+   "vote_average": 6.580170953330021,
+   "vote_count": 17741,
+   "collection_id": 100,
+   "adult": false,
+   "via": "tmdb",
+   "narrative": null,
+   "pacing": null,
+   "emotional_arc": null,
+   "tmdb_rank": 3
+  },
+  {
+   "id": 3,
+   "media_type": "movie",
+   "title": "Title 3",
+   "title_en": "Title 3",
+   "genres": [
+    "Crime",
+    "Action",
+    "Thriller"
+   ],
+   "keywords": [
+    "kw161",
+    "kw205"
+   ],
+   "cast_ids": [
+    274,
+    67,
+    216,
+    935,
+    965
+   ],
+   "director_ids": [
+    72
+   ],
+   "writer_ids": [
+    91
+   ],
+   "composer_ids": [
+    40
+   ],
+   "dp_ids": [
+    27
+   ],
+   "companies": [
+    "co31",
+    "co25",
+    "co56"
+   ],
+   "networks": [
+    "nt14",
+    "nt4"
+   ],
+   "original_language": "ko",
+   "overview": "A space crew discovers a signal that rewrites their memories 3",
+   "overview_en": null,
+   "release_year": 1991,
+   "vote_average": 7.8524504194122295,
+   "vote_count": 35372,
+   "collection_id": 200,
+   "adult": false,
+   "via": "director",
+   "narrative": "linear",
+   "pacing": "contemplative",
+   "emotional_arc": [
+    "feel-good",
+    "uplifting"
+   ]
+  },
+  {
+   "id": 4,
+   "media_type": "movie",
+   "title": "Title 4",
+   "title_en": "Title 4",
+   "genres": [
+    "Adventure",
+    "Animation",
+    "Romance"
+   ],
+   "keywords": [
+    "kw112",
+    "kw70",
+    "kw260",
+    "kw252",
+    "kw46",
+    "kw24",
+    "kw56",
+    "dream",
+    "simulation",
+    "cyberpunk",
+    "dystopia",
+    "memory loss"
+   ],
+   "cast_ids": [
+    156,
+    642,
+    163,
+    811,
+    696
+   ],
+   "director_ids": [
+    54
+   ],
+   "writer_ids": [
+    76
+   ],
+   "composer_ids": [
+    8
+   ],
+   "dp_ids": [
+    49
+   ],
+   "companies": [
+    "co38",
+    "co29"
+   ],
+   "networks": [
+    "nt8",
+    "nt17"
+   ],
+   "original_language": "en",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 4",
+   "overview_en": null,
+   "release_year": 1974,
+   "vote_average": 7.567696660619586,
+   "vote_count": 35240,
+   "collection_id": 200,
+   "adult": false,
+   "via": "writer",
+   "narrative": "anthology",
+   "pacing": "propulsive",
+   "emotional_arc": [
+    "dark",
+    "tense"
+   ],
+   "director": "Director Name 1"
+  },
+  {
+   "id": 5,
+   "media_type": "movie",
+   "title": "Title 5",
+   "title_en": "Title 5",
+   "genres": [
+    "Crime",
+    "Drama",
+    "Sci-Fi"
+   ],
+   "keywords": [
+    "kw80",
+    "kw232",
+    "kw1",
+    "kw134",
+    "kw256",
+    "kw91",
+    "kw259",
+    "kw54"
+   ],
+   "cast_ids": [
+    891,
+    640,
+    305,
+    861,
+    654
+   ],
+   "director_ids": [
+    64
+   ],
+   "writer_ids": [
+    77
+   ],
+   "composer_ids": [
+    25
+   ],
+   "dp_ids": [
+    19
+   ],
+   "companies": [
+    "co48",
+    "co10"
+   ],
+   "networks": [
+    "nt16",
+    "nt0"
+   ],
+   "original_language": "fr",
+   "overview": "A space crew discovers a signal that rewrites their memories 5",
+   "overview_en": null,
+   "release_year": 2022,
+   "vote_average": 4.587645340736246,
+   "vote_count": 23838,
+   "collection_id": 200,
+   "adult": false,
+   "via": null,
+   "narrative": null,
+   "pacing": null,
+   "emotional_arc": null
+  },
+  {
+   "id": 6,
+   "media_type": "movie",
+   "title": "Title 6",
+   "title_en": "Title 6",
+   "genres": [
+    "Action"
+   ],
+   "keywords": [
+    "kw290",
+    "kw40",
+    "kw43",
+    "kw248",
+    "kw35",
+    "dream",
+    "simulation"
+   ],
+   "cast_ids": [
+    778,
+    545,
+    784,
+    128,
+    131
+   ],
+   "director_ids": [
+    84
+   ],
+   "writer_ids": [
+    60
+   ],
+   "composer_ids": [
+    70
+   ],
+   "dp_ids": [
+    21
+   ],
+   "companies": [
+    "co33",
+    "co55"
+   ],
+   "networks": [
+    "nt13",
+    "nt6"
+   ],
+   "original_language": "fr",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 6",
+   "overview_en": null,
+   "release_year": 1985,
+   "vote_average": 7.708270377686048,
+   "vote_count": 26198,
+   "collection_id": 200,
+   "adult": false,
+   "via": "knn",
+   "narrative": "linear",
+   "pacing": "contemplative",
+   "emotional_arc": [
+    "feel-good",
+    "uplifting"
+   ]
+  },
+  {
+   "id": 7,
+   "media_type": "movie",
+   "title": "Title 7",
+   "title_en": "Title 7",
+   "genres": [
+    "Romance",
+    "Horror"
+   ],
+   "keywords": [
+    "kw126",
+    "kw115",
+    "kw32"
+   ],
+   "cast_ids": [
+    346,
+    21,
+    602,
+    567,
+    235
+   ],
+   "director_ids": [
+    75
+   ],
+   "writer_ids": [
+    28
+   ],
+   "composer_ids": [
+    0
+   ],
+   "dp_ids": [
+    9
+   ],
+   "companies": [
+    "co40",
+    "co3",
+    "co14"
+   ],
+   "networks": [],
+   "original_language": "en",
+   "overview": "A space crew discovers a signal that rewrites their memories 7",
+   "overview_en": null,
+   "release_year": 2002,
+   "vote_average": 4.818858074498941,
+   "vote_count": 15647,
+   "collection_id": 200,
+   "adult": false,
+   "via": "tmdb",
+   "narrative": "anthology",
+   "pacing": "propulsive",
+   "emotional_arc": [
+    "dark",
+    "tense"
+   ],
+   "tmdb_rank": 3
+  },
+  {
+   "id": 8,
+   "media_type": "movie",
+   "title": "Title 8",
+   "title_en": "Title 8",
+   "genres": [
+    "War"
+   ],
+   "keywords": [
+    "kw295",
+    "kw242",
+    "kw124",
+    "kw208",
+    "kw97",
+    "kw48",
+    "kw49",
+    "kw220",
+    "kw181",
+    "kw216",
+    "kw210",
+    "dream",
+    "simulation",
+    "cyberpunk",
+    "dystopia"
+   ],
+   "cast_ids": [
+    478,
+    884,
+    746,
+    55,
+    689
+   ],
+   "director_ids": [
+    83
+   ],
+   "writer_ids": [
+    82
+   ],
+   "composer_ids": [
+    12
+   ],
+   "dp_ids": [
+    7
+   ],
+   "companies": [
+    "co46",
+    "co21"
+   ],
+   "networks": [],
+   "original_language": "en",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 8",
+   "overview_en": null,
+   "release_year": 1984,
+   "vote_average": 6.91328589259655,
+   "vote_count": 9236,
+   "collection_id": 300,
+   "adult": false,
+   "via": "director",
+   "narrative": null,
+   "pacing": null,
+   "emotional_arc": null,
+   "director": "Director Name 2"
+  },
+  {
+   "id": 9,
+   "media_type": "movie",
+   "title": "Title 9",
+   "title_en": "Title 9",
+   "genres": [
+    "War"
+   ],
+   "keywords": [
+    "kw127",
+    "kw38",
+    "kw226",
+    "kw281",
+    "kw50",
+    "kw25",
+    "kw276",
+    "kw7",
+    "kw47"
+   ],
+   "cast_ids": [
+    948,
+    771,
+    869,
+    242,
+    170
+   ],
+   "director_ids": [
+    52
+   ],
+   "writer_ids": [
+    62
+   ],
+   "composer_ids": [
+    61
+   ],
+   "dp_ids": [
+    27
+   ],
+   "companies": [
+    "co57",
+    "co3"
+   ],
+   "networks": [],
+   "original_language": "ko",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 9",
+   "overview_en": null,
+   "release_year": 2009,
+   "vote_average": 5.693413761774684,
+   "vote_count": 29869,
+   "collection_id": 200,
+   "adult": false,
+   "via": "writer",
+   "narrative": "linear",
+   "pacing": "contemplative",
+   "emotional_arc": [
+    "feel-good",
+    "uplifting"
+   ]
+  },
+  {
+   "id": 10,
+   "media_type": "movie",
+   "title": "Title 10",
+   "title_en": "Title 10",
+   "genres": [
+    "War"
+   ],
+   "keywords": [
+    "kw97",
+    "kw151",
+    "kw111",
+    "kw29",
+    "dream"
+   ],
+   "cast_ids": [
+    593,
+    753,
+    555,
+    62,
+    765
+   ],
+   "director_ids": [
+    40
+   ],
+   "writer_ids": [
+    7
+   ],
+   "composer_ids": [
+    6
+   ],
+   "dp_ids": [
+    74
+   ],
+   "companies": [
+    "co32",
+    "co58"
+   ],
+   "networks": [
+    "nt5",
+    "nt1"
+   ],
+   "original_language": "fr",
+   "overview": "Two rivals fall in love during a cooking competition in paris 10",
+   "overview_en": null,
+   "release_year": 1983,
+   "vote_average": 4.8083459971670655,
+   "vote_count": 4503,
+   "collection_id": 100,
+   "adult": false,
+   "via": null,
+   "narrative": "anthology",
+   "pacing": "propulsive",
+   "emotional_arc": [
+    "dark",
+    "tense"
+   ]
+  },
+  {
+   "id": 11,
+   "media_type": "movie",
+   "title": "Title 11",
+   "title_en": "Title 11",
+   "genres": [
+    "War"
+   ],
+   "keywords": [
+    "kw20",
+    "kw41",
+    "kw214",
+    "kw298",
+    "kw289",
+    "kw267",
+    "kw161",
+    "kw133",
+    "kw104",
+    "kw160",
+    "kw122"
+   ],
+   "cast_ids": [
+    271,
+    405,
+    134,
+    687,
+    660
+   ],
+   "director_ids": [
+    38
+   ],
+   "writer_ids": [
+    58
+   ],
+   "composer_ids": [
+    40
+   ],
+   "dp_ids": [
+    96
+   ],
+   "companies": [
+    "co0"
+   ],
+   "networks": [
+    "nt19"
+   ],
+   "original_language": "fr",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 11",
+   "overview_en": null,
+   "release_year": 1969,
+   "vote_average": 6.9193548184573235,
+   "vote_count": 33203,
+   "collection_id": 200,
+   "adult": false,
+   "via": "knn",
+   "narrative": null,
+   "pacing": null,
+   "emotional_arc": null
+  },
+  {
+   "id": 12,
+   "media_type": "movie",
+   "title": "Title 12",
+   "title_en": "Title 12",
+   "genres": [
+    "Crime"
+   ],
+   "keywords": [
+    "kw125",
+    "kw189",
+    "kw145",
+    "dream",
+    "simulation",
+    "cyberpunk"
+   ],
+   "cast_ids": [
+    161,
+    448,
+    853,
+    556,
+    720
+   ],
+   "director_ids": [
+    38
+   ],
+   "writer_ids": [
+    78
+   ],
+   "composer_ids": [
+    83
+   ],
+   "dp_ids": [
+    67
+   ],
+   "companies": [
+    "co42"
+   ],
+   "networks": [
+    "nt9",
+    "nt3"
+   ],
+   "original_language": "en",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 12",
+   "overview_en": null,
+   "release_year": 1974,
+   "vote_average": 8.50370718152569,
+   "vote_count": 36306,
+   "collection_id": 100,
+   "adult": false,
+   "via": "tmdb",
+   "narrative": "linear",
+   "pacing": "contemplative",
+   "emotional_arc": [
+    "feel-good",
+    "uplifting"
+   ],
+   "tmdb_rank": 3,
+   "director": "Director Name 3"
+  },
+  {
+   "id": 13,
+   "media_type": "movie",
+   "title": "Title 13",
+   "title_en": "Title 13",
+   "genres": [
+    "Sci-Fi",
+    "Thriller"
+   ],
+   "keywords": [
+    "kw104",
+    "kw135",
+    "kw258",
+    "kw250",
+    "kw128",
+    "kw26",
+    "kw47"
+   ],
+   "cast_ids": [
+    649,
+    433,
+    849,
+    283,
+    45
+   ],
+   "director_ids": [
+    0
+   ],
+   "writer_ids": [
+    42
+   ],
+   "composer_ids": [
+    98
+   ],
+   "dp_ids": [
+    16
+   ],
+   "companies": [
+    "co16",
+    "co10",
+    "co47"
+   ],
+   "networks": [
+    "nt17"
+   ],
+   "original_language": "fr",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 13",
+   "overview_en": null,
+   "release_year": 1961,
+   "vote_average": 5.0034324626520075,
+   "vote_count": 9818,
+   "collection_id": null,
+   "adult": false,
+   "via": "director",
+   "narrative": "anthology",
+   "pacing": "propulsive",
+   "emotional_arc": [
+    "dark",
+    "tense"
+   ]
+  },
+  {
+   "id": 14,
+   "media_type": "movie",
+   "title": "Title 14",
+   "title_en": "Title 14",
+   "genres": [
+    "Adventure",
+    "Romance"
+   ],
+   "keywords": [
+    "kw220",
+    "kw65",
+    "kw21",
+    "kw157",
+    "dream",
+    "simulation",
+    "cyberpunk",
+    "dystopia",
+    "memory loss"
+   ],
+   "cast_ids": [
+    373,
+    920,
+    955,
+    815,
+    995
+   ],
+   "director_ids": [
+    5
+   ],
+   "writer_ids": [
+    45
+   ],
+   "composer_ids": [
+    26
+   ],
+   "dp_ids": [
+    87
+   ],
+   "companies": [
+    "co42"
+   ],
+   "networks": [],
+   "original_language": "ko",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 14",
+   "overview_en": null,
+   "release_year": 2012,
+   "vote_average": 8.882266601867801,
+   "vote_count": 10178,
+   "collection_id": 100,
+   "adult": false,
+   "via": "writer",
+   "narrative": null,
+   "pacing": null,
+   "emotional_arc": null
+  },
+  {
+   "id": 15,
+   "media_type": "movie",
+   "title": "Title 15",
+   "title_en": "Title 15",
+   "genres": [
+    "War"
+   ],
+   "keywords": [
+    "kw12",
+    "kw91",
+    "kw170",
+    "kw210",
+    "kw127",
+    "kw136",
+    "kw81",
+    "kw55"
+   ],
+   "cast_ids": [
+    391,
+    893,
+    39,
+    879,
+    481
+   ],
+   "director_ids": [
+    28
+   ],
+   "writer_ids": [
+    25
+   ],
+   "composer_ids": [
+    58
+   ],
+   "dp_ids": [
+    44
+   ],
+   "companies": [
+    "co52",
+    "co50"
+   ],
+   "networks": [],
+   "original_language": "en",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 15",
+   "overview_en": null,
+   "release_year": 1984,
+   "vote_average": 6.293096903541526,
+   "vote_count": 18308,
+   "collection_id": null,
+   "adult": false,
+   "via": "",
+   "narrative": "linear",
+   "pacing": "contemplative",
+   "emotional_arc": [
+    "feel-good",
+    "uplifting"
+   ]
+  }
+ ],
+ "seeds": [
+  {
+   "id": 10000,
+   "media_type": "movie",
+   "title": "Title 10000",
+   "title_en": "Title 10000",
+   "genres": [
+    "Romance"
+   ],
+   "keywords": [
+    "kw22",
+    "kw6"
+   ],
+   "cast_ids": [
+    250,
+    47,
+    483,
+    372,
+    392
+   ],
+   "director_ids": [
+    19
+   ],
+   "writer_ids": [
+    22
+   ],
+   "composer_ids": [
+    4
+   ],
+   "dp_ids": [
+    70
+   ],
+   "companies": [
+    "co47",
+    "co41",
+    "co26"
+   ],
+   "networks": [],
+   "original_language": "ko",
+   "overview": "Two rivals fall in love during a cooking competition in paris 10000",
+   "overview_en": null,
+   "release_year": 2013,
+   "vote_average": 8.621346441964027,
+   "vote_count": 21017,
+   "collection_id": 200,
+   "adult": false,
+   "via": null,
+   "narrative": "linear",
+   "pacing": "propulsive",
+   "emotional_arc": [
+    "dark",
+    "tense"
+   ],
+   "director": "Director Name 0"
+  },
+  {
+   "id": 10001,
+   "media_type": "movie",
+   "title": "Title 10001",
+   "title_en": "Title 10001",
+   "genres": [
+    "Crime",
+    "Drama",
+    "Action"
+   ],
+   "keywords": [
+    "kw114",
+    "kw264",
+    "kw23",
+    "kw205"
+   ],
+   "cast_ids": [
+    70,
+    898,
+    476,
+    886,
+    289
+   ],
+   "director_ids": [
+    99
+   ],
+   "writer_ids": [
+    39
+   ],
+   "composer_ids": [
+    41
+   ],
+   "dp_ids": [
+    11
+   ],
+   "companies": [
+    "co29",
+    "co0",
+    "co23"
+   ],
+   "networks": [],
+   "original_language": "ko",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 10001",
+   "overview_en": null,
+   "release_year": 1998,
+   "vote_average": 7.828091940300381,
+   "vote_count": 15947,
+   "collection_id": 300,
+   "adult": false,
+   "via": null,
+   "narrative": "anthology",
+   "pacing": null,
+   "emotional_arc": null
+  },
+  {
+   "id": 10002,
+   "media_type": "tv",
+   "title": "Title 10002",
+   "title_en": "Title 10002",
+   "genres": [
+    "Horror",
+    "Thriller",
+    "Romance"
+   ],
+   "keywords": [
+    "kw3",
+    "kw209",
+    "kw12",
+    "kw119",
+    "dream",
+    "simulation"
+   ],
+   "cast_ids": [
+    554,
+    354,
+    651,
+    859,
+    710
+   ],
+   "director_ids": [
+    1
+   ],
+   "writer_ids": [
+    42
+   ],
+   "composer_ids": [
+    0
+   ],
+   "dp_ids": [
+    97
+   ],
+   "companies": [
+    "co24",
+    "co54",
+    "co47"
+   ],
+   "networks": [
+    "nt9",
+    "nt3"
+   ],
+   "original_language": "en",
+   "overview": "Two rivals fall in love during a cooking competition in paris 10002",
+   "overview_en": null,
+   "release_year": 1990,
+   "vote_average": 6.389171289012804,
+   "vote_count": 3975,
+   "collection_id": 100,
+   "adult": false,
+   "via": null,
+   "narrative": null,
+   "pacing": "contemplative",
+   "emotional_arc": [
+    "feel-good",
+    "uplifting"
+   ]
+  },
+  {
+   "id": 10003,
+   "media_type": "tv",
+   "title": "Title 10003",
+   "title_en": "Title 10003",
+   "genres": [
+    "Animation",
+    "Adventure"
+   ],
+   "keywords": [
+    "kw266",
+    "kw211",
+    "kw190",
+    "kw234",
+    "kw43"
+   ],
+   "cast_ids": [
+    594,
+    97,
+    517,
+    136,
+    652
+   ],
+   "director_ids": [
+    50
+   ],
+   "writer_ids": [
+    9
+   ],
+   "composer_ids": [
+    75
+   ],
+   "dp_ids": [
+    72
+   ],
+   "companies": [
+    "co27"
+   ],
+   "networks": [
+    "nt4",
+    "nt7"
+   ],
+   "original_language": "ja",
+   "overview": "A retired detective returns for one last case in a rainy city of secrets 10003",
+   "overview_en": null,
+   "release_year": 2000,
+   "vote_average": 8.667188783017366,
+   "vote_count": 25802,
+   "collection_id": 200,
+   "adult": false,
+   "via": null,
+   "narrative": "linear",
+   "pacing": "propulsive",
+   "emotional_arc": [
+    "dark",
+    "tense"
+   ]
+  }
+ ]
+}

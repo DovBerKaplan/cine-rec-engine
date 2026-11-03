@@ -37,6 +37,12 @@ GET /3/tv/{id}?language=en-US&append_to_response=credits,keywords,recommendation
   Composer / Director of Photography — the jobs the scorer uses.
 - **Genres:** synced once per run from `/genre/movie/list` and
   `/genre/tv/list` (the lists differ — tv has 10759 "Action & Adventure").
+  **Genre contract:** the canonical labels are ENGLISH — the sync
+  explicitly requests `language=en-US` (see `ingest/cli.py`). The
+  engine's scoring tables (GENRE_PRIORITY, style matching) use these
+  canonical English names. Catalogs with non-English genre labels
+  (e.g., Hebrew) are NOT normalized — re-sync genres with the
+  standard pipeline before upgrading from a legacy catalog.
 - **Recommendations:** page 1 lands in the behavioral graph; TMDB recs
   stay within their medium, like the API.
 - **Rate:** paced to ≤ 40 requests/second (token-bucket rate limiter —

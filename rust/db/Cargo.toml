@@ -1,0 +1,29 @@
+[package]
+name = "cine-rec-db"
+version = "0.1.0"
+edition = "2021"
+description = "Rust port of cine-rec-engine's DB layer - schema registry, dynamic SQL, recall channels"
+license = "MIT"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+# sqlx pinned EXACTLY: 0.9 requires rustc 1.94 (older than the
+# project toolchain), and row-decode parity is verified against 0.8.6 —
+# drift here is not a patch bump; decode parity is the contract.
+sqlx = { version = "=0.8.6", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "json",
+] }
+tokio = { version = "1", features = ["rt", "macros"] }
+# pgvector pinned EXACTLY: 0.4.2 jumped to sqlx ^0.9 (rustc 1.94) —
+# same class of drift as the sqlx pin; live parity is against 0.4.1
+pgvector = { version = "=0.4.1", default-features = false, features = ["sqlx"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[lib]
+name = "cine_rec_db"

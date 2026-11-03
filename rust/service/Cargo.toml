@@ -1,0 +1,30 @@
+[package]
+name = "cine-rec-service"
+version = "0.1.0"
+edition = "2021"
+description = "Rust port of cine-rec-engine's service orchestration - find_similar compute path over the db + scoring crates"
+license = "MIT"
+publish = false
+
+[dependencies]
+# exact pins mirror the db crate (0.9 needs rustc 1.94; live parity is
+# verified against 0.8.6)
+sqlx = { version = "=0.8.6", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "json",
+] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+cine-rec-db = { path = "../db" }
+cine-rec-scoring = { path = "../scoring" }
+pyo3 = { version = "0.23", features = ["abi3-py310", "macros"], optional = true }
+
+[features]
+pyo3 = ["dep:pyo3"]
+
+[lib]
+name = "cine_rec_service"
+crate-type = ["rlib", "cdylib"]

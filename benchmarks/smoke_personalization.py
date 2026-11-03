@@ -29,19 +29,19 @@ async def main():
         await c.execute(open(Path(__file__).parent.parent / "docs" / "user_data.sql").read())
         from pgvector.asyncpg import register_vector
         await register_vector(c)
-        await c.execute("ALTER TABLE tmdb_movies ADD COLUMN embedding_e5e vector(4)")
-        await c.execute("ALTER TABLE tmdb_tv ADD COLUMN embedding_e5e vector(4)")
+        await c.execute("ALTER TABLE tmdb_movies ADD COLUMN embedding_minilm vector(4)")
+        await c.execute("ALTER TABLE tmdb_tv ADD COLUMN embedding_minilm vector(4)")
         for mid, (title, vec) in MOVIES.items():
             await c.execute(
                 """INSERT INTO tmdb_movies (id, title, overview, release_date,
-                   vote_average, vote_count, popularity, adult, embedding_e5e)
+                   vote_average, vote_count, popularity, adult, embedding_minilm)
                    VALUES ($1,$2,$3,'2020-01-01',8.0,5000,50.0,false,$4)""",
                 mid, title, f"overview {title}", vec)
         tid, (name, vec, eps) = list(TV.items())[0]
         await c.execute(
             """INSERT INTO tmdb_tv (id, name, overview, first_air_date,
                number_of_seasons, number_of_episodes, vote_average, vote_count,
-               popularity, adult, embedding_e5e)
+               popularity, adult, embedding_minilm)
                VALUES ($1,$2,$3,'2008-01-20',5,$4,8.9,12000,300.0,false,$5)""",
             tid, name, "chemistry", eps, vec)
     U = 42
@@ -105,9 +105,9 @@ async def main():
     # §E vector (J acceptance)
     import cine_rec_engine.config as cfg
     import cine_rec_engine.service as svc
-    cfg.EMBEDDING_COLUMN = "embedding_e5e"
-    svc.EMBEDDING_COLUMN = "embedding_e5e"
-    vec = await uv.build_user_vector(pool, U, space="e5e", column="embedding_e5e")
+    cfg.EMBEDDING_COLUMN = "embedding_minilm"
+    svc.EMBEDDING_COLUMN = "embedding_minilm"
+    vec = await uv.build_user_vector(pool, U, space="minilm", column="embedding_minilm")
     if vec is None:
         rows2 = await pool.fetch(
             """SELECT uts.tmdb_id, uts.w_item FROM user_title_stats uts

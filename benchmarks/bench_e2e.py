@@ -15,7 +15,20 @@ from datetime import date
 from pathlib import Path
 
 
-DSN = os.environ.get("BENCH_DSN") or os.environ.get("DATABASE_URL", "postgresql://localhost/postgres")
+def _parse_args():
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--dsn", required=True,
+                    help="ONE-SHOT database to seed (the bench creates and drops its schema)")
+    ap.add_argument("--wipe", action="store_true",
+                    help="explicitly confirm the destructive schema wipe")
+    args = ap.parse_args()
+    if not args.wipe:
+        ap.error("--wipe is required: this bench DROPs the entire public schema. "
+                 "Point it at a throwaway DB and pass --wipe to confirm.")
+    return args
+
+DSN = None  # set in main() from --dsn
 
 SCHEMA = (Path(__file__).parent.parent / "docs" / "schema.sql").read_text()
 
@@ -98,6 +111,8 @@ async def analyze(pool):
 
 
 async def main():
+    global DSN
+    DSN = _parse_args().dsn
     import asyncpg
     import cine_rec_engine.service as S
     import cine_rec_engine.queries as Q
@@ -120,8 +135,9 @@ async def main():
             finally:
                 PHASES[n] = PHASES.get(n, 0.0) + (_t.perf_counter() - t0) * 1000
         setattr(RS, n, timed_method)
+    import cine_rec_engine.find_similar as _FS
     for n in ("_mmr_order", "_dedup_same_story", "_balance_by_media_type"):
-        origf = getattr(S, n)
+        origf = getattr(_FS, n)
         def timed_sync(*a, _orig=origf, _n=n, **kw):
             import time as _t
             PHASES[_n+"_calls"] = PHASES.get(_n+"_calls", 0) + 1
@@ -132,7 +148,7 @@ async def main():
                 return _orig(*a, **kw)
             finally:
                 PHASES[n] = PHASES.get(n, 0.0) + (_t.perf_counter() - t0) * 1000
-        setattr(S, n, timed_sync)
+        setattr(_FS, n, timed_sync)
     pool = await asyncpg.create_pool(DSN, min_size=2, max_size=4)
     await seed(pool)
     await analyze(pool)
@@ -144,13 +160,13 @@ async def main():
     # isolate _balance_by_media_type: capture its args on the next call
     import cine_rec_engine.service as _S
     _cap = {}
-    _orig_b = _S._balance_by_media_type
+    _orig_b = _FS._balance_by_media_type
     def cap(*a, **kw):
         _cap.setdefault("args", (list(a[0]), a[1], a[2]))
         return _orig_b(*a, **kw)
-    _S._balance_by_media_type = cap
+    _FS._balance_by_media_type = cap
     await rec.find_similar([2001, 2002, 2003], limit=60)
-    _S._balance_by_media_type = _orig_b
+    _FS._balance_by_media_type = _orig_b
     if _cap.get("args"):
         import time as _t2
         rs, mr, lm = _cap["args"]
@@ -171,14 +187,22 @@ async def main():
     # warm (cache path)
     t0 = time.perf_counter()
     r2 = await rec.find_similar(155, limit=30)
+    assert len(r2) > 0, 'bench measured empty results'
     warm = (time.perf_counter() - t0) * 1000
     # multi-seed with REAL ids (fresh combo → cache miss)
     t0 = time.perf_counter()
     r3 = await rec.find_similar([1001, 1002, 1003, 1004, 1005], limit=60)
+    assert len(r3) > 0, 'bench measured empty multi-seed results'
     multi = (time.perf_counter() - t0) * 1000
     print(f"RESULTS: cold_median={med:.0f}ms cold_all={[f'{t:.0f}' for t in times]} "
           f"warm={warm:.1f}ms multi_seed_5={multi:.0f}ms n={len(r2)}/{len(r3)}")
     print("PHASES:", {k: f"{v:.0f}ms" for k, v in sorted(PHASES.items(), key=lambda x: -x[1])})
+    # the docstring's "leaves nothing behind" promise, implemented
+    pool2 = await asyncpg.create_pool(DSN, min_size=1, max_size=1)
+    async with pool2.acquire() as c:
+        await c.execute("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;")
+    await pool2.close()
+
     await pool.close()
 
 asyncio.run(main())

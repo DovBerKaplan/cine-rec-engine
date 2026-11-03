@@ -126,7 +126,7 @@ async def get_user_recommendation_exclusions(pool, user_id: Optional[int]) -> Wa
     """Titles hidden from a user's recommendations: watched OR rated.
 
     A rated title never returns in that user's recommendation lists, no
-    matter which button was pressed — rating signals we already know the
+    matter which rating was given — rating signals we already know the
     verdict, recommending it again is noise.
     """
     watched = await get_user_watched(pool, user_id)
@@ -144,7 +144,7 @@ _PROGRESS_MOVIE_SQL = """
 
 
 async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) -> dict:
-    """The user's watch state for ONE title (card rendering).
+    """The user's watch state for ONE title (title detail rendering).
 
     movie → {"watched": bool}
     tv → {"watched", "watched_all", "reached_last", "max_season", "max_episode"}:
@@ -152,7 +152,7 @@ async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) 
       - reached_last: the catalog's last episode (highest season, then
         highest episode in it) is seen — even with gaps
       - max_season/max_episode: furthest progress (season DESC priority),
-        for the "עד עונה X פרק X" label
+        for the per-season/episode progress label
     """
     out = {"watched": False}
     if user_id is None or pool is None:
@@ -186,11 +186,19 @@ async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) 
                 FROM catalog
                 """,
                 user_id,
-                str(tmdb_id),
+                tmdb_id,
             )
             if row and row["seen_n"] and row["seen_n"] > 0:
                 max_s, max_e = row["max_s"], row["max_e"]
-                reached_last = (max_s, max_e) >= (row["cat_s"], row["cat_e"])
+                # reached_last claims the catalog's LAST episode was
+                # seen — it needs a KNOWN catalog end; without one the
+                # claim is false (an integrator episodes table that is
+                # empty/missing must not fabricate completion).
+                reached_last = (
+                    (max_s, max_e) >= (row["cat_s"], row["cat_e"])
+                    if row["cat_s"] is not None and row["cat_e"] is not None
+                    else False
+                )
                 out = {
                     "watched": True,
                     "watched_all": row["seen_n"] >= row["cat_n"] and row["cat_n"] > 0,
@@ -199,7 +207,7 @@ async def get_user_title_progress(pool, user_id, tmdb_id: int, media_type: str) 
                     "max_episode": max_e,
                 }
             return out
-        row = await db.fetchrow(pool, _PROGRESS_MOVIE_SQL, user_id, str(tmdb_id))
+        row = await db.fetchrow(pool, _PROGRESS_MOVIE_SQL, user_id, tmdb_id)
         if row:
             out["watched"] = bool(row["watched"])
         return out

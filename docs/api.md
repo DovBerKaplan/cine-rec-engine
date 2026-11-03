@@ -1,8 +1,8 @@
 # HTTP API
 
 Interactive reference, generated from the app factory (`/v1/*` routes
-are canonical; the bare paths are deprecated aliases — see the
-[stability policy](stability.md)). Set `CINE_REC_API_KEYS` to require
+are canonical; the bare pre-1.0 aliases were removed in 1.0.0 — see
+the [stability policy](stability.md)). Set `CINE_REC_API_KEYS` to require
 an `X-API-Key` (or `Authorization: Bearer`) on every data route;
 `/health` and the docs stay open.
 
