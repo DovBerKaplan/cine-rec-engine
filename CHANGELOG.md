@@ -46,6 +46,30 @@ versions follow [SemVer](https://semver.org/).
   toolchain can self-build the extension; the pure-Python wheel stays
   the canonical PyPI artifact.
 
+## [0.16.1] — 2026-11-01
+
+Maintenance-branch bugfix release (published from the `maint/0.16`
+line; recorded here for completeness).
+
+### Fixed
+- **ingest — data loss:** the networks bridge mirrored on EVERY
+  medium, so ingesting a movie that shares a TMDB id with a series
+  DELETEd the series' networks rows by that id (ids collide across
+  media — 69557 is both the movie *The Pumpkin Eater* and the series
+  *Fauda*). The networks dim+bridge sync is now tv-only; a movie
+  payload that carries networks touches neither networks table.
+- **personalization — progress always False:** `get_user_title_progress`
+  bound `tmdb_id` as `str()` against `$2::bigint`; asyncpg types the
+  parameter INT8 and rejects the str, and the broad except swallowed
+  it — so single-title progress never reported a watch. Binds the int
+  directly.
+- **personalization — reached_last without an episodes table:** when
+  the integrator-supplied episodes table yields a NULL catalog end,
+  the comparison raised internally and was swallowed, hiding episodes
+  that WERE seen. An EMPTY episodes table now reports
+  `watched=True, reached_last=False`; a MISSING one keeps the read's
+  degrade contract (`watched=False`, never raises).
+
 ## [0.16.0] — 2026-10-30
 
 ### Changed — the per-user request path runs its reads in parallel
