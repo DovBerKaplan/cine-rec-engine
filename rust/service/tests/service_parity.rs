@@ -28,6 +28,23 @@ const ROW_KEYS: [&str; 9] = [
     "poster_path", "collection_id", "release_year",
 ];
 
+/// Genres arrive from an unordered aggregate on BOTH sides — element
+/// order is plan-dependent between runs (the L-6 class), so the parity
+/// contract for that field is the SET. Normalize before comparing.
+fn set_normalized(key: &str, v: Value) -> Value {
+    if key == "genres" {
+        match v {
+            Value::Array(mut a) => {
+                a.sort();
+                Value::Array(a)
+            }
+            other => other,
+        }
+    } else {
+        v
+    }
+}
+
 #[tokio::test]
 async fn service_compute_matches_python_on_frozen_seeds() {
     let Some(dsn) = dsn() else {
@@ -81,10 +98,11 @@ async fn service_compute_matches_python_on_frozen_seeds() {
                 .unwrap();
                 // null-vs-missing and int-vs-float normalize through JSON
                 let g = g.as_str().map(|s| Value::from(s.to_string())).unwrap_or(g);
+                let g = set_normalized(key, g);
+                let want = set_normalized(key, w[*key].clone());
                 assert_eq!(
-                    g, w[*key],
-                    "case {name}[{i}].{key}: {g} vs {want}",
-                    want = w[*key]
+                    g, want,
+                    "case {name}[{i}].{key}: {g} vs {want}"
                 );
             }
             let want_score = w["score"].as_f64().unwrap();
@@ -205,7 +223,11 @@ async fn recommend_full_matches_python_on_frozen_inputs() {
         };
         for key in ["title", "title_en", "media_type", "genres",
                     "poster_path", "collection_id", "release_year"] {
-            assert_eq!(gv(key), w[key], "rec[{i}].{key}");
+            assert_eq!(
+                set_normalized(key, gv(key)),
+                set_normalized(key, w[key].clone()),
+                "rec[{i}].{key}"
+            );
         }
         assert!(
             (g.score - w["score"].as_f64().unwrap()).abs() <= 1e-12,
