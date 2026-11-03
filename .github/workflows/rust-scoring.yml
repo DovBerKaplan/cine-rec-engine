@@ -149,7 +149,7 @@ jobs:
       - name: Build extension + boundary parity (pytest)
         run: |
           cargo build --release --features pyo3 --manifest-path rust/service/Cargo.toml
-          cp target/release/libcine_rec_service.so cine_rec_engine/_service_rs.so
+          cp rust/service/target/release/libcine_rec_service.so cine_rec_engine/_service_rs.so
           python -m pytest tests/integration/test_service_rs_parity.py -q
         env:
           CINE_REC_REQUIRE_DB: "1"
